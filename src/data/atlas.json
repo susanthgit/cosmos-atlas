@@ -227,8 +227,10 @@
         "audience": "Anyone who learns better when someone walks them through it on screen.",
         "content": "Full-length tutorials and walk-throughs. Microsoft cloud, AI, the curious-intern lens.",
         "founder": "I make these because writing alone doesn't always carry it. Sometimes you need to see my screen.",
-        "stats": ["full-length", "Microsoft cloud + AI", "main channel"],
-        "body": { "size": 24, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
+        "stats": ["54K+ subscribers", "75 videos", "main channel"],
+        "ctaLabel": "Open YouTube channel",
+        "ctaIcon": "↗",
+        "body": { "size": 26, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
         "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 90, "tailLen": 220 },
         "outpost": { "thetaDeg": -120 }
       },
@@ -241,8 +243,10 @@
         "audience": "Anyone who wants a 60-second answer instead of a 15-minute video.",
         "content": "Bite-sized cuts of the long-form videos. Just the answer, no setup.",
         "founder": "Same content, less time. For when you just want the bit you came for.",
-        "stats": ["short clips", "cert prep cuts", "no setup"],
-        "body": { "size": 20, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
+        "stats": ["short clips", "cert-prep cuts", "no setup"],
+        "ctaLabel": "Open Bites channel",
+        "ctaIcon": "↗",
+        "body": { "size": 22, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
         "comet": { "orbitMul": 1.42, "speedSec": 220, "ecc": 0.18, "tilt": -8, "phase": 200, "tailLen": 130 },
         "outpost": { "thetaDeg": -90 }
       },
@@ -256,28 +260,12 @@
         "content": "Free downloadable assets. Paid ones capped at $5 to keep them accessible. Tip jar if something here helped.",
         "founder": "If something here gave you something, this is where you can give a little back. No pressure — most things are free, the rest are capped at $5.",
         "stats": ["free assets", "paid ≤ $5", "tip jar"],
-        "body": { "size": 30, "glowCore": "#FECACA", "glowOuter": "#EF4444" },
-        "beacon": { "x": 0.93, "y": 0.86 },
-        "satellites": [
-          {
-            "slug": "kofi-shop",
-            "name": "Downloads",
-            "url": "https://ko-fi.com/aguidetocloud/shop",
-            "tagline": "free + paid (max $5) study assets",
-            "iconSlug": "kofi-download",
-            "body": { "size": 18, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
-            "satOrbit": { "radius": 50, "speedSec": 9, "phase": 0 }
-          },
-          {
-            "slug": "kofi-tip",
-            "name": "Tip jar",
-            "url": "https://ko-fi.com/aguidetocloud",
-            "tagline": "drop a coffee if something helped",
-            "iconSlug": "kofi-cup",
-            "body": { "size": 18, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
-            "satOrbit": { "radius": 50, "speedSec": 11, "phase": 180 }
-          }
+        "ctas": [
+          { "label": "Browse downloads", "icon": "↓", "url": "https://ko-fi.com/aguidetocloud/shop", "kind": "primary" },
+          { "label": "Drop a coffee tip", "icon": "☕", "url": "https://ko-fi.com/aguidetocloud", "kind": "secondary" }
         ],
+        "body": { "size": 28, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
+        "beacon": { "x": 0.93, "y": 0.86 },
         "outpost": { "thetaDeg": -60 }
       }
     ]

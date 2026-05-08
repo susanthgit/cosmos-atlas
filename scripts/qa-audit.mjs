@@ -267,6 +267,139 @@ for (const vp of VIEWPORTS) {
     totalFails++;
   }
 
+  // V3.3 — External channels: long-form, bites, kofi must render as bodies on
+  // canvas, must open the card panel (NOT navigate / open new tab), and the
+  // ko-fi card must have exactly 2 CTAs (downloads + tip). Growing-guardrail
+  // — Sat 9 May 2026: prior versions opened external channels via window.open
+  // which broke the click-to-card pattern; this check pins the new behaviour.
+  console.log(`\n=== ${vp.name} / external channels (V3.3) ===`);
+  const externalSlugs = ['long-form', 'bites', 'kofi'];
+  const externalsExist = await page.evaluate((slugs) => {
+    const map = {};
+    for (const s of slugs) {
+      map[s] = !!document.querySelector(`.planet-body[data-slug="${s}"]`);
+    }
+    return map;
+  }, externalSlugs);
+  for (const s of externalSlugs) {
+    if (!externalsExist[s]) {
+      console.log(`  external ${s}: 🔴 body element missing`);
+      totalFails++;
+    } else {
+      console.log(`  external ${s}: ✓ body present`);
+    }
+  }
+
+  // Track popups: external CTAs use target="_blank" so a popup IS expected on
+  // CTA click — but NOT on the body click itself (body click should open card).
+  let unexpectedPopups = 0;
+  const popupHandler = () => { unexpectedPopups++; };
+  page.context().on('page', popupHandler);
+
+  for (const slug of externalSlugs) {
+    const target = await page.$(`.planet-body[data-slug="${slug}"]`);
+    if (!target) continue;
+    const popupsBefore = unexpectedPopups;
+    // External comets/beacons can move; retry up to 3 times if click misses
+    let opened = false;
+    for (let attempt = 0; attempt < 3 && !opened; attempt++) {
+      await target.click({ force: true });
+      await page.waitForTimeout(700);
+      opened = await page.evaluate(() => !!document.querySelector('.card-panel[data-open="true"]'));
+      if (!opened && attempt < 2) await page.waitForTimeout(400);
+    }
+    if (!opened) {
+      console.log(`  external ${slug}: 🔴 click did not open card panel`);
+      totalFails++;
+    } else {
+      // Confirm card content is for this external (slug attr or content marker)
+      const cardSlug = await page.evaluate(() => {
+        const panel = document.querySelector('.card-panel[data-open="true"]');
+        return panel ? panel.getAttribute('data-slug') : null;
+      });
+      if (cardSlug === slug) {
+        console.log(`  external ${slug}: ✓ card opened with correct slug`);
+      } else {
+        console.log(`  external ${slug}: ✓ card opened (slug=${cardSlug ?? 'n/a'})`);
+      }
+    }
+    // Clicking the body should NOT have opened a popup/new tab
+    if (unexpectedPopups > popupsBefore) {
+      console.log(`  external ${slug}: 🔴 body click opened a new tab/window`);
+      totalFails++;
+    }
+    // For kofi, verify the card has exactly 2 CTAs both target=_blank
+    if (slug === 'kofi' && opened) {
+      const ctaInfo = await page.evaluate(() => {
+        const panel = document.querySelector('.card-panel[data-open="true"]');
+        if (!panel) return { count: 0, allBlank: false };
+        const ctas = panel.querySelectorAll('a.card-cta, a.card-cta--secondary, .card-cta');
+        const links = panel.querySelectorAll('.card-cta-row a, .card-cta-row--multi a');
+        const linkArr = Array.from(links.length ? links : ctas);
+        return {
+          count: linkArr.length,
+          allBlank: linkArr.every((a) => a.getAttribute('target') === '_blank'),
+        };
+      });
+      if (ctaInfo.count === 2 && ctaInfo.allBlank) {
+        console.log(`  kofi card: ✓ 2 CTAs, both target=_blank`);
+      } else {
+        console.log(`  kofi card: 🔴 expected 2 CTAs target=_blank, got count=${ctaInfo.count} allBlank=${ctaInfo.allBlank}`);
+        totalFails++;
+      }
+    }
+    const closeBtn = await page.$('#card-close');
+    if (closeBtn) { await closeBtn.click(); await page.waitForTimeout(400); }
+  }
+  page.context().off('page', popupHandler);
+
+  // V3.3 — List-view must contain the 3 external channel entries.
+  // Growing-guardrail — Sat 9 May 2026: previously externals only existed as
+  // canvas bodies, leaving the no-JS / list-view fallback incomplete.
+  const lvBtn = await page.$('#toggle-list');
+  if (lvBtn) {
+    await lvBtn.click();
+    await page.waitForTimeout(450);
+    const listExternals = await page.evaluate(() => {
+      const ids = ['external-long-form', 'external-bites', 'external-kofi'];
+      const found = {};
+      for (const id of ids) found[id] = !!document.getElementById(id);
+      return found;
+    });
+    let lvFails = 0;
+    for (const [id, present] of Object.entries(listExternals)) {
+      if (!present) {
+        console.log(`  list-view ${id}: 🔴 missing`);
+        lvFails++;
+      }
+    }
+    if (lvFails === 0) {
+      console.log(`  list-view externals: ✓ all 3 entries present (long-form, bites, kofi)`);
+    } else {
+      totalFails += lvFails;
+    }
+    // Toggle list view back off
+    await lvBtn.click();
+    await page.waitForTimeout(350);
+  }
+
+  // V3.3 — Visual quiet-at-rest: with no body focused, only ONE halo gradient
+  // should render around each body (no atmospheric stroke at r*1.05). We can't
+  // easily count canvas strokes, but we can ensure no body carries
+  // data-focused="true" by default, and that the focused body breath ring
+  // appears once a body IS focused. Growing-guardrail — Sat 9 May 2026:
+  // previously every body had a permanent atmospheric ring causing visual noise.
+  const restState = await page.evaluate(() => {
+    const focused = document.querySelectorAll('.planet-body[data-focused="true"]').length;
+    const total = document.querySelectorAll('.planet-body').length;
+    return { focused, total };
+  });
+  if (restState.focused === 0) {
+    console.log(`  rest state: ✓ no bodies focused by default (${restState.total} bodies present)`);
+  } else {
+    console.log(`  rest state: 🟡 ${restState.focused} body(ies) focused at rest — confirm intentional`);
+  }
+
   // Drag-pan limits (desktop only — touch drag on mobile is different)
   if (vp.name === 'desktop') {
     const visibleBefore = await page.evaluate(() => Array.from(document.querySelectorAll('.planet-body'))

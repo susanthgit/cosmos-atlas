@@ -156,36 +156,20 @@ const clientData = {
 
       {/* V3.2 — external channels (YouTubes + Ko-fi). Kind is resolved at runtime
            by cosmos.ts based on URL param ?ext=comets|outposts. data-kind here
-           is "external" — gets rewritten by JS to comet/beacon/outpost. */}
+           is "external" — gets rewritten by JS to comet/beacon/outpost.
+           V3.3 — Ko-fi satellites removed; Ko-fi card now has two CTAs instead. */}
       {(atlas.external?.channels ?? []).map((ch) => (
-        <>
-          <button
-            class="planet-body planet-body--external"
-            data-slug={ch.slug}
-            data-kind="external"
-            type="button"
-            aria-label={`${ch.name} · ${ch.tagline}`}
-          >
-            <span class="planet-body__icon">
-              <PlanetIcon slug={ch.slug as IconSlug} size={32} scope={`atlas-${ch.slug}`} />
-            </span>
-          </button>
-          {/* Beacon satellites — orbit a beacon hub (Ko-fi only for now) */}
-          {((ch as { satellites?: { slug: string; name: string; tagline: string; iconSlug: string }[] }).satellites ?? []).map((sat) => (
-            <button
-              class="planet-body planet-body--beacon-sat"
-              data-slug={sat.slug}
-              data-kind="beacon-sat"
-              data-parent={ch.slug}
-              type="button"
-              aria-label={`${sat.name} · ${sat.tagline}`}
-            >
-              <span class="planet-body__icon">
-                <PlanetIcon slug={sat.iconSlug as IconSlug} size={22} scope={`atlas-${sat.slug}`} />
-              </span>
-            </button>
-          ))}
-        </>
+        <button
+          class="planet-body planet-body--external"
+          data-slug={ch.slug}
+          data-kind="external"
+          type="button"
+          aria-label={`${ch.name} · ${ch.tagline}`}
+        >
+          <span class="planet-body__icon">
+            <PlanetIcon slug={ch.slug as IconSlug} size={32} scope={`atlas-${ch.slug}`} />
+          </span>
+        </button>
       ))}
     </div>
 
@@ -402,6 +386,65 @@ const clientData = {
           ))}
         </ul>
       </section>
+
+      {/* V3.3 — list-view section for external channels (long-form, bites, kofi).
+           Same layout as planets so screen-readers and crawlers see them. Each
+           ends with the external-link CTAs from atlas.json. */}
+      {(atlas.external?.channels ?? []).length > 0 && (
+        <section class="static-section static-externals" aria-labelledby="externals-heading">
+          <span class="section-tag">📡 External channels</span>
+          <h2 id="externals-heading">Outside the cosmos</h2>
+          <p class="lede">Three channels that connect the cosmos to the wider world. They sit outside the planet orbits — broadcasts and exchange points, not destinations inside.</p>
+          <ol class="static-planets" role="list">
+            {(atlas.external?.channels ?? []).map((ch) => (
+              <li class="static-planet" id={`external-${ch.slug}`}>
+                <div class="static-planet__head">
+                  <span class="static-planet__icon" aria-hidden="true">
+                    <PlanetIcon slug={ch.slug as IconSlug} size={48} scope={`static-${ch.slug}`} />
+                  </span>
+                  <div>
+                    <h3>{ch.name}</h3>
+                    <span class="meta">{ch.type}</span>
+                  </div>
+                </div>
+                <p class="static-planet__tagline">{ch.tagline}</p>
+                {ch.stats && ch.stats.length > 0 && (
+                  <ul class="static-stats" role="list">
+                    {ch.stats.map((s) => (<li>{s}</li>))}
+                  </ul>
+                )}
+                <div class="static-planet__body">
+                  <div>
+                    <span class="label">Who it's for</span>
+                    <p>{ch.audience}</p>
+                  </div>
+                  <div>
+                    <span class="label">What you'll find</span>
+                    <p>{ch.content}</p>
+                  </div>
+                  <div>
+                    <span class="label">Founder note</span>
+                    <p class="founder">"{ch.founder}"</p>
+                  </div>
+                </div>
+                {(ch as { ctas?: { label: string; icon?: string; url: string }[] }).ctas && ((ch as { ctas?: { label: string; icon?: string; url: string }[] }).ctas ?? []).length > 0 ? (
+                  <div class="static-planet__ctas">
+                    {((ch as { ctas?: { label: string; icon?: string; url: string }[] }).ctas ?? []).map((c, i) => (
+                      <a class={`static-planet__visit ${i === 0 ? '' : 'static-planet__visit--secondary'}`} href={c.url} target="_blank" rel="noopener noreferrer">
+                        {c.icon} {c.label}
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <a class="static-planet__visit" href={ch.url} target="_blank" rel="noopener noreferrer">
+                    {(ch as { ctaLabel?: string }).ctaLabel ?? `Open ${ch.name}`} {(ch as { ctaIcon?: string }).ctaIcon ?? '↗'}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <footer class="static-footer">
         <p>

@@ -54,15 +54,9 @@ interface McpStar {
 // V3.2 — external channels (YouTubes + Ko-fi). Not planets, not destinations
 // inside the cosmos. They sit OUTSIDE the planet orbits and connect to the wider
 // world. Two render styles selectable via ?ext= URL param.
-interface BeaconSatellite {
-  slug: string;
-  name: string;
-  url: string;
-  tagline: string;
-  iconSlug: string;
-  body: { size: number; glowCore: string; glowOuter: string };
-  satOrbit: { radius: number; speedSec: number; phase: number };
-}
+// V3.3 — beacon satellites removed; Ko-fi is now a single body whose card has
+// two CTAs (downloads + tip) instead of two orbiting satellites in the corner.
+interface ExternalCta { label: string; icon?: string; url: string; kind?: 'primary' | 'secondary' }
 interface ExternalChannel {
   slug: string; name: string; url: string; type: string;
   tagline: string; audience: string; content: string; founder: string;
@@ -71,9 +65,13 @@ interface ExternalChannel {
   // 'comets' style data
   comet?: { orbitMul: number; speedSec: number; ecc: number; tilt: number; phase: number; tailLen: number };
   beacon?: { x: number; y: number };
-  satellites?: BeaconSatellite[];
   // 'outposts' style data
   outpost?: { thetaDeg: number };
+  // V3.3 — card CTAs. Single-CTA channels use ctaLabel/ctaIcon; multi-CTA
+  // channels (Ko-fi) provide a `ctas` array.
+  ctaLabel?: string;
+  ctaIcon?: string;
+  ctas?: ExternalCta[];
 }
 
 interface DecorativeStar { x: number; y: number; size: number; alpha: number }
@@ -101,10 +99,10 @@ interface CosmosData {
 
 interface BodyState {
   el: HTMLButtonElement;
-  kind: 'planet' | 'moon' | 'star' | 'comet' | 'beacon' | 'beacon-sat' | 'outpost';
+  kind: 'planet' | 'moon' | 'star' | 'comet' | 'beacon' | 'outpost';
   slug: string;
   parentSlug?: string;
-  ref: Planet | Moon | McpStar | ExternalChannel | BeaconSatellite;
+  ref: Planet | Moon | McpStar | ExternalChannel;
   screenX: number;     // canvas-space (post camera)
   screenY: number;
   baseScreenX: number; // pre-magnetism, for hover lookups
@@ -267,26 +265,6 @@ export function mountCosmos(data: CosmosData): void {
         intrinsicSize: ref.body.size,
         glowCore: ref.body.glowCore,
         glowOuter: ref.body.glowOuter,
-      });
-    } else if (kind === 'beacon-sat') {
-      // V3.2 — beacon satellite (ko-fi-shop, kofi-tip). parentSlug points to the
-      // beacon hub. Only rendered in 'comets' style (skipped in outposts mode).
-      const parentSlug = btn.dataset.parent ?? '';
-      const parentChannel = channelBySlug.get(parentSlug);
-      if (!parentChannel || !parentChannel.satellites) continue;
-      if (externalStyle === 'outposts') {
-        // hide satellites in outposts mode
-        btn.style.display = 'none';
-        continue;
-      }
-      const sat = parentChannel.satellites.find((s) => s.slug === slug);
-      if (!sat) continue;
-      bodies.push({
-        el: btn, kind: 'beacon-sat', slug, parentSlug, ref: sat,
-        screenX: 0, screenY: 0, baseScreenX: 0, baseScreenY: 0, scale: 1, depth: 0,
-        intrinsicSize: sat.body.size,
-        glowCore: sat.body.glowCore,
-        glowOuter: sat.body.glowOuter,
       });
     }
   }
@@ -1078,36 +1056,56 @@ export function mountCosmos(data: CosmosData): void {
       const t = getRealT();
       starPulseMul = 0.85 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.4));
     }
+    // V3.3 — quieter halo at rest (was 0.55→0.20). Restless cosmos was visually
+    // noisy because every body shouted; planets at rest now whisper, hover/focus
+    // brings them up. Star keeps its full glow because it IS the loud thing.
+    const restG = b.kind === 'star' ? 0.55 : 0.34;
+    const restM = b.kind === 'star' ? 0.20 : 0.12;
+    const hotG = b.kind === 'star' ? 0.55 : 0.55;
+    const hotM = b.kind === 'star' ? 0.20 : 0.22;
+    const g = (isHovered || isFocused) ? hotG : restG;
+    const m = (isHovered || isFocused) ? hotM : restM;
     const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
-    halo.addColorStop(0, withAlpha(b.glowOuter, 0.55 * alpha * starPulseMul));
-    halo.addColorStop(0.4, withAlpha(b.glowOuter, 0.20 * alpha * starPulseMul));
+    halo.addColorStop(0, withAlpha(b.glowOuter, g * alpha * starPulseMul));
+    halo.addColorStop(0.4, withAlpha(b.glowOuter, m * alpha * starPulseMul));
     halo.addColorStop(1, withAlpha(b.glowOuter, 0));
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(x, y, haloR, 0, TWO_PI);
     ctx.fill();
-    // P1 #4 — soft atmospheric ring just outside the body, in its own glow colour.
-    // Reads as "this body has an atmosphere", without obscuring the brand logo.
-    if (!dim && b.kind !== 'star') {
-      ctx.strokeStyle = withAlpha(b.glowOuter, 0.35 * alpha);
-      ctx.lineWidth = 1.2;
+    // V3.3 — atmospheric ring at r*1.05 was always-on, creating "two rings around
+    // every body" noise (see Sush's polish brief 9 May 2026 PM). Now appears only
+    // on hover/focus as a soft breathing pulse synchronised to the focus ring.
+    if (b.kind !== 'star' && (isHovered || isFocused)) {
+      const t = reducedMotion ? 0 : getRealT();
+      // Slow breath: 0..1 oscillator, period ~3.2s on focus, ~2s on hover only.
+      const periodSec = isFocused ? 3.2 : 2.0;
+      const breath = 0.5 + 0.5 * Math.sin((t / periodSec) * TWO_PI);
+      const baseAlpha = isFocused ? 0.55 : 0.30;
+      const peakAlpha = isFocused ? 0.85 : 0.50;
+      const ringAlpha = (baseAlpha + (peakAlpha - baseAlpha) * breath) * alpha;
+      const ringR = r * (1.05 + 0.06 * breath); // 1.05× → 1.11× breath
+      ctx.strokeStyle = withAlpha(b.glowOuter, ringAlpha);
+      ctx.lineWidth = 1.3;
       ctx.beginPath();
-      ctx.arc(x, y, r * 1.05, 0, TWO_PI);
+      ctx.arc(x, y, ringR, 0, TWO_PI);
       ctx.stroke();
     }
-    // V2.3 — MCP star: always-on second halo ring so it reads as a beacon, not a planet.
-    if (b.kind === 'star' && !dim) {
-      ctx.strokeStyle = withAlpha(b.glowCore, 0.6 * alpha * starPulseMul);
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(x, y, r * 1.7, 0, TWO_PI);
-      ctx.stroke();
-    }
+    // V3.3 — MCP star: keep ONE focus indicator (the larger halo above already
+    // makes it bright). The previous always-on second halo ring was contributing
+    // to the "rings everywhere" noise. Star still pulses via starPulseMul.
     if (isHovered || isFocused) {
-      ctx.strokeStyle = withAlpha(data.atmosphere.accent, isFocused ? 0.95 : 0.7);
+      // V3.3 — focus/hover ring with breathing pulse instead of static stroke.
+      const t = reducedMotion ? 0 : getRealT();
+      const periodSec = isFocused ? 3.2 : 2.0;
+      const breath = 0.5 + 0.5 * Math.sin((t / periodSec) * TWO_PI + Math.PI / 3);
+      const baseA = isFocused ? 0.65 : 0.45;
+      const peakA = isFocused ? 0.95 : 0.70;
+      const focusAlpha = baseA + (peakA - baseA) * breath;
+      ctx.strokeStyle = withAlpha(data.atmosphere.accent, focusAlpha);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(x, y, r * 2.2, 0, TWO_PI);
+      ctx.arc(x, y, r * (2.1 + 0.15 * breath), 0, TWO_PI);
       ctx.stroke();
     }
   }
@@ -1304,6 +1302,9 @@ export function mountCosmos(data: CosmosData): void {
       } else if (b.kind === 'comet') {
         // V3.2 — comets orbit on elliptical paths just outside the outermost planet.
         // World-space orbit, projected through the same tilt+camera as planets.
+        // V3.3 — extra bottom-edge clamp so the comet doesn't sit under the HUD
+        // hint + attribution chrome (which receive pointer events too). 60px
+        // reserves room for "HOVER · CLICK..." hint and "by A Guide to Cloud".
         const ch_ref = b.ref as ExternalChannel;
         const cdef = ch_ref.comet;
         if (!cdef) continue;
@@ -1324,8 +1325,9 @@ export function mountCosmos(data: CosmosData): void {
         let sy = cy + (proj.y + cameraY) * cameraZoom;
         const cometRadius = b.intrinsicSize * proj.scale * cameraZoom;
         const edgeMargin = cometRadius + 12;
+        const bottomMargin = cometRadius + 60; // V3.3 — clear the HUD hint/attrib
         sx = clamp(sx, edgeMargin, cw - edgeMargin);
-        sy = clamp(sy, edgeMargin, ch - edgeMargin);
+        sy = clamp(sy, edgeMargin, ch - bottomMargin);
         b.baseScreenX = sx;
         b.baseScreenY = sy;
         b.scale = proj.scale;
@@ -1339,21 +1341,6 @@ export function mountCosmos(data: CosmosData): void {
         b.baseScreenY = beacon.y * ch;
         b.scale = 1;
         b.depth = -800;
-      } else if (b.kind === 'beacon-sat') {
-        // V3.2 — Ko-fi satellites orbit their hub (heart). Position is hub center
-        // + satellite orbital offset. Pixel-space (small radius, doesn't scale).
-        const sat = b.ref as BeaconSatellite;
-        // Find the hub body
-        const hub = bodies.find((bb) => bb.slug === b.parentSlug && bb.kind === 'beacon');
-        if (!hub) continue;
-        const phase = (sat.satOrbit.phase ?? 0) * DEG;
-        const angle = reducedMotion ? phase : (t / sat.satOrbit.speedSec) * TWO_PI + phase;
-        // Slight viewport scaling so satellites don't fly off edges on phones
-        const satR = sat.satOrbit.radius * Math.max(scaleFactor * 1.4, 0.65);
-        b.baseScreenX = hub.baseScreenX + satR * Math.cos(angle);
-        b.baseScreenY = hub.baseScreenY + satR * Math.sin(angle);
-        b.scale = 1;
-        b.depth = -780;
       } else if (b.kind === 'outpost') {
         // V3.2 — outposts on a fixed ring just outside the outermost planet orbit.
         // Each outpost has a thetaDeg position; rOrbit is shared (1.22× outermost).
@@ -1379,7 +1366,7 @@ export function mountCosmos(data: CosmosData): void {
       }
       // P1 #11 — cursor magnetism: bodies lean toward cursor within 180px.
       let mx = 0, my = 0;
-      if (cursorActive && !reducedMotion && b.kind !== 'star' && b.kind !== 'beacon' && b.kind !== 'beacon-sat' && b.kind !== 'outpost') {
+      if (cursorActive && !reducedMotion && b.kind !== 'star' && b.kind !== 'beacon' && b.kind !== 'outpost') {
         const dx = cursorX - b.baseScreenX;
         const dy = cursorY - b.baseScreenY;
         const dist = Math.hypot(dx, dy);
@@ -1583,6 +1570,8 @@ export function mountCosmos(data: CosmosData): void {
     if (p) return p.body.glowCore;
     const moonRec = moonBySlug.get(slug);
     if (moonRec) return moonRec.moon.body.glowCore;
+    const channel = channelBySlug.get(slug);
+    if (channel) return channel.body.glowCore;
     return '#F2EDE3';
   }
 
@@ -1669,6 +1658,8 @@ export function mountCosmos(data: CosmosData): void {
     if (p) return p.body.glowOuter;
     const moonRec = moonBySlug.get(slug);
     if (moonRec) return moonRec.moon.body.glowOuter;
+    const channel = channelBySlug.get(slug);
+    if (channel) return channel.body.glowOuter;
     return '#FFB347';
   }
 
@@ -1702,6 +1693,73 @@ export function mountCosmos(data: CosmosData): void {
     `;
   }
 
+  // V3.3 — external channels (long-form, bites, kofi) get their own card render.
+  // Same shell as planet cards, different CTA logic:
+  //   • Single-CTA: rendered as primary "Open <name> ↗"
+  //   • Multi-CTA (Ko-fi): primary download + secondary tip
+  // The hint badge "↗ external" makes it clear this opens a new tab.
+  function renderExternalCardHtml(ch: ExternalChannel): string {
+    const iconHtml = getSourceIconHtml(ch.slug);
+    const heroGlow = ch.body.glowCore;
+    const heroGlowDeep = ch.body.glowOuter;
+    const ctaRowHtml = (() => {
+      if (ch.ctas && ch.ctas.length > 0) {
+        return `<div class="card-cta-row card-cta-row--multi">${ch.ctas.map((c, i) => `
+          <a class="card-cta ${i === 0 ? '' : 'card-cta--secondary'}"
+             href="${escapeHtml(c.url)}"
+             target="_blank"
+             rel="noopener noreferrer">${escapeHtml(c.icon ?? '')} ${escapeHtml(c.label)}</a>
+        `).join('')}</div>`;
+      }
+      const label = ch.ctaLabel ?? `Open ${ch.name}`;
+      const icon = ch.ctaIcon ?? '↗';
+      return `
+        <div class="card-cta-row">
+          <a class="card-cta"
+             href="${escapeHtml(ch.url)}"
+             target="_blank"
+             rel="noopener noreferrer">${escapeHtml(label)} ${escapeHtml(icon)}</a>
+        </div>
+      `;
+    })();
+    return `
+      <div class="card-portrait" style="--card-glow: ${heroGlow}; --card-glow-deep: ${heroGlowDeep};" aria-hidden="true">
+        <div class="card-portrait__sky">
+          <span class="card-portrait__star" style="--x: 18%; --y: 22%; --d: 0s;"></span>
+          <span class="card-portrait__star" style="--x: 76%; --y: 38%; --d: 1.4s;"></span>
+          <span class="card-portrait__star" style="--x: 42%; --y: 78%; --d: 2.6s;"></span>
+          <span class="card-portrait__star" style="--x: 88%; --y: 14%; --d: 0.7s;"></span>
+        </div>
+        <div class="card-portrait__atmosphere"></div>
+        <div class="card-portrait__body">
+          <div class="card-portrait__icon">${iconHtml}</div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <div class="card-badges">
+          <span class="card-badge card-badge--type">${escapeHtml(ch.type)}</span>
+          <span class="card-badge card-badge--external">↗ opens in new tab</span>
+        </div>
+        <h2 class="card-name" id="card-name" tabindex="-1">${escapeHtml(ch.name)}</h2>
+        <p class="card-tagline">${escapeHtml(ch.tagline)}</p>
+      </div>
+      ${renderStatsHtml(ch.stats)}
+      <div class="card-section">
+        <span class="card-section-label">Who it's for</span>
+        <p class="card-section-text">${escapeHtml(ch.audience)}</p>
+      </div>
+      <div class="card-section">
+        <span class="card-section-label">What you'll find</span>
+        <p class="card-section-text">${escapeHtml(ch.content)}</p>
+      </div>
+      <div class="card-section">
+        <span class="card-section-label">Founder note</span>
+        <p class="card-section-text card-founder">"${escapeHtml(ch.founder)}"</p>
+      </div>
+      ${ctaRowHtml}
+    `;
+  }
+
   function renderCard(slug: string): void {
     if (slug === data.mcp.slug) {
       const mcpAsCard = data.mcp as unknown as Card;
@@ -1709,10 +1767,15 @@ export function mountCosmos(data: CosmosData): void {
     } else {
       const planet = planetBySlug.get(slug);
       const moonRec = moonBySlug.get(slug);
+      const channel = channelBySlug.get(slug);
       if (planet) {
         cardBody.innerHTML = renderCardHtml(planet, 'planet', planet.moons ?? []);
       } else if (moonRec) {
         cardBody.innerHTML = renderCardHtml(moonRec.moon, 'moon', []);
+      } else if (channel) {
+        // V3.3 — external channels render through the same card shell, but with
+        // their own CTA logic (single-CTA for YouTubes; two-CTA for Ko-fi).
+        cardBody.innerHTML = renderExternalCardHtml(channel);
       }
     }
     cardPanel.dataset.open = 'true';
@@ -1785,19 +1848,11 @@ export function mountCosmos(data: CosmosData): void {
     b.el.addEventListener('click', (e) => {
       e.preventDefault();
       markInteraction();
-      // V3.2 — external channels (comets, beacon, outposts, satellites) open
-      // their URL in a new tab instead of a card. They're broadcast/exchange
-      // channels, not destinations inside the cosmos.
-      if (b.kind === 'comet' || b.kind === 'beacon' || b.kind === 'outpost') {
-        const ch_ref = b.ref as ExternalChannel;
-        if (ch_ref.url) window.open(ch_ref.url, '_blank', 'noopener,noreferrer');
-        return;
-      }
-      if (b.kind === 'beacon-sat') {
-        const sat = b.ref as BeaconSatellite;
-        if (sat.url) window.open(sat.url, '_blank', 'noopener,noreferrer');
-        return;
-      }
+      // V3.3 — external channels (long-form, bites, kofi) now open a card panel
+      // just like planets do. The card has a single "Visit" CTA, or for Ko-fi
+      // two CTAs (browse downloads + drop a tip). Previously they navigated
+      // straight to a new tab — that pulled visitors out of the cosmos before
+      // they understood what each one is.
       openSlug(b.slug);
     });
   }

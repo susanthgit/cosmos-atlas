@@ -194,3 +194,64 @@ body.list-view::before {
 @media (max-width: 720px) {
   body.list-view::before { height: 48px; }
 }
+/* V3.3 — Multi-CTA card row (Ko-fi: browse downloads + drop a tip) */
+.card-cta-row--multi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--rule);
+}
+.card-cta-row--multi .card-cta { margin: 0; }
+.card-cta--secondary {
+  background: transparent !important;
+  color: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  box-shadow: none;
+}
+.card-cta--secondary:hover, .card-cta--secondary:focus-visible {
+  background: rgba(255, 179, 71, 0.10) !important;
+  color: var(--accent-soft) !important;
+  border-color: var(--accent-soft) !important;
+}
+
+/* V3.3 — External-channel hint badge ("opens in new tab") */
+.card-badge--external {
+  color: var(--hud-muted);
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* V3.3 — List-view: multi-CTA row for external channels */
+.static-planet__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+.static-planet__visit--secondary {
+  color: var(--hud-muted) !important;
+  border-color: var(--hud-muted) !important;
+}
+.static-planet__visit--secondary:hover,
+.static-planet__visit--secondary:focus-visible {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* V3.3 — External-channel section header tone (slightly different from planets) */
+.static-externals .section-tag {
+  color: var(--accent-soft) !important;
+}
+
+/* V3.3 — non-interactive HUD text shouldn't intercept clicks meant for bodies.
+   The hud-hint is just a text hint; .hud-attribution's text wrapper passes
+   through but the inner <a> keeps pointer-events: auto. Fixes long-form
+   comet click being eaten by the bottom-of-screen text overlay. */
+.hud-hint { pointer-events: none !important; }
+.hud-attribution { pointer-events: none !important; }
+.hud-attribution a { pointer-events: auto !important; }
+.hud-shortcuts { pointer-events: none !important; }
+.mast-tag, .mast-rule, .mast-mark { pointer-events: none; }

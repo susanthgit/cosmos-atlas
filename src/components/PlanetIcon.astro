@@ -8,7 +8,7 @@
  *   earth · guided · brainbar · shift · plainai · agentic · claw · curriculum · mcp
  */
 interface Props {
-  slug: 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi' | 'kofi-download' | 'kofi-cup';
+  slug: 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi';
   size?: number;
   scope?: string;
 }
@@ -159,97 +159,87 @@ const maskId = `pa-${scope}-${slug}-mask`;
 )}
 
 {slug === 'long-form' && (
-  /* Long-form YouTube — deep red play button inside a soft circle, conveying "the
-     main broadcast channel". Slightly larger than Bites to read as the parent. */
+  /* V3.3 — Long-form YouTube. The actual YouTube brand shape: red rounded
+     rectangle with a clean white play triangle. Reads instantly as "the
+     YouTube channel" not "a generic media play button". */
   <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <circle cx="16" cy="16" r="14" fill="#7F1D1D" opacity="0.18"/>
-    <circle cx="16" cy="16" r="11" fill="#DC2626" opacity="0.32"/>
-    <circle cx="16" cy="16" r="8" fill="#EF4444">
+    {/* Soft outer glow so the body still has presence on the dark canvas */}
+    <ellipse cx="16" cy="16" rx="14" ry="10" fill="#7F1D1D" opacity="0.18"/>
+    {/* YouTube-red rounded rectangle (3:2 aspect, the brand shape) */}
+    <rect x="3" y="9" width="26" height="14" rx="3.5" ry="3.5" fill="#DC2626">
       <animate attributeName="opacity" values="0.92;1;0.92" dur="2.4s" repeatCount="indefinite"/>
-    </circle>
-    {/* Play triangle */}
-    <polygon points="13.5,11 13.5,21 22,16" fill="#FFFFFF"/>
+    </rect>
+    {/* Clean white play triangle, slightly inset */}
+    <polygon points="13,12.5 13,19.5 21,16" fill="#FFFFFF"/>
   </svg>
 )}
 
 {slug === 'bites' && (
-  /* Bites YouTube — three quick coral pulses suggesting "fast clips of the long-form".
-     A faster, lighter cousin of long-form. */
+  /* V3.3 — Bites = YouTube Shorts-style. Vertical rounded rect (taller than
+     wide) with a single play triangle and tiny up/down chevrons hinting at
+     the swipe-up-for-next pattern. */
   <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <circle cx="16" cy="16" r="11" fill="#FB7185" opacity="0.16"/>
-    <circle cx="16" cy="16" r="7" fill="#F43F5E" opacity="0.32"/>
-    <g fill="#FFFFFF">
-      {/* Three small play-triangles in a row, suggesting "many short clips" */}
-      <polygon points="9.5,12 9.5,20 13,16">
-        <animate attributeName="opacity" values="1;0.4;1" dur="1.4s" repeatCount="indefinite"/>
-      </polygon>
-      <polygon points="14.5,12 14.5,20 18,16">
-        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite"/>
-      </polygon>
-      <polygon points="19.5,12 19.5,20 23,16">
-        <animate attributeName="opacity" values="1;0.4;1" dur="1.4s" begin="0.7s" repeatCount="indefinite"/>
-      </polygon>
+    {/* Soft glow */}
+    <ellipse cx="16" cy="16" rx="11" ry="13" fill="#9F1239" opacity="0.18"/>
+    {/* Vertical rounded rectangle — Shorts aspect (taller than wide) */}
+    <rect x="9" y="4" width="14" height="24" rx="3" ry="3" fill="#F43F5E">
+      <animate attributeName="opacity" values="0.92;1;0.92" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    {/* Centred play triangle */}
+    <polygon points="14,12 14,20 20.5,16" fill="#FFFFFF"/>
+    {/* Tiny swipe chevrons — top + bottom — quick pulses for "next short" feel */}
+    <g stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.85">
+      <polyline points="13.5,7.5 16,5.8 18.5,7.5">
+        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite"/>
+      </polyline>
+      <polyline points="13.5,24.5 16,26.2 18.5,24.5">
+        <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite"/>
+      </polyline>
     </g>
   </svg>
 )}
 
 {slug === 'kofi' && (
-  /* Ko-fi HUB — a warm coral heart, gently pulsing. The "exchange of value" mark.
-     Two satellites (downloads + tip) orbit this hub. Heart > coffee mug per Sush
-     (the heart is the universal language of give-and-receive; coffee lives on the
-     small tip-satellite below as the literal "Ko-fi" reference). */
-  <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    {/* Outer glow */}
-    <circle cx="16" cy="16" r="13" fill="#FB7185" opacity="0.16">
-      <animate attributeName="r" values="12;14;12" dur="3.2s" repeatCount="indefinite"/>
-    </circle>
-    {/* Heart shape — two arcs forming the lobes meeting at a V at the bottom */}
+  /* V3.3 — Ko-fi reimagined. No more "tiny solar system in the corner". One
+     warm coffee mug with a heart-shaped spot (Ko-fi's actual brand feel),
+     gently glowing. Heart-on-mug = the give-and-receive mark. */
+  <svg viewBox="0 0 36 32" width={size * 1.13} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    {/* Outer warm glow */}
+    <ellipse cx="18" cy="17" rx="15" ry="12" fill="#F97316" opacity="0.16">
+      <animate attributeName="opacity" values="0.10;0.22;0.10" dur="3.6s" repeatCount="indefinite"/>
+    </ellipse>
+    {/* Cup body — rounded mug, off-white with warm shadow */}
     <path
-      d="M16 26 C 16 26, 5 19, 5 12.5 C 5 9, 7.5 6.5, 11 6.5 C 13.5 6.5, 15 8, 16 9.5 C 17 8, 18.5 6.5, 21 6.5 C 24.5 6.5, 27 9, 27 12.5 C 27 19, 16 26, 16 26 Z"
-      fill="#EF4444"
-      stroke="#FECACA"
-      stroke-width="0.8"
+      d="M 6 11 Q 6 9 8 9 L 24 9 Q 26 9 26 11 L 26 22 Q 26 26 22 26 L 10 26 Q 6 26 6 22 Z"
+      fill="#FFFBEA"
+      stroke="#F97316"
+      stroke-width="1.4"
       stroke-linejoin="round"
+    />
+    {/* Cup handle — rightward arc */}
+    <path
+      d="M 26 13 Q 31 13 31 17 Q 31 21 26 21"
+      fill="none"
+      stroke="#F97316"
+      stroke-width="1.6"
+      stroke-linecap="round"
+    />
+    {/* Heart on the mug — the Ko-fi mark itself */}
+    <path
+      d="M 16 21 C 16 21, 10 17, 10 13.5 C 10 11.6, 11.4 10.5, 13 10.5 C 14.5 10.5, 15.5 11.5, 16 12.4 C 16.5 11.5, 17.5 10.5, 19 10.5 C 20.6 10.5, 22 11.6, 22 13.5 C 22 17, 16 21, 16 21 Z"
+      fill="#EF4444"
     >
       <animate attributeName="opacity" values="0.92;1;0.92" dur="1.8s" repeatCount="indefinite"/>
     </path>
-    {/* Bright pulse at heart's centre */}
-    <circle cx="16" cy="13.5" r="1.6" fill="#FFFFFF" opacity="0.85">
-      <animate attributeName="r" values="1.2;2;1.2" dur="1.8s" repeatCount="indefinite"/>
-    </circle>
-  </svg>
-)}
-
-{slug === 'kofi-download' && (
-  /* Ko-fi download satellite — a soft parcel/down-arrow icon for "free + paid assets". */
-  <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <circle cx="16" cy="16" r="12" fill="#F97316" opacity="0.18"/>
-    <circle cx="16" cy="16" r="9" fill="#FB923C" opacity="0.30"/>
-    {/* Down-arrow into a tray */}
-    <g stroke="#FFFFFF" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <line x1="16" y1="9" x2="16" y2="18"/>
-      <polyline points="11.5,14.5 16,19 20.5,14.5"/>
-      <line x1="9" y1="22" x2="23" y2="22"/>
-    </g>
-  </svg>
-)}
-
-{slug === 'kofi-cup' && (
-  /* Ko-fi tip satellite — a small coffee cup, the literal "Ko-fi" reference. */
-  <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <circle cx="16" cy="16" r="12" fill="#F97316" opacity="0.18"/>
-    <circle cx="16" cy="16" r="9" fill="#FB923C" opacity="0.30"/>
-    {/* Cup body */}
-    <path d="M10 13 L10 21 Q10 23.5 12.5 23.5 L18.5 23.5 Q21 23.5 21 21 L21 13 Z"
-          fill="#FFFFFF" stroke="#F97316" stroke-width="1.2" stroke-linejoin="round"/>
-    {/* Cup handle */}
-    <path d="M21 15 Q24 15 24 17 Q24 19 21 19" fill="none" stroke="#F97316" stroke-width="1.4" stroke-linecap="round"/>
-    {/* Steam wisps */}
-    <path d="M13 9 Q14 7 13 5" fill="none" stroke="#FECACA" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
-      <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2s" repeatCount="indefinite"/>
+    {/* Gentle steam wisps */}
+    <path d="M 11 5 Q 12 3 11 1" fill="none" stroke="#FECACA" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+      <animate attributeName="opacity" values="0.3;0.85;0.3" dur="2.2s" repeatCount="indefinite"/>
     </path>
-    <path d="M16.5 9 Q17.5 7 16.5 5" fill="none" stroke="#FECACA" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
-      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
+    <path d="M 16 5 Q 17 3 16 1" fill="none" stroke="#FECACA" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+      <animate attributeName="opacity" values="0.85;0.3;0.85" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 21 5 Q 22 3 21 1" fill="none" stroke="#FECACA" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+      <animate attributeName="opacity" values="0.3;0.85;0.3" dur="2.2s" begin="0.7s" repeatCount="indefinite"/>
     </path>
   </svg>
 )}

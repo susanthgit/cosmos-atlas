@@ -26,4 +26,5 @@ pnpm-debug.log*
 
 # QA artefacts (screenshots, lighthouse runs, debug scripts)
 qa-out/
+visual-out/
 scripts/debug-*.mjs
