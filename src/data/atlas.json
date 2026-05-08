@@ -54,7 +54,7 @@
       "content": "Tools, mind maps, certification paths, and a long-running blog. Each one started because Sush needed it himself.",
       "founder": "In my head, I'm still the curious intern. What overflows lands here.",
       "stats": ["56 tools", "66 mind maps", "9 cert paths"],
-      "orbit": { "radius": 200, "ecc": 0.04, "tilt": 6, "speedSec": 88, "phase": 30 },
+      "orbit": { "radius": 280, "ecc": 0.04, "tilt": 6, "speedSec": 89, "phase": 0 },
       "body": { "size": 36, "glowCore": "#A5B4FC", "glowOuter": "#6366F1" },
       "moons": [
         {
@@ -88,7 +88,7 @@
       "content": "A growing index of Microsoft jargon. Type `$_` to launch. One entry, one plain-English answer.",
       "founder": "I forgot what GCC High meant for the third time. So I built CMD.",
       "stats": ["growing index", "`$_` launcher", "plain-English answers"],
-      "orbit": { "radius": 320, "ecc": 0.06, "tilt": -4, "speedSec": 130, "phase": 110 },
+      "orbit": { "radius": 460, "ecc": 0.06, "tilt": -4, "speedSec": 131, "phase": 60 },
       "body": { "size": 30, "glowCore": "#86EFAC", "glowOuter": "#22C55E" }
     },
     {
@@ -103,7 +103,7 @@
       "content": "Honest news on jobs that grew, jobs that shrank, and jobs no one saw coming. New issue every Sunday.",
       "founder": "I started reading job postings every weekend because the pace scared me. Now you can read them with me.",
       "stats": ["weekly wire", "Sunday issue", "Vol. 1 · No. 19"],
-      "orbit": { "radius": 410, "ecc": 0.04, "tilt": 10, "speedSec": 165, "phase": 200 },
+      "orbit": { "radius": 620, "ecc": 0.04, "tilt": 10, "speedSec": 167, "phase": 120 },
       "body": { "size": 32, "glowCore": "#FDBA74", "glowOuter": "#E25822" }
     },
     {
@@ -119,7 +119,7 @@
       "content": "Topics, weekly halts of what changed, and short paths through ideas. Plain words only. No hype, no doom.",
       "founder": "If I can't explain it to my mum at the dinner table, I haven't understood it yet.",
       "stats": ["topics + halts", "plain English", "no jargon"],
-      "orbit": { "radius": 480, "ecc": 0.06, "tilt": -8, "speedSec": 200, "phase": 290 },
+      "orbit": { "radius": 770, "ecc": 0.06, "tilt": -8, "speedSec": 211, "phase": 180 },
       "body": { "size": 34, "glowCore": "#A5F3FC", "glowOuter": "#67E8F9" },
       "moons": [
         {
@@ -137,7 +137,7 @@
           "content": "Short lessons in plain English. CC BY-SA 4.0. No login, no email capture, no money angle, ever.",
           "founder": "Voluntary work for the global commons. No profit, no glory. Pure value.",
           "stats": ["free forever", "CC BY-SA 4.0", "no login"],
-          "orbit": { "radius": 70, "speedSec": 18, "phase": 240 },
+          "orbit": { "radius": 70, "speedSec": 18, "phase": 90 },
           "body": { "size": 22, "glowCore": "#BBF7D0", "glowOuter": "#86EFAC" }
         }
       ]
@@ -154,7 +154,7 @@
       "content": "A field-guide for what to build, where to plug in, what to ship. Cyan, green, amber signal palette.",
       "founder": "If you're already in MCP, function-calls, and orchestration land — this is where you sit.",
       "stats": ["cockpit signals", "MCP-aware", "stroke icons"],
-      "orbit": { "radius": 620, "ecc": 0.04, "tilt": 4, "speedSec": 245, "phase": 30 },
+      "orbit": { "radius": 940, "ecc": 0.04, "tilt": 4, "speedSec": 251, "phase": 240 },
       "body": { "size": 30, "glowCore": "#7DD3FC", "glowOuter": "#0EA5E9" }
     },
     {
@@ -169,7 +169,7 @@
       "content": "A reading reference with sidebar TOC, margin notes, and a long calm column. Light or dark.",
       "founder": "I had to read OpenClaw three times. So I wrote down the version I wish I'd had.",
       "stats": ["sidebar TOC", "margin notes", "calm column"],
-      "orbit": { "radius": 720, "ecc": 0.05, "tilt": -10, "speedSec": 290, "phase": 150 },
+      "orbit": { "radius": 1100, "ecc": 0.05, "tilt": -10, "speedSec": 293, "phase": 300 },
       "body": { "size": 28, "glowCore": "#FCA5A5", "glowOuter": "#FF2626" }
     }
   ],

@@ -141,7 +141,10 @@ export function mountCosmos(data: CosmosData): void {
   // V2.2 — view mode: 'cosmos' (tilted) ↔ 'topdown' (overhead). Tilt lerps to target.
   // V3.x — topdown is now the default per Sush. Existing visitors who
   // explicitly toggled to either mode keep their stored preference.
-  const viewModeKey = 'cosmosViewMode.v1';
+  // Key bumped to v2 so anyone with stale 'cosmos' preference from the
+  // pre-default-flip era gets the new topdown default. They can re-pick
+  // cosmos and it'll persist under v2 from then on.
+  const viewModeKey = 'cosmosViewMode.v2';
   const storedMode = window.localStorage.getItem(viewModeKey);
   let viewMode: 'cosmos' | 'topdown' = storedMode === 'cosmos' ? 'cosmos' : 'topdown';
   let targetTiltRad = viewMode === 'topdown' ? 0 : COSMOS_TILT_RAD;
@@ -230,6 +233,18 @@ export function mountCosmos(data: CosmosData): void {
   // User-controlled pan + zoom (P1 #10)
   let userPanX = 0;
   let userPanY = 0;
+  // V3.x — clamp user pan so the cosmos centre (sun at world 0,0) stays
+  // within ~60% of the viewport at any zoom. Prevents infinite-drag where
+  // the entire system disappears off-screen. Sush asked for this after a
+  // 3000px drag rendered all 9 bodies invisible.
+  function clampUserPan(): void {
+    const limX = (cw * 0.6) / Math.max(0.5, cameraZoom);
+    const limY = (ch * 0.6) / Math.max(0.5, cameraZoom);
+    if (userPanX > limX) userPanX = limX;
+    else if (userPanX < -limX) userPanX = -limX;
+    if (userPanY > limY) userPanY = limY;
+    else if (userPanY < -limY) userPanY = -limY;
+  }
   let userZoomMul = 1;
   const ZOOM_MIN = 0.55;
   const ZOOM_MAX = 2.4;
@@ -247,6 +262,7 @@ export function mountCosmos(data: CosmosData): void {
   if (initialPanParam.length === 2 && initialPanParam.every(Number.isFinite)) {
     userPanX = clamp(initialPanParam[0]!, -2000, 2000);
     userPanY = clamp(initialPanParam[1]!, -2000, 2000);
+    clampUserPan();
   }
   if (initialViewParam === 'cosmos' || initialViewParam === 'topdown') {
     // override stored mode without persisting (URL wins per visit)
@@ -1605,8 +1621,18 @@ export function mountCosmos(data: CosmosData): void {
   let pinchStartZoom = 1;
   root.addEventListener('pointerdown', (e: PointerEvent) => {
     if (listViewActive) return; // let the page scroll naturally
+    const target = e.target as HTMLElement;
+    // V3.x — click-outside-to-close. If a card is open and the user taps any
+    // empty canvas area (not the card panel, not a planet body, not HUD chrome),
+    // close the card. Sush asked for this — the close button alone meant
+    // dismissing felt fiddly, especially on mobile.
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution')) {
+      markInteraction();
+      closeCard();
+      return;
+    }
     // Ignore clicks on planet bodies — those have their own click handlers.
-    if ((e.target as HTMLElement).closest('.planet-body, .card-panel, .hud-tools, .hud-mast')) return;
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -1648,6 +1674,7 @@ export function mountCosmos(data: CosmosData): void {
     } else {
       userPanX = dragStartPanX + dx / cameraZoom;
       userPanY = dragStartPanY + dy / cameraZoom;
+      clampUserPan();
     }
   });
   function endPointer(e: PointerEvent): void {
