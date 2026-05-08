@@ -1,6 +1,12 @@
 ---
 import '../styles/atmosphere.css';
 import '../styles/cosmos.css';
+import '@fontsource/space-grotesk/latin-400.css';
+import '@fontsource/space-grotesk/latin-500.css';
+import '@fontsource/space-grotesk/latin-600.css';
+import '@fontsource/space-grotesk/latin-700.css';
+import '@fontsource/jetbrains-mono/latin-400.css';
+import '@fontsource/jetbrains-mono/latin-500.css';
 
 interface Props {
   title?: string;
@@ -27,13 +33,7 @@ const {
   <meta name="description" content={description}>
   <link rel="canonical" href={canonical}>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" type="image/png" href="/favicon-32.png">
 
   <meta property="og:type" content="website">
   <meta property="og:title" content={title}>
@@ -59,6 +59,5 @@ const {
 </html>
 
 <script is:inline>
-  // Flag early so the static fallback can hide before paint when JS is on
   document.documentElement.classList.add('js-ready');
 </script>
