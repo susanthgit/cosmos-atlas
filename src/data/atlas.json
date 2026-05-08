@@ -25,7 +25,7 @@
     "tooltip": "The cosmos is held together here. Every planet exists because something is feeding it.",
     "glowCore": "#FFD89A",
     "glowOuter": "#FFB347",
-    "size": 22,
+    "size": 12,
     "pulseSec": 7
   },
 
@@ -55,7 +55,7 @@
           "content": "Practice exams for AZ-900, AZ-104, AI-900, MS-900 and more. $9 per cert. One year of access.",
           "founder": "Most cert-prep sites charge $79 for what should cost $9. Honest take? It still costs me to run.",
           "stats": ["12+ certs", "$9 each", "1 year access"],
-          "orbit": { "radius": 56, "speedSec": 14, "phase": 60 },
+          "orbit": { "radius": 75, "speedSec": 14, "phase": 60 },
           "body": { "size": 22, "glowCore": "#F4ECDA", "glowOuter": "#E0D7BE" }
         }
       ]
@@ -70,7 +70,7 @@
       "content": "A growing index of Microsoft jargon. Type `$_` to launch. One entry, one plain-English answer.",
       "founder": "I forgot what GCC High meant for the third time. So I built CMD.",
       "stats": ["growing index", "`$_` launcher", "plain-English answers"],
-      "orbit": { "radius": 290, "ecc": 0.08, "tilt": -4, "speedSec": 130, "phase": 110 },
+      "orbit": { "radius": 320, "ecc": 0.06, "tilt": -4, "speedSec": 130, "phase": 110 },
       "body": { "size": 30, "glowCore": "#86EFAC", "glowOuter": "#22C55E" }
     },
     {
@@ -83,7 +83,7 @@
       "content": "Honest news on jobs that grew, jobs that shrank, and jobs no one saw coming. New issue every Sunday.",
       "founder": "I started reading job postings every weekend because the pace scared me. Now you can read them with me.",
       "stats": ["weekly wire", "Sunday issue", "Vol. 1 · No. 19"],
-      "orbit": { "radius": 370, "ecc": 0.06, "tilt": 10, "speedSec": 165, "phase": 200 },
+      "orbit": { "radius": 410, "ecc": 0.04, "tilt": 10, "speedSec": 165, "phase": 200 },
       "body": { "size": 32, "glowCore": "#FDBA74", "glowOuter": "#E25822" }
     },
     {
@@ -97,7 +97,7 @@
       "content": "Topics, weekly halts of what changed, and short paths through ideas. Plain words only. No hype, no doom.",
       "founder": "If I can't explain it to my mum at the dinner table, I haven't understood it yet.",
       "stats": ["topics + halts", "plain English", "no jargon"],
-      "orbit": { "radius": 450, "ecc": 0.1, "tilt": -8, "speedSec": 200, "phase": 290 },
+      "orbit": { "radius": 480, "ecc": 0.06, "tilt": -8, "speedSec": 200, "phase": 290 },
       "body": { "size": 34, "glowCore": "#A5F3FC", "glowOuter": "#67E8F9" },
       "moons": [
         {
@@ -113,7 +113,7 @@
           "content": "Short lessons in plain English. CC BY-SA 4.0. No login, no email capture, no money angle, ever.",
           "founder": "Voluntary work for the global commons. No profit, no glory. Pure value.",
           "stats": ["free forever", "CC BY-SA 4.0", "no login"],
-          "orbit": { "radius": 60, "speedSec": 18, "phase": 240 },
+          "orbit": { "radius": 70, "speedSec": 18, "phase": 240 },
           "body": { "size": 22, "glowCore": "#BBF7D0", "glowOuter": "#86EFAC" }
         }
       ]
@@ -128,7 +128,7 @@
       "content": "A field-guide for what to build, where to plug in, what to ship. Cyan, green, amber signal palette.",
       "founder": "If you're already in MCP, function-calls, and orchestration land — this is where you sit.",
       "stats": ["cockpit signals", "MCP-aware", "stroke icons"],
-      "orbit": { "radius": 540, "ecc": 0.05, "tilt": 4, "speedSec": 245, "phase": 30 },
+      "orbit": { "radius": 620, "ecc": 0.04, "tilt": 4, "speedSec": 245, "phase": 30 },
       "body": { "size": 30, "glowCore": "#7DD3FC", "glowOuter": "#0EA5E9" }
     },
     {
@@ -141,7 +141,7 @@
       "content": "A reading reference with sidebar TOC, margin notes, and a long calm column. Light or dark.",
       "founder": "I had to read OpenClaw three times. So I wrote down the version I wish I'd had.",
       "stats": ["sidebar TOC", "margin notes", "calm column"],
-      "orbit": { "radius": 620, "ecc": 0.07, "tilt": -10, "speedSec": 290, "phase": 150 },
+      "orbit": { "radius": 720, "ecc": 0.05, "tilt": -10, "speedSec": 290, "phase": 150 },
       "body": { "size": 28, "glowCore": "#FCA5A5", "glowOuter": "#FF2626" }
     }
   ],
@@ -158,7 +158,7 @@
     "content": "An MCP move that exposes the cosmos. Per-planet endpoints under construction. CMD live first.",
     "founder": "If a future agent wants to recommend the right cert or jargon entry, here's the API.",
     "stats": ["agent-readable", "per-planet emerging", "CMD live first"],
-    "anchor": { "x": 0.86, "y": 0.18, "size": 26, "glowCore": "#FFD89A", "glowOuter": "#FFB347" },
+    "anchor": { "x": 0.92, "y": 0.10, "size": 32, "glowCore": "#FFD89A", "glowOuter": "#FFB347" },
     "endpoints": [
       { "slug": "mcp-collective", "name": "MCP Move (collective)", "url": "https://mcp.aguidetocloud.com/", "status": "live" },
       { "slug": "brainbar-mcp", "name": "CMD index", "url": "https://cmd.aguidetocloud.com/cmd-index.json", "status": "live" },

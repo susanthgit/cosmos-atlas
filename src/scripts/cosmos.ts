@@ -170,6 +170,20 @@ export function mountCosmos(data: CosmosData): void {
   const startTime = performance.now();
   let lastFrame = startTime;
 
+  // Simulation time for orbits — pauses while user is interacting (hover or card open)
+  // so clicks aren't fiddly. Twinkles and sun pulse keep running on raw realT.
+  let simT = 0;
+  let lastSimSampleRealT = 0;
+
+  function getRealT(): number { return (performance.now() - startTime) / 1000; }
+
+  function updateSimTime(): void {
+    const realT = getRealT();
+    const shouldPause = !reducedMotion && (hoveredSlug !== null || focusedSlug !== null);
+    if (!shouldPause) simT += realT - lastSimSampleRealT;
+    lastSimSampleRealT = realT;
+  }
+
   function resize(): void {
     cw = window.innerWidth;
     ch = window.innerHeight;
@@ -221,7 +235,7 @@ export function mountCosmos(data: CosmosData): void {
   function clear(): void { ctx.clearRect(0, 0, cw, ch); }
 
   function drawStarfield(): void {
-    const t = (performance.now() - startTime) / 1000;
+    const t = getRealT();
     for (const s of data.decorativeStars) {
       const x = s.x * cw;
       const y = s.y * ch;
@@ -236,7 +250,7 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   function drawMcpStarfield(): void {
-    const t = (performance.now() - startTime) / 1000;
+    const t = getRealT();
     for (const s of data.mcp.starfield) {
       const x = s.x * cw;
       const y = s.y * ch;
@@ -258,15 +272,15 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   function drawSun(): void {
-    const t = (performance.now() - startTime) / 1000;
+    const t = getRealT();
     const pulse = reducedMotion ? 0.85 : 0.78 + 0.22 * Math.abs(Math.sin(t * (TWO_PI / data.sun.pulseSec)));
     const x = cx + cameraX * cameraZoom;
     const y = cy + cameraY * cameraZoom;
     const r = data.sun.size * cameraZoom;
-    const haloR = r * 7;
+    const haloR = r * 5;
     const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
-    halo.addColorStop(0, withAlpha(data.sun.glowOuter, 0.5 * pulse));
-    halo.addColorStop(0.4, withAlpha(data.sun.glowOuter, 0.16 * pulse));
+    halo.addColorStop(0, withAlpha(data.sun.glowOuter, 0.42 * pulse));
+    halo.addColorStop(0.4, withAlpha(data.sun.glowOuter, 0.12 * pulse));
     halo.addColorStop(1, withAlpha(data.sun.glowOuter, 0));
     ctx.fillStyle = halo;
     ctx.beginPath();
@@ -288,7 +302,10 @@ export function mountCosmos(data: CosmosData): void {
       const isFocused = focusedSlug === p.slug;
       const isHovered = hoveredSlug === p.slug;
       const moonOfFocus = focusedSlug && (p.moons ?? []).some((m) => m.slug === focusedSlug);
-      const dim = focusedSlug !== null && !isFocused && !moonOfFocus;
+      const moonOfHover = hoveredSlug && (p.moons ?? []).some((m) => m.slug === hoveredSlug);
+      const dimByFocus = focusedSlug !== null && !isFocused && !moonOfFocus;
+      const dimByHover = hoveredSlug !== null && !isHovered && !moonOfHover;
+      const dim = dimByFocus || dimByHover;
       const r = p.orbit.radius * scaleFactor;
       const tilt2d = p.orbit.tilt * DEG;
       const cosT2 = Math.cos(tilt2d);
@@ -296,8 +313,8 @@ export function mountCosmos(data: CosmosData): void {
       ctx.strokeStyle = isFocused
         ? withAlpha(data.atmosphere.accent, 0.6)
         : isHovered
-          ? withAlpha(data.atmosphere.hud, dim ? 0.16 : 0.36)
-          : withAlpha(data.atmosphere.hud, dim ? 0.05 : 0.12);
+          ? withAlpha(data.atmosphere.hud, 0.36)
+          : withAlpha(data.atmosphere.hud, dim ? 0.04 : 0.12);
       ctx.beginPath();
       for (let i = 0; i <= SAMPLES; i++) {
         const a = (i / SAMPLES) * TWO_PI;
@@ -316,18 +333,21 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   function drawBodyHalo(b: BodyState): void {
-    if (b.kind === 'star') return;
     const isHovered = hoveredSlug === b.slug;
     const isFocused = focusedSlug === b.slug;
-    const dim = focusedSlug !== null && !isFocused;
-    const alpha = dim ? 0.32 : 1;
+    const dim = (focusedSlug !== null && !isFocused) || (hoveredSlug !== null && !isHovered);
+    const alpha = dim ? 0.28 : 1;
     const r = b.intrinsicSize * b.scale * cameraZoom;
-    const haloR = r * (isHovered || isFocused ? 4.4 : 3.0);
+    // Tighter halo radius — was 4.4 / 3.0, now 3.2 / 2.2 to reduce bleed between planets.
+    // Star gets a slightly smaller halo so it doesn't compete with neighbouring planets.
+    const baseMult = b.kind === 'star' ? 1.8 : 2.2;
+    const hotMult = b.kind === 'star' ? 2.6 : 3.2;
+    const haloR = r * (isHovered || isFocused ? hotMult : baseMult);
     const x = b.screenX;
     const y = b.screenY;
     const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
-    halo.addColorStop(0, withAlpha(b.glowOuter, 0.65 * alpha));
-    halo.addColorStop(0.4, withAlpha(b.glowOuter, 0.25 * alpha));
+    halo.addColorStop(0, withAlpha(b.glowOuter, 0.55 * alpha));
+    halo.addColorStop(0.4, withAlpha(b.glowOuter, 0.20 * alpha));
     halo.addColorStop(1, withAlpha(b.glowOuter, 0));
     ctx.fillStyle = halo;
     ctx.beginPath();
@@ -352,7 +372,7 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   function updateBodyPositions(): void {
-    const t = (performance.now() - startTime) / 1000;
+    const t = simT;
     const planetOP = new Map<string, { x: number; y: number }>();
     for (const p of data.planets) planetOP.set(p.slug, planetOrbitPos(p, t));
 
@@ -392,7 +412,7 @@ export function mountCosmos(data: CosmosData): void {
       if (!b) continue;
       const isHovered = hoveredSlug === b.slug;
       const isFocused = focusedSlug === b.slug;
-      const dim = focusedSlug !== null && !isFocused;
+      const dim = (focusedSlug !== null && !isFocused) || (hoveredSlug !== null && !isHovered);
       let scale = b.scale * cameraZoom;
       if (isHovered) scale *= 1.12;
       if (isFocused) scale *= 1.35;
@@ -410,7 +430,7 @@ export function mountCosmos(data: CosmosData): void {
     if (focusedSlug) {
       const target = bodies.find((b) => b.slug === focusedSlug);
       if (target) {
-        const t = (performance.now() - startTime) / 1000;
+        const t = simT;
         if (target.kind === 'planet') {
           const p = target.ref as Planet;
           const op = planetOrbitPos(p, t);
@@ -444,6 +464,7 @@ export function mountCosmos(data: CosmosData): void {
   function frame(now: number): void {
     const deltaSec = (now - lastFrame) / 1000;
     lastFrame = now;
+    updateSimTime();
     updateCamera(deltaSec);
     updateBodyPositions();
     applyBodyTransforms();
@@ -678,6 +699,14 @@ export function mountCosmos(data: CosmosData): void {
 
   resize();
   bodiesRoot.style.opacity = '0';
+
+  // Auto-fall back to list view on small mobile portrait — the canvas is too cramped
+  // for 6 planets + 2 moons + 1 star. List view is the honest fallback per cosmos-philosophy.
+  // Users can manually switch back to the cosmos via the HUD button.
+  if (window.innerWidth < 600) {
+    toggleList.click();
+  }
+
   requestAnimationFrame((now) => {
     lastFrame = now;
     updateBodyPositions();
