@@ -538,13 +538,31 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   // P1 #6 — multi-layer parallax starfield. Each layer drifts at its own speed.
+  // V3.x #15 — the deepest 'bg' layer now rotates slowly around the canvas
+  // centre (one full turn ≈ 8.7 min) instead of drifting horizontally. Gives
+  // the cosmos a "constellation drift / Earth-rotation" feel without touching
+  // the mid/fg parallax. ogMode pins angle to 0 for deterministic OG capture.
+  const BG_ROT_RAD_PER_SEC = 0.012;
   function drawParallaxStars(): void {
     const t = getRealT();
+    const bgRotAngle = reducedMotion || ogMode ? 0 : t * BG_ROT_RAD_PER_SEC;
+    const cosBg = Math.cos(bgRotAngle);
+    const sinBg = Math.sin(bgRotAngle);
     for (const s of parallaxStars) {
-      const driftSec = reducedMotion ? 0 : (s.driftPxPerSec * t);
-      let xs = (s.x * cw + driftSec) % cw;
-      if (xs < 0) xs += cw;
-      const ys = s.y * ch;
+      let xs: number;
+      let ys: number;
+      if (s.layer === 'bg') {
+        // Rotate base position around canvas centre. No linear drift — rotation IS the motion.
+        const bx = s.x * cw - cx;
+        const by = s.y * ch - cy;
+        xs = cx + bx * cosBg - by * sinBg;
+        ys = cy + bx * sinBg + by * cosBg;
+      } else {
+        const driftSec = reducedMotion ? 0 : (s.driftPxPerSec * t);
+        xs = (s.x * cw + driftSec) % cw;
+        if (xs < 0) xs += cw;
+        ys = s.y * ch;
+      }
       const twinkle = reducedMotion ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(t * (TWO_PI / s.twinkleSec) + s.twinklePhase));
       ctx.fillStyle = data.atmosphere.hud;
       ctx.globalAlpha = s.alpha * twinkle;
@@ -990,6 +1008,34 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
+  // V3.x #14 — Planetary atmosphere blur. When the user focuses a planet and
+  // the camera zooms in, render a soft vignette using the focused body's
+  // atmosphere palette filling the viewport edges. Centre stays clear so the
+  // focused body — anchored at canvas centre by the focus glide — remains
+  // sharp. Intensity ramps with cameraZoom so the focus glide naturally
+  // builds the effect; further pinch/wheel zoom intensifies it.
+  function drawAtmosphereBlur(): void {
+    if (ogMode || !focusedSlug) return;
+    const body = bodies.find((b) => b.slug === focusedSlug);
+    if (!body) return;
+    const intensity = clamp01((cameraZoom - 1) / 1.5);
+    if (intensity <= 0) return;
+    const motionMul = reducedMotion ? 0.5 : 1;
+    const alpha = 0.22 * intensity * motionMul;
+    if (alpha <= 0.002) return;
+    const innerR = Math.min(cw, ch) * 0.22;
+    const outerR = Math.max(cw, ch) * 0.85;
+    const grad = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+    grad.addColorStop(0, withAlpha(body.glowOuter, 0));
+    grad.addColorStop(0.5, withAlpha(body.glowOuter, alpha * 0.4));
+    grad.addColorStop(1, withAlpha(body.glowOuter, alpha));
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.restore();
+  }
+
   function drawHud(): void {
     if (ogMode) return;
     ctx.fillStyle = withAlpha(data.atmosphere.hudFaint, 1);
@@ -1189,6 +1235,7 @@ export function mountCosmos(data: CosmosData): void {
     for (const b of sorted) drawBodyHalo(b, intro.bodies);
     drawFreshnessPulses(now, intro.bodies);
     drawPings(now);
+    drawAtmosphereBlur();
     drawHud();
     if (hoveredSlug) updateHoverLabel();
     requestAnimationFrame(frame);

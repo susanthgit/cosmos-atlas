@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 
 const BASE = 'http://localhost:4287/';
-const OUT = 'C:/Users/ssutheesh/.copilot/session-state/6556f394-39b3-4c3f-989d-d8349590a842/files/screens-after';
+const OUT = 'C:/Users/ssutheesh/.copilot/session-state/4e5d136c-5feb-4697-b7da-de50e65bffb3/files/screens-after';
 await fs.mkdir(OUT, { recursive: true });
 
 const browser = await chromium.launch();
@@ -15,7 +15,15 @@ const log = (...a) => console.log(...a);
 async function snap(label, deviceCfg, target = BASE, actions = async () => {}) {
   const ctx = await browser.newContext(deviceCfg);
   const page = await ctx.newPage();
-  page.on('console', m => { if (m.type() === 'error') { errors.push(`[${label}] ${m.text()}`); console.log(`[${label} ERR]`, m.text()); } });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    // Filter out Cloudflare Web Analytics beacon CORS errors — these only
+    // happen against localhost (the beacon's CORS allowlist is the production
+    // hostname). Not a regression, just dev-only noise.
+    if (text.includes('cloudflareinsights.com')) return;
+    errors.push(`[${label}] ${text}`); console.log(`[${label} ERR]`, text);
+  });
   page.on('pageerror', e => { errors.push(`[${label}] ${e.message}`); console.log(`[${label} PAGEERROR]`, e.message); });
   await page.goto(target, { waitUntil: 'networkidle' });
   await page.waitForTimeout(800);
