@@ -87,6 +87,43 @@ npm run dev
 # → http://localhost:4287
 ```
 
+## QA suite — `scripts/qa-audit.mjs`
+
+> **🔴 BLOCKING RULE:** Run this before EVERY `git push` or `npm run deploy` that touches `cosmos.ts`, `cosmos.css`, `atlas.json`, `PlanetIcon.astro`, or `index.astro`. ALL checks must pass (exit code 0 + `🟢 ALL CHECKS PASS`). If any fail → DO NOT push. Fix first.
+
+A Playwright suite that exercises the cosmos end-to-end — same model as `guided/test-guided-qa.cjs`. Runs in ~30s, exits 0 only when everything passes. Covers:
+
+- Body counts (6 planets · 2 moons · 1 star)
+- Moon-vs-planet collision (dist ≥ parent_radius + moon_radius + 8px breathing)
+- MCP star outside outermost orbit AND on-screen
+- All 6 planets click → card opens with correct slug
+- Card close button works
+- Click-outside-to-close (skips Astro dev toolbar in dev mode)
+- List view toggle on/off
+- Drag pan clamp (3000px drag must keep bodies on-screen)
+
+Runs in both desktop (1440×900) and iphone (390×844) viewports, in both topdown and tilted views.
+
+```bash
+# Local (against npm run dev on :4287)
+node scripts/qa-audit.mjs
+
+# Live smoke test against production
+node scripts/qa-audit.mjs https://cosmos.aguidetocloud.com/
+```
+
+### 🔴 Growing-guardrail rule (universal pattern)
+
+This is the same rule the `guided/` repo lives by, applied to cosmos:
+
+> **Every new bug found in production MUST be added as an automated check in `scripts/qa-audit.mjs` BEFORE the fix is deployed. The test suite only grows — never shrinks.**
+
+Pattern: **find bug → write test that catches it → fix bug → verify test now passes → deploy.** Do not delete checks to make the suite "cleaner". The dust-collected checks are the institutional memory of every customer-facing bug we've ever shipped.
+
+**Future sessions:** encouraged to extend `qa-audit.mjs` iteratively. New interaction? Add a check. New visual constraint? Add a check. New bug surfaces? Add a check before fixing. **Never** remove a check.
+
+**Origin (Fri 8 May 2026 PM):** the v3.x QA pass shipped 7 polish fixes but missed two visual bugs that only appeared on phones (MCP star inside the planet orbits, moons collapsing onto their planets). The follow-up session built `qa-audit.mjs` to catch both bugs numerically + every other interaction flow, then applied the fixes. From now on, every cosmos change is gated by this suite.
+
 ## Deploy
 
 ```bash
