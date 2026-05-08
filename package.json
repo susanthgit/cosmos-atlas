@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "astro dev --port 4287",
     "start": "astro dev --port 4287",
+    "freshness": "node scripts/freshness.mjs",
+    "prebuild": "node scripts/freshness.mjs",
     "build": "astro build",
     "preview": "astro preview --port 4287",
-    "deploy": "astro build && node deploy.mjs",
+    "deploy": "node scripts/freshness.mjs && astro build && node deploy.mjs",
     "astro": "astro"
   },
   "dependencies": {
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@noble/hashes": "^2.2.0",
     "@types/node": "^22.0.0",
+    "playwright": "^1.59.1",
     "typescript": "^5.6.0"
   }
 }

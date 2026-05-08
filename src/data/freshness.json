@@ -1,0 +1,22 @@
+{
+  "_generatedAt": "2026-05-08T05:14:04.752Z",
+  "_source": "sitemap.xml lastmod",
+  "planets": {
+    "earth": {
+      "lastShippedAt": "2026-05-08",
+      "source": "https://www.aguidetocloud.com/sitemap.xml"
+    },
+    "guided": {
+      "lastShippedAt": "2026-05-08",
+      "source": "https://www.aguidetocloud.com/sitemap.xml"
+    },
+    "plainai": {
+      "lastShippedAt": "2026-05-08",
+      "source": "https://plainai.aguidetocloud.com/sitemap.xml"
+    },
+    "curriculum": {
+      "lastShippedAt": "2026-05-08",
+      "source": "https://plainai.aguidetocloud.com/sitemap.xml"
+    }
+  }
+}

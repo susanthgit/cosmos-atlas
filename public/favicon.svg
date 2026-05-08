@@ -1,21 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Cosmos Atlas placeholder mark — concentric rings with a glowing centre.
-       Per cosmos-philosophy.md, framework defaults are a brand violation. This is the
-       atlas's own atmospheric mark (Deep Cosmos palette). A purpose-built mark is a
-       Phase 4b task for whoever owns logo design for the cosmos. -->
+  <!-- Cosmos Atlas — corona mark.
+       Philosophy: "the source is invisible by design — no sun glyph, only the
+       gravity it exerts." So the favicon is the corona only: warm glow + 8
+       soft rays radiating outward from a transparent centre. Atmosphere palette
+       (Deep Cosmos: #02030E bg, #FFB347 accent, #FFD89A accent-soft).
+       Replaces v1 placeholder which had 3 orbit rings + planet dots. -->
   <defs>
-    <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFD89A"/>
-      <stop offset="40%" stop-color="#FFB347"/>
-      <stop offset="100%" stop-color="#FFB347" stop-opacity="0"/>
+    <radialGradient id="corona" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD89A" stop-opacity="0"/>
+      <stop offset="34%" stop-color="#FFD89A" stop-opacity="0.22"/>
+      <stop offset="58%" stop-color="#FFB347" stop-opacity="0.55"/>
+      <stop offset="80%" stop-color="#7A4A1A" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#7A4A1A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="hotcore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE9C4" stop-opacity="0.92"/>
+      <stop offset="55%" stop-color="#FFD89A" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FFD89A" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect x="0" y="0" width="64" height="64" fill="#02030E" rx="10"/>
-  <circle cx="32" cy="32" r="22" fill="none" stroke="#F2EDE3" stroke-opacity="0.18" stroke-width="0.8"/>
-  <circle cx="32" cy="32" r="14" fill="none" stroke="#F2EDE3" stroke-opacity="0.28" stroke-width="0.8"/>
-  <circle cx="32" cy="32" r="10" fill="url(#sunGrad)"/>
-  <circle cx="32" cy="32" r="3" fill="#FFD89A"/>
-  <!-- Two planets sitting on the rings -->
-  <circle cx="48" cy="22" r="1.8" fill="#A5B4FC"/>
-  <circle cx="20" cy="42" r="1.5" fill="#67E8F9"/>
+  <!-- Outer corona — wide soft gradient -->
+  <circle cx="32" cy="32" r="30" fill="url(#corona)"/>
+  <!-- Hot core hint — invisible centre, just the warmth -->
+  <circle cx="32" cy="32" r="11" fill="url(#hotcore)"/>
+  <!-- Eight soft rays — additive amber, faint, evoke the corona during eclipse -->
+  <g stroke="#FFB347" stroke-opacity="0.42" stroke-width="0.9" stroke-linecap="round" fill="none">
+    <line x1="32" y1="6"  x2="32" y2="14"/>
+    <line x1="32" y1="50" x2="32" y2="58"/>
+    <line x1="6"  y1="32" x2="14" y2="32"/>
+    <line x1="50" y1="32" x2="58" y2="32"/>
+    <line x1="13" y1="13" x2="19" y2="19"/>
+    <line x1="45" y1="45" x2="51" y2="51"/>
+    <line x1="13" y1="51" x2="19" y2="45"/>
+    <line x1="45" y1="19" x2="51" y2="13"/>
+  </g>
 </svg>

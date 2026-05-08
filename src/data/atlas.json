@@ -1,5 +1,7 @@
 {
   "_comment": "ATLAS — atmosphere, sun, planets, moons, MCP star. Atlas-private. Sibling of planets.json (vendored). Per vision §8. Card copy passed through forbidden-words list + 4 voice tests + Sush voice fingerprints + ≤100 word budget. Plain AI + Curriculum carry the 🌱 free forever badge at TOP per constitutional firewall. Last voice pass: 8 May 2026.",
+  "_freshnessNote": "Bump lastShippedAt (ISO date) when something visible ships on a planet. Within 14 days → subtle freshness pulse on its body. Manual today; sitemap.xml automation is V3 backlog.",
+  "_relationshipsNote": "connectsTo[] surfaces cross-planet relationships when a body is focused. Use sparingly — Earth as hub; Agentic ↔ Claw as the technical pair; MCP rays already show its endpoint connections.",
 
   "atmosphere": {
     "name": "Deep Cosmos",
@@ -15,18 +17,28 @@
     "shadow": "rgba(2, 3, 14, 0.85)",
     "displayFont": "Space Grotesk, ui-sans-serif, system-ui, sans-serif",
     "monoFont": "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace",
-    "tilt": 38,
-    "focal": 900
+    "tilt": 30,
+    "focal": 600
   },
+
+  "nebulae": [
+    { "x": 0.18, "y": 0.32, "size": 1280, "color": "#3B0764", "alpha": 0.20, "driftSec": 320, "phase": 0 },
+    { "x": 0.74, "y": 0.58, "size": 1500, "color": "#0C4A6E", "alpha": 0.18, "driftSec": 420, "phase": 1.6 },
+    { "x": 0.52, "y": 0.86, "size": 1000, "color": "#7C2D12", "alpha": 0.14, "driftSec": 380, "phase": 3.2 }
+  ],
 
   "sun": {
     "label": "the source",
     "subLabel": "AI co-founder · invisible by design",
     "tooltip": "The cosmos is held together here. Every planet exists because something is feeding it.",
-    "glowCore": "#FFD89A",
+    "glowCore": "#FFE9C4",
+    "glowMid": "#FFD89A",
     "glowOuter": "#FFB347",
-    "size": 12,
-    "pulseSec": 7
+    "glowFar": "#7A4A1A",
+    "size": 28,
+    "pulseSec": 7,
+    "rays": 8,
+    "rayLength": 5.4
   },
 
   "planets": [
@@ -35,6 +47,8 @@
       "type": "🌍 Home planet",
       "atmosphere": "Zen",
       "status": "live",
+      "lastShippedAt": "2026-05-08",
+      "connectsTo": ["brainbar", "plainai", "shift"],
       "tagline": "the home — soft, patient, giving",
       "audience": "Anyone learning Microsoft cloud or AI for the first time, especially from a non-tech background.",
       "content": "Tools, mind maps, certification paths, and a long-running blog. Each one started because Sush needed it himself.",
@@ -50,6 +64,8 @@
           "type": "🌑 Moon of Earth",
           "atmosphere": "Zen + crescent",
           "status": "live",
+          "lastShippedAt": "2026-05-06",
+          "connectsTo": ["earth"],
           "tagline": "cert prep — no gatekeeping",
           "audience": "Anyone studying for a Microsoft cert who wants real practice without paying $79.",
           "content": "Practice exams for AZ-900, AZ-104, AI-900, MS-900 and more. $9 per cert. One year of access.",
@@ -65,6 +81,8 @@
       "type": "🪐 Planet",
       "atmosphere": "Terminal",
       "status": "live",
+      "lastShippedAt": "2026-04-20",
+      "connectsTo": ["earth"],
       "tagline": "Microsoft jargon, decoded",
       "audience": "Non-tech folks tired of not knowing what 'GCC High' actually means.",
       "content": "A growing index of Microsoft jargon. Type `$_` to launch. One entry, one plain-English answer.",
@@ -78,6 +96,8 @@
       "type": "🪐 Planet",
       "atmosphere": "Newspaper",
       "status": "live",
+      "lastShippedAt": "2026-05-04",
+      "connectsTo": ["earth"],
       "tagline": "the AI job-change wire",
       "audience": "Anyone watching their role shift under AI and asking 'am I still safe in five years?'",
       "content": "Honest news on jobs that grew, jobs that shrank, and jobs no one saw coming. New issue every Sunday.",
@@ -91,6 +111,8 @@
       "type": "🪐 Planet",
       "atmosphere": "Museum",
       "status": "live",
+      "lastShippedAt": "2026-05-06",
+      "connectsTo": ["earth"],
       "badge": "🌱 free forever · no money angle, ever",
       "tagline": "AI, in plain English",
       "audience": "Anyone confused by AI hype, doom, or jargon. Mums, partners, friends, you.",
@@ -107,6 +129,8 @@
           "type": "🌑 Moon of Plain AI",
           "atmosphere": "Museum + commons green",
           "status": "building",
+          "lastShippedAt": "2026-05-06",
+          "connectsTo": ["plainai"],
           "badge": "🌱 free forever · no money angle, ever",
           "tagline": "free-forever lessons, voluntary",
           "audience": "Anyone wanting to navigate the AI wave one thing at a time. Starting with families.",
@@ -123,6 +147,8 @@
       "type": "🪐 Planet",
       "atmosphere": "Cockpit",
       "status": "live",
+      "lastShippedAt": "2026-04-25",
+      "connectsTo": ["claw"],
       "tagline": "agent cockpit — for techies",
       "audience": "Developers and SREs building with agents. Cockpit-density UI. Mostly dark.",
       "content": "A field-guide for what to build, where to plug in, what to ship. Cyan, green, amber signal palette.",
@@ -136,6 +162,8 @@
       "type": "🪐 Planet",
       "atmosphere": "Study reference",
       "status": "live",
+      "lastShippedAt": "2026-04-12",
+      "connectsTo": ["agentic"],
       "tagline": "OpenClaw, in plain English",
       "audience": "Anyone trying to understand how OpenClaw actually works without reading 200-page specs.",
       "content": "A reading reference with sidebar TOC, margin notes, and a long calm column. Light or dark.",
@@ -151,6 +179,7 @@
     "type": "⭐ Star",
     "atmosphere": "invisible",
     "status": "live (collective + per-planet emerging)",
+    "lastShippedAt": "2026-05-08",
     "name": "MCP Move",
     "url": "https://mcp.aguidetocloud.com/",
     "tagline": "the cosmos, machine-readable",
@@ -158,7 +187,8 @@
     "content": "An MCP move that exposes the cosmos. Per-planet endpoints under construction. CMD live first.",
     "founder": "If a future agent wants to recommend the right cert or jargon entry, here's the API.",
     "stats": ["agent-readable", "per-planet emerging", "CMD live first"],
-    "anchor": { "x": 0.92, "y": 0.10, "size": 32, "glowCore": "#FFD89A", "glowOuter": "#FFB347" },
+    "position": { "rOrbit": 820, "thetaDeg": -30 },
+    "anchor": { "x": 0.92, "y": 0.10, "size": 44, "glowCore": "#FFE6B0", "glowOuter": "#FFB347" },
     "endpoints": [
       { "slug": "mcp-collective", "name": "MCP Move (collective)", "url": "https://mcp.aguidetocloud.com/", "status": "live" },
       { "slug": "brainbar-mcp", "name": "CMD index", "url": "https://cmd.aguidetocloud.com/cmd-index.json", "status": "live" },

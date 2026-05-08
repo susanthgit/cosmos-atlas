@@ -4,6 +4,22 @@ import PlanetIcon from '../components/PlanetIcon.astro';
 import planets from '../data/planets.json';
 import atlas from '../data/atlas.json';
 
+// V3 #1 — sitemap-driven freshness. If freshness.json exists (built by
+// `npm run freshness`), it overrides the manual lastShippedAt in atlas.json.
+// We import lazily so the build doesn't break if the file is absent
+// (e.g. someone clones the repo and runs `npm run dev` before freshness).
+let freshness: { planets?: Record<string, { lastShippedAt?: string; source?: string }> } = {};
+try {
+  // Astro/Vite resolves this at build time; ?raw ensures graceful fallback.
+  const mod = await import('../data/freshness.json');
+  freshness = (mod.default ?? mod) as typeof freshness;
+} catch (_) {
+  // No freshness file yet — fall back to atlas lastShippedAt.
+}
+function freshnessFor(slug: string): string | undefined {
+  return freshness.planets?.[slug]?.lastShippedAt;
+}
+
 type ManifestPlanet = { slug: string; name: string; url: string; tagline: string };
 type AtlasMoon = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; speedSec: number; phase?: number }; body: { size: number; glowCore: string; glowOuter: string } };
 type AtlasPlanet = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }; body: { size: number; glowCore: string; glowOuter: string }; moons?: AtlasMoon[] };
@@ -23,15 +39,23 @@ const composed = (atlas.planets as AtlasPlanet[]).map((p) => {
       ...moon,
       name: moonManifest?.name ?? moon.name ?? moon.slug,
       url: moonManifest?.url ?? moon.url ?? '',
+      lastShippedAt: freshnessFor(moon.slug) ?? (moon as { lastShippedAt?: string }).lastShippedAt,
     };
   });
   return {
     ...p,
     name: m?.name ?? p.name ?? p.slug,
     url: m?.url ?? p.url ?? '',
+    lastShippedAt: freshnessFor(p.slug) ?? (p as { lastShippedAt?: string }).lastShippedAt,
     moons,
   };
 });
+
+// MCP star also takes a freshness override.
+const mcpEnriched = {
+  ...atlas.mcp,
+  lastShippedAt: freshnessFor(atlas.mcp.slug) ?? (atlas.mcp as { lastShippedAt?: string }).lastShippedAt,
+};
 
 // JSON-LD — SiteNavigationElement so search engines understand the planet list
 const navItems = composed.flatMap((p) => {
@@ -65,7 +89,7 @@ const clientData = {
   atmosphere: atlas.atmosphere,
   sun: atlas.sun,
   planets: composed,
-  mcp: atlas.mcp,
+  mcp: mcpEnriched,
   decorativeStars: atlas.decorativeStars,
 };
 ---
@@ -139,6 +163,24 @@ const clientData = {
       </header>
 
       <nav class="hud-tools" aria-label="View tools">
+        <div class="hud-view-toggle" role="group" aria-label="Cosmos perspective">
+          <button
+            type="button"
+            class="hud-btn hud-view-btn"
+            id="view-cosmos"
+            aria-pressed="true"
+            data-mode="cosmos"
+            title="Tilted cinematic view"
+          >🌌 Cosmos</button>
+          <button
+            type="button"
+            class="hud-btn hud-view-btn"
+            id="view-topdown"
+            aria-pressed="false"
+            data-mode="topdown"
+            title="Overhead diagram view"
+          >📐 Top-down</button>
+        </div>
         <button
           type="button"
           class="hud-btn"
@@ -153,11 +195,26 @@ const clientData = {
 
       <p class="hud-hint" aria-hidden="true">Hover · click a planet to see what it is</p>
 
+      <ul class="hud-shortcuts" aria-hidden="true">
+        <li><kbd>1</kbd>–<kbd>6</kbd> · focus</li>
+        <li><kbd>0</kbd> · MCP star</li>
+        <li><kbd>⇧</kbd>+drag · tilt</li>
+        <li>wheel · zoom</li>
+        <li><kbd>R</kbd> · reset</li>
+      </ul>
+
       <p class="hud-attribution">
         <a href="https://www.aguidetocloud.com/about/" rel="noopener">by A Guide to Cloud</a>
       </p>
 
       <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>
+
+      <!-- V3 #7 — first-mobile-visit gesture hint. Hidden by default; cosmos.ts shows it once. -->
+      <div class="gesture-hint" id="gesture-hint" data-visible="false" aria-hidden="true">
+        <span class="gesture-hint__line">↔ swipe to pan</span>
+        <span class="gesture-hint__line">⊕ pinch to zoom</span>
+        <span class="gesture-hint__line">tap a planet to open</span>
+      </div>
     </div>
 
     <!-- Card panel — slides in when a planet/moon is opened -->
