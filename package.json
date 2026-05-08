@@ -9,6 +9,7 @@
     "start": "astro dev --port 4287",
     "build": "astro build",
     "preview": "astro preview --port 4287",
+    "deploy": "astro build && node deploy.mjs",
     "astro": "astro"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "astro": "^5.0.0"
   },
   "devDependencies": {
+    "@noble/hashes": "^2.2.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.6.0"
   }
