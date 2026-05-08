@@ -187,7 +187,7 @@
     "content": "An MCP move that exposes the cosmos. Per-planet endpoints under construction. CMD live first.",
     "founder": "If a future agent wants to recommend the right cert or jargon entry, here's the API.",
     "stats": ["agent-readable", "per-planet emerging", "CMD live first"],
-    "position": { "rOrbit": 820, "thetaDeg": -30 },
+    "position": { "rOrbit": 1500, "thetaDeg": -30 },
     "anchor": { "x": 0.92, "y": 0.10, "size": 44, "glowCore": "#FFE6B0", "glowOuter": "#FFB347" },
     "endpoints": [
       { "slug": "mcp-collective", "name": "MCP Move (collective)", "url": "https://mcp.aguidetocloud.com/", "status": "live" },

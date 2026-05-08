@@ -481,7 +481,12 @@ export function mountCosmos(data: CosmosData): void {
   function moonOrbitPos(parentX: number, parentY: number, m: Moon, t: number): { x: number; y: number } {
     const phase = (m.orbit.phase ?? 0) * DEG;
     const angle = reducedMotion ? phase : (t / m.orbit.speedSec) * TWO_PI + phase;
-    const r = m.orbit.radius * scaleFactor;
+    // V3.1 — moon orbit radius is in pixel space (NOT multiplied by scaleFactor) so it
+    // doesn't collapse onto the planet body on small viewports. Planet body sizes are
+    // also pixel-fixed (intrinsicSize), so this keeps moon-vs-planet separation
+    // consistent across desktop, tablet, and phone. Earlier behaviour (radius * scaleFactor)
+    // produced a 30-50px overlap on iphone where scaleFactor ≈ 0.16. See QA audit 9 May 2026.
+    const r = m.orbit.radius;
     return { x: parentX + r * Math.cos(angle), y: parentY + r * Math.sin(angle) };
   }
 
@@ -1090,15 +1095,32 @@ export function mountCosmos(data: CosmosData): void {
         // V2.3 — MCP star is part of the cosmos: project from world coords (rOrbit + thetaDeg)
         // through the same tilt + camera transform as planets. Falls back to anchor (canvas-fixed)
         // if no position is set.
+        // V3.1 — clamp rOrbit so MCP star ALWAYS sits outside the outermost planet orbit
+        // (1.35× outermost). Earlier the declared rOrbit (820) put it INSIDE Claw's 1100 orbit,
+        // visually reading as just-another-planet. A star should be unambiguously beyond.
+        // V3.1 — also clamp the final projected screen position so the MCP star stays inside
+        // the viewport on small screens (where outermost*1.35 may project off-screen).
+        // The clamp keeps the star at the edge of the viewport instead of scaling it
+        // back into the orbit area, preserving the "outside the orbits" reading.
         const pos = data.mcp.position;
         if (pos) {
-          const r = pos.rOrbit * scaleFactor;
+          const outermost = Math.max(...data.planets.map((p) => p.orbit.radius));
+          const minStarOrbit = outermost * 1.35;
+          const effectiveOrbit = Math.max(pos.rOrbit, minStarOrbit);
+          const r = effectiveOrbit * scaleFactor;
           const ang = pos.thetaDeg * DEG;
           const xp = r * Math.cos(ang);
           const yp = r * Math.sin(ang);
           const proj = project(xp, yp);
-          b.baseScreenX = cx + (proj.x + cameraX) * cameraZoom;
-          b.baseScreenY = cy + (proj.y + cameraY) * cameraZoom;
+          let sx = cx + (proj.x + cameraX) * cameraZoom;
+          let sy = cy + (proj.y + cameraY) * cameraZoom;
+          // Edge clamp — keep star fully on-screen with a body-radius margin.
+          const starRadius = b.intrinsicSize * proj.scale * cameraZoom;
+          const edgeMargin = starRadius + 12;
+          sx = clamp(sx, edgeMargin, cw - edgeMargin);
+          sy = clamp(sy, edgeMargin, ch - edgeMargin);
+          b.baseScreenX = sx;
+          b.baseScreenY = sy;
           b.scale = proj.scale;
           b.depth = proj.depth;
         } else {
