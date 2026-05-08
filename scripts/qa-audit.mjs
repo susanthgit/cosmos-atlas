@@ -63,6 +63,60 @@ for (const vp of VIEWPORTS) {
     console.log(`\n=== ${vp.name} / ${view} ===`);
     console.log(`Planets: ${planets.length}, Moons: ${moons.length}, Stars: ${stars.length}`);
 
+    // V3.2 — extended moon collision check: sample 6 timepoints over 18s
+    // (one period of the slowest moon) so the audit catches collisions that
+    // only happen at certain orbit angles, not just the static snapshot.
+    const moonSweepSamples = [];
+    for (let s = 0; s < 6; s++) {
+      await page.waitForTimeout(2500);
+      const sample = await page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll('.planet-body'));
+        return els.map((el) => {
+          const rect = el.getBoundingClientRect();
+          return {
+            slug: el.getAttribute('data-slug'),
+            kind: el.getAttribute('data-kind'),
+            parentSlug: el.getAttribute('data-parent') || null,
+            cx: rect.left + rect.width / 2,
+            cy: rect.top + rect.height / 2,
+            w: rect.width,
+            h: rect.height,
+          };
+        });
+      });
+      moonSweepSamples.push(sample);
+    }
+    // Aggregate: for each moon vs each non-parent planet, find the WORST distance across all samples
+    const sweepReport = new Map();
+    for (const sample of moonSweepSamples) {
+      const sPlanets = sample.filter((b) => b.kind === 'planet');
+      const sMoons = sample.filter((b) => b.kind === 'moon');
+      for (const moon of sMoons) {
+        for (const other of sPlanets) {
+          if (other.slug === moon.parentSlug) continue;
+          const d = Math.hypot(moon.cx - other.cx, moon.cy - other.cy);
+          const minSafe = (other.w / 2) + (moon.w / 2) + 6;
+          const key = `${moon.slug}-vs-${other.slug}`;
+          const prev = sweepReport.get(key);
+          if (!prev || d < prev.minDist) {
+            sweepReport.set(key, { moonSlug: moon.slug, otherSlug: other.slug, minDist: d, minSafe });
+          }
+        }
+      }
+    }
+    let sweepCollisions = 0;
+    for (const [, rec] of sweepReport) {
+      if (rec.minDist < rec.minSafe) {
+        console.log(`  🔴 sweep: ${rec.moonSlug} OVER ${rec.otherSlug}: minDist=${rec.minDist.toFixed(1)} minSafe=${rec.minSafe.toFixed(1)}`);
+        sweepCollisions++;
+      }
+    }
+    if (sweepCollisions > 0) {
+      totalFails += sweepCollisions;
+    } else {
+      console.log(`  ✓ moon-time-sweep: ${sweepReport.size} moon-vs-neighbour pairs sampled across 6 timepoints, no collisions`);
+    }
+
     for (const moon of moons) {
       const parent = planets.find((p) => p.slug === moon.parentSlug);
       if (!parent) continue;
@@ -70,7 +124,23 @@ for (const vp of VIEWPORTS) {
       const minSafe = (parent.width / 2) + (moon.width / 2) + 8;
       const ok = dist >= minSafe;
       if (!ok) totalFails++;
-      console.log(`  ${moon.slug} vs ${parent.slug}: dist=${dist.toFixed(1)} minSafe=${minSafe.toFixed(1)} ${ok ? '✓' : '🔴 TOO CLOSE'}`);
+      console.log(`  ${moon.slug} vs parent ${parent.slug}: dist=${dist.toFixed(1)} minSafe=${minSafe.toFixed(1)} ${ok ? '✓' : '🔴 TOO CLOSE'}`);
+      // V3.2 — also check moon vs OTHER (non-parent) planets.
+      // Moon swings on a pixel-fixed orbit around its parent, so on small
+      // viewports it can sail OVER adjacent planets. The QA suite samples
+      // multiple moon positions across its orbit; we sample with a single
+      // worst-case here (current position) — for full coverage extend with
+      // an over-time scan in a future grow.
+      for (const other of planets) {
+        if (other.slug === parent.slug) continue;
+        const otherDist = Math.hypot(moon.centerX - other.centerX, moon.centerY - other.centerY);
+        const otherMinSafe = (other.width / 2) + (moon.width / 2) + 6;
+        const otherOk = otherDist >= otherMinSafe;
+        if (!otherOk) {
+          console.log(`  🔴 ${moon.slug} OVER neighbour ${other.slug}: dist=${otherDist.toFixed(1)} minSafe=${otherMinSafe.toFixed(1)}`);
+          totalFails++;
+        }
+      }
     }
 
     const mcp = stars[0];

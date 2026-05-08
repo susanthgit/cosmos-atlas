@@ -51,6 +51,31 @@ interface McpStar {
   lastShippedAt?: string; connectsTo?: string[];
 }
 
+// V3.2 — external channels (YouTubes + Ko-fi). Not planets, not destinations
+// inside the cosmos. They sit OUTSIDE the planet orbits and connect to the wider
+// world. Two render styles selectable via ?ext= URL param.
+interface BeaconSatellite {
+  slug: string;
+  name: string;
+  url: string;
+  tagline: string;
+  iconSlug: string;
+  body: { size: number; glowCore: string; glowOuter: string };
+  satOrbit: { radius: number; speedSec: number; phase: number };
+}
+interface ExternalChannel {
+  slug: string; name: string; url: string; type: string;
+  tagline: string; audience: string; content: string; founder: string;
+  stats?: string[];
+  body: { size: number; glowCore: string; glowOuter: string };
+  // 'comets' style data
+  comet?: { orbitMul: number; speedSec: number; ecc: number; tilt: number; phase: number; tailLen: number };
+  beacon?: { x: number; y: number };
+  satellites?: BeaconSatellite[];
+  // 'outposts' style data
+  outpost?: { thetaDeg: number };
+}
+
 interface DecorativeStar { x: number; y: number; size: number; alpha: number }
 interface Nebula { x: number; y: number; size: number; color: string; alpha: number; driftSec: number; phase?: number }
 
@@ -71,14 +96,15 @@ interface CosmosData {
   mcp: McpStar;
   decorativeStars: DecorativeStar[];
   nebulae?: Nebula[];
+  external?: { channels: ExternalChannel[] };
 }
 
 interface BodyState {
   el: HTMLButtonElement;
-  kind: 'planet' | 'moon' | 'star';
+  kind: 'planet' | 'moon' | 'star' | 'comet' | 'beacon' | 'beacon-sat' | 'outpost';
   slug: string;
   parentSlug?: string;
-  ref: Planet | Moon | McpStar;
+  ref: Planet | Moon | McpStar | ExternalChannel | BeaconSatellite;
   screenX: number;     // canvas-space (post camera)
   screenY: number;
   baseScreenX: number; // pre-magnetism, for hover lookups
@@ -167,11 +193,28 @@ export function mountCosmos(data: CosmosData): void {
     for (const m of p.moons ?? []) moonBySlug.set(m.slug, { moon: m, parent: p });
   }
 
+  // V3.2 — external channels (YouTubes + Ko-fi). Read render style from URL param.
+  // 'comets' (default) — long-form & bites = comets with tails on outer elliptical
+  //   orbits; ko-fi = fixed-position beacon at canvas corner with double pulse.
+  // 'outposts' — all three channels sit at fixed positions on a single outer ring,
+  //   each with a transmission pulse.
+  // Style is a SUSH visual choice — the data + voice + cards are identical.
+  const externalChannels = data.external?.channels ?? [];
+  const channelBySlug = new Map<string, ExternalChannel>();
+  for (const c of externalChannels) channelBySlug.set(c.slug, c);
+  const externalStyle: 'comets' | 'outposts' = (() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('ext');
+      return v === 'outposts' ? 'outposts' : 'comets';
+    } catch (_) { return 'comets'; }
+  })();
+  document.body.dataset.externalStyle = externalStyle;
+
   const bodies: BodyState[] = [];
   const bodyButtons = bodiesRoot.querySelectorAll<HTMLButtonElement>('.planet-body');
   for (const btn of Array.from(bodyButtons)) {
     const slug = btn.dataset.slug ?? '';
-    const kind = btn.dataset.kind as 'planet' | 'moon' | 'star';
+    const kind = btn.dataset.kind as BodyState['kind'] | 'external';
     if (kind === 'planet') {
       const ref = planetBySlug.get(slug);
       if (!ref) continue;
@@ -200,6 +243,50 @@ export function mountCosmos(data: CosmosData): void {
         intrinsicSize: anchor?.size ?? 24,
         glowCore: anchor?.glowCore ?? '#FFD89A',
         glowOuter: anchor?.glowOuter ?? '#FFB347',
+      });
+    } else if (kind === 'comet' || kind === 'beacon' || kind === 'outpost' || kind === 'external') {
+      const ref = channelBySlug.get(slug);
+      if (!ref) continue;
+      // V3.2 — body kind is decided by render style (URL param ?ext=).
+      // 'outposts' style: all three channels are outposts.
+      // 'comets' style: channel.comet → comet, channel.beacon → beacon.
+      let resolvedKind: BodyState['kind'];
+      if (externalStyle === 'outposts') {
+        resolvedKind = 'outpost';
+      } else if (ref.beacon) {
+        resolvedKind = 'beacon';
+      } else if (ref.comet) {
+        resolvedKind = 'comet';
+      } else {
+        resolvedKind = 'outpost';
+      }
+      btn.dataset.kind = resolvedKind;
+      bodies.push({
+        el: btn, kind: resolvedKind, slug, ref,
+        screenX: 0, screenY: 0, baseScreenX: 0, baseScreenY: 0, scale: 1, depth: 0,
+        intrinsicSize: ref.body.size,
+        glowCore: ref.body.glowCore,
+        glowOuter: ref.body.glowOuter,
+      });
+    } else if (kind === 'beacon-sat') {
+      // V3.2 — beacon satellite (ko-fi-shop, kofi-tip). parentSlug points to the
+      // beacon hub. Only rendered in 'comets' style (skipped in outposts mode).
+      const parentSlug = btn.dataset.parent ?? '';
+      const parentChannel = channelBySlug.get(parentSlug);
+      if (!parentChannel || !parentChannel.satellites) continue;
+      if (externalStyle === 'outposts') {
+        // hide satellites in outposts mode
+        btn.style.display = 'none';
+        continue;
+      }
+      const sat = parentChannel.satellites.find((s) => s.slug === slug);
+      if (!sat) continue;
+      bodies.push({
+        el: btn, kind: 'beacon-sat', slug, parentSlug, ref: sat,
+        screenX: 0, screenY: 0, baseScreenX: 0, baseScreenY: 0, scale: 1, depth: 0,
+        intrinsicSize: sat.body.size,
+        glowCore: sat.body.glowCore,
+        glowOuter: sat.body.glowOuter,
       });
     }
   }
@@ -443,13 +530,23 @@ export function mountCosmos(data: CosmosData): void {
     const outermost = Math.max(...data.planets.map((p) => p.orbit.radius));
     mobileMode = cw < 720;
     narrowMode = cw < 480;
+    // V3.2 — on narrow phones, fit the SECOND-outermost orbit (Agentic) inside
+    // the viewport so inner planets get more screen-pixel-per-orbit-unit. This
+    // means the OUTERMOST planet (Claw) clips at the viewport edge — acceptable
+    // tradeoff for cleaner moon-vs-neighbour separation. On desktop everything
+    // still fits.
+    let fittingOutermost = outermost;
+    if (narrowMode && data.planets.length >= 2) {
+      const sortedByRadius = [...data.planets].sort((a, b) => a.orbit.radius - b.orbit.radius);
+      fittingOutermost = sortedByRadius[sortedByRadius.length - 2]!.orbit.radius;
+    }
     // Mobile gets gentler depth compression so inner planets don't cluster.
     FOCAL = narrowMode ? FOCAL_NARROW : FOCAL_DESKTOP;
     // Tighter margins on phones so the outermost orbit still fits.
     const margin = narrowMode ? 22 : mobileMode ? 36 : 110;
     const desiredVHalf = (ch / 2 - margin) / cosTilt;
     const desiredHHalf = (cw / 2 - margin);
-    scaleFactor = Math.min(desiredHHalf / outermost, desiredVHalf / outermost, 1);
+    scaleFactor = Math.min(desiredHHalf / fittingOutermost, desiredVHalf / fittingOutermost, 1);
     // Slight breathing room on small viewports so bodies don't touch edges.
     if (mobileMode) scaleFactor = Math.min(scaleFactor, 0.94);
     if (narrowMode) scaleFactor = Math.min(scaleFactor, 0.82);
@@ -481,12 +578,11 @@ export function mountCosmos(data: CosmosData): void {
   function moonOrbitPos(parentX: number, parentY: number, m: Moon, t: number): { x: number; y: number } {
     const phase = (m.orbit.phase ?? 0) * DEG;
     const angle = reducedMotion ? phase : (t / m.orbit.speedSec) * TWO_PI + phase;
-    // V3.1 — moon orbit radius is in pixel space (NOT multiplied by scaleFactor) so it
-    // doesn't collapse onto the planet body on small viewports. Planet body sizes are
-    // also pixel-fixed (intrinsicSize), so this keeps moon-vs-planet separation
-    // consistent across desktop, tablet, and phone. Earlier behaviour (radius * scaleFactor)
-    // produced a 30-50px overlap on iphone where scaleFactor ≈ 0.16. See QA audit 9 May 2026.
-    const r = m.orbit.radius;
+    // V3.2 — moon orbit is viewport-width aware. Full declared radius on desktop
+    // (cw >= 720); shrinks linearly toward 50% on phones so moons sit close to
+    // their parent and don't sail over adjacent planet orbits.
+    const moonScale = (cw >= 720) ? 1.0 : Math.max(0.5, cw / 720);
+    const r = m.orbit.radius * moonScale;
     return { x: parentX + r * Math.cos(angle), y: parentY + r * Math.sin(angle) };
   }
 
@@ -888,6 +984,81 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
+  // V3.2 — external channel decorations:
+  //   • Comet tails — stretched gradient pointing AWAY from the sun (broadcasting outward)
+  //   • Beacon double-pulse — Ko-fi pulses both outward (assets) and inward (support coming back)
+  //   • Outpost transmission ring — concentric rings pulsing outward from each outpost
+  function drawExternalDecorations(introBodies: number): void {
+    if (introBodies <= 0) return;
+    if (ogMode) return;
+    const t = getRealT();
+    const sunX = cx + cameraX * cameraZoom;
+    const sunY = cy + cameraY * cameraZoom;
+    for (const b of bodies) {
+      const isHovered = hoveredSlug === b.slug;
+      const isFocused = focusedSlug === b.slug;
+      const dim = (focusedSlug !== null && !isFocused) || (hoveredSlug !== null && !isHovered);
+      const alpha = (dim ? 0.32 : 1) * introBodies;
+      const x = b.screenX;
+      const y = b.screenY;
+      const r = b.intrinsicSize * b.scale * cameraZoom;
+
+      if (b.kind === 'comet') {
+        // V3.2 — comets are bodies orbiting on the outer ring. The tail concept
+        // was tested and rejected — Sush preferred just the orbiting play-button.
+        // The natural body halo (drawBodyHalo) gives them visual presence; no
+        // additional tail/streak is rendered here.
+      } else if (b.kind === 'beacon') {
+        // Double pulse — outward (assets going out) AND inward (support coming back).
+        // Two concentric rings, opposite phases.
+        if (reducedMotion) continue;
+        const periodSec = 4;
+        const phaseOut = ((t / periodSec) % 1);          // 0..1 outward expansion
+        const phaseIn = (((t + periodSec / 2) / periodSec) % 1); // 0..1 inward contraction (offset)
+        const baseRadius = r * 1.4;
+        const maxOut = r * 4.5;
+        // Outward ring
+        const outR = baseRadius + (maxOut - baseRadius) * phaseOut;
+        const outA = (1 - phaseOut) * 0.55 * alpha;
+        if (outA > 0.01) {
+          ctx.strokeStyle = withAlpha(b.glowOuter, outA);
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(x, y, outR, 0, TWO_PI);
+          ctx.stroke();
+        }
+        // Inward ring (a softer reciprocal — energy returning)
+        const inR = baseRadius + (maxOut - baseRadius) * (1 - phaseIn);
+        const inA = (1 - (1 - phaseIn)) * 0.4 * alpha; // peaks as the ring contracts in
+        if (inA > 0.01) {
+          ctx.strokeStyle = withAlpha(b.glowCore, inA);
+          ctx.lineWidth = 1.0;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(x, y, inR, 0, TWO_PI);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      } else if (b.kind === 'outpost') {
+        // Transmission ring — single ring expanding outward and fading.
+        if (reducedMotion) continue;
+        const periodSec = 3.5;
+        const phase = ((t / periodSec) % 1);
+        const baseRadius = r * 1.3;
+        const maxRadius = r * 4.0;
+        const ringR = baseRadius + (maxRadius - baseRadius) * phase;
+        const ringA = (1 - phase) * 0.55 * alpha;
+        if (ringA > 0.01) {
+          ctx.strokeStyle = withAlpha(b.glowOuter, ringA);
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.arc(x, y, ringR, 0, TWO_PI);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
   function drawBodyHalo(b: BodyState, introBodies: number): void {
     if (introBodies <= 0) return;
     const isHovered = hoveredSlug === b.slug;
@@ -1130,10 +1301,85 @@ export function mountCosmos(data: CosmosData): void {
           b.scale = 1;
           b.depth = -800;
         }
+      } else if (b.kind === 'comet') {
+        // V3.2 — comets orbit on elliptical paths just outside the outermost planet.
+        // World-space orbit, projected through the same tilt+camera as planets.
+        const ch_ref = b.ref as ExternalChannel;
+        const cdef = ch_ref.comet;
+        if (!cdef) continue;
+        const outermost = Math.max(...data.planets.map((p) => p.orbit.radius));
+        const radius = outermost * cdef.orbitMul * scaleFactor;
+        const angle = reducedMotion
+          ? cdef.phase * DEG
+          : (t / cdef.speedSec) * TWO_PI + cdef.phase * DEG;
+        const xp0 = radius * Math.cos(angle);
+        const yp0 = radius * Math.sin(angle) * (1 - cdef.ecc);
+        const tilt2d = cdef.tilt * DEG;
+        const cosT2 = Math.cos(tilt2d);
+        const sinT2 = Math.sin(tilt2d);
+        const xp = xp0 * cosT2 - yp0 * sinT2;
+        const yp = xp0 * sinT2 + yp0 * cosT2;
+        const proj = project(xp, yp);
+        let sx = cx + (proj.x + cameraX) * cameraZoom;
+        let sy = cy + (proj.y + cameraY) * cameraZoom;
+        const cometRadius = b.intrinsicSize * proj.scale * cameraZoom;
+        const edgeMargin = cometRadius + 12;
+        sx = clamp(sx, edgeMargin, cw - edgeMargin);
+        sy = clamp(sy, edgeMargin, ch - edgeMargin);
+        b.baseScreenX = sx;
+        b.baseScreenY = sy;
+        b.scale = proj.scale;
+        b.depth = proj.depth;
+      } else if (b.kind === 'beacon') {
+        // V3.2 — Ko-fi beacon: fixed canvas-fraction position. Doesn't orbit, doesn't
+        // scale with planets. Always at the same corner of the cosmos canvas.
+        const ch_ref = b.ref as ExternalChannel;
+        const beacon = ch_ref.beacon ?? { x: 0.92, y: 0.88 };
+        b.baseScreenX = beacon.x * cw;
+        b.baseScreenY = beacon.y * ch;
+        b.scale = 1;
+        b.depth = -800;
+      } else if (b.kind === 'beacon-sat') {
+        // V3.2 — Ko-fi satellites orbit their hub (heart). Position is hub center
+        // + satellite orbital offset. Pixel-space (small radius, doesn't scale).
+        const sat = b.ref as BeaconSatellite;
+        // Find the hub body
+        const hub = bodies.find((bb) => bb.slug === b.parentSlug && bb.kind === 'beacon');
+        if (!hub) continue;
+        const phase = (sat.satOrbit.phase ?? 0) * DEG;
+        const angle = reducedMotion ? phase : (t / sat.satOrbit.speedSec) * TWO_PI + phase;
+        // Slight viewport scaling so satellites don't fly off edges on phones
+        const satR = sat.satOrbit.radius * Math.max(scaleFactor * 1.4, 0.65);
+        b.baseScreenX = hub.baseScreenX + satR * Math.cos(angle);
+        b.baseScreenY = hub.baseScreenY + satR * Math.sin(angle);
+        b.scale = 1;
+        b.depth = -780;
+      } else if (b.kind === 'outpost') {
+        // V3.2 — outposts on a fixed ring just outside the outermost planet orbit.
+        // Each outpost has a thetaDeg position; rOrbit is shared (1.22× outermost).
+        const ch_ref = b.ref as ExternalChannel;
+        const op = ch_ref.outpost;
+        if (!op) continue;
+        const outermost = Math.max(...data.planets.map((p) => p.orbit.radius));
+        const radius = outermost * 1.22 * scaleFactor;
+        const ang = op.thetaDeg * DEG;
+        const xp = radius * Math.cos(ang);
+        const yp = radius * Math.sin(ang);
+        const proj = project(xp, yp);
+        let sx = cx + (proj.x + cameraX) * cameraZoom;
+        let sy = cy + (proj.y + cameraY) * cameraZoom;
+        const opRadius = b.intrinsicSize * proj.scale * cameraZoom;
+        const edgeMargin = opRadius + 12;
+        sx = clamp(sx, edgeMargin, cw - edgeMargin);
+        sy = clamp(sy, edgeMargin, ch - edgeMargin);
+        b.baseScreenX = sx;
+        b.baseScreenY = sy;
+        b.scale = proj.scale;
+        b.depth = proj.depth;
       }
       // P1 #11 — cursor magnetism: bodies lean toward cursor within 180px.
       let mx = 0, my = 0;
-      if (cursorActive && !reducedMotion && b.kind !== 'star') {
+      if (cursorActive && !reducedMotion && b.kind !== 'star' && b.kind !== 'beacon' && b.kind !== 'beacon-sat' && b.kind !== 'outpost') {
         const dx = cursorX - b.baseScreenX;
         const dy = cursorY - b.baseScreenY;
         const dist = Math.hypot(dx, dy);
@@ -1151,7 +1397,18 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
+  // V3.2 — viewport-aware body scaling. On big screens (>= 720px wide) bodies
+  // render at full intrinsic size. On phones (< 720px) bodies shrink linearly
+  // toward 50% on tiny viewports so 6 planets + moons don't overlap each other.
+  // Tied to viewport WIDTH (not scaleFactor) so desktop with bigger outermost
+  // orbits doesn't accidentally shrink bodies.
+  function bodyVpScale(): number {
+    if (cw >= 720) return 1.0;
+    return Math.max(0.5, cw / 720);
+  }
+
   function applyBodyTransforms(introBodies: number): void {
+    const vp = bodyVpScale();
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
     for (let i = 0; i < sorted.length; i++) {
       const b = sorted[i];
@@ -1159,7 +1416,7 @@ export function mountCosmos(data: CosmosData): void {
       const isHovered = hoveredSlug === b.slug;
       const isFocused = focusedSlug === b.slug;
       const dim = (focusedSlug !== null && !isFocused) || (hoveredSlug !== null && !isHovered);
-      let scale = b.scale * cameraZoom;
+      let scale = b.scale * cameraZoom * vp;
       if (isHovered) scale *= 1.12;
       if (isFocused) scale *= 1.35;
       // P1 #5 — depth-based opacity falloff for stronger 3D feel.
@@ -1269,6 +1526,7 @@ export function mountCosmos(data: CosmosData): void {
     drawMcpRays(intro.bodies);
     drawConstellationLines(intro.bodies, deltaSec);
     drawBodyShadows(intro.bodies);
+    drawExternalDecorations(intro.bodies);
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
     for (const b of sorted) drawBodyHalo(b, intro.bodies);
     drawFreshnessPulses(now, intro.bodies);
@@ -1527,6 +1785,19 @@ export function mountCosmos(data: CosmosData): void {
     b.el.addEventListener('click', (e) => {
       e.preventDefault();
       markInteraction();
+      // V3.2 — external channels (comets, beacon, outposts, satellites) open
+      // their URL in a new tab instead of a card. They're broadcast/exchange
+      // channels, not destinations inside the cosmos.
+      if (b.kind === 'comet' || b.kind === 'beacon' || b.kind === 'outpost') {
+        const ch_ref = b.ref as ExternalChannel;
+        if (ch_ref.url) window.open(ch_ref.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (b.kind === 'beacon-sat') {
+        const sat = b.ref as BeaconSatellite;
+        if (sat.url) window.open(sat.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
       openSlug(b.slug);
     });
   }

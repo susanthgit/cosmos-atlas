@@ -88,7 +88,7 @@
       "content": "A growing index of Microsoft jargon. Type `$_` to launch. One entry, one plain-English answer.",
       "founder": "I forgot what GCC High meant for the third time. So I built CMD.",
       "stats": ["growing index", "`$_` launcher", "plain-English answers"],
-      "orbit": { "radius": 460, "ecc": 0.06, "tilt": -4, "speedSec": 131, "phase": 60 },
+      "orbit": { "radius": 800, "ecc": 0.06, "tilt": -4, "speedSec": 131, "phase": 60 },
       "body": { "size": 30, "glowCore": "#86EFAC", "glowOuter": "#22C55E" }
     },
     {
@@ -103,7 +103,7 @@
       "content": "Honest news on jobs that grew, jobs that shrank, and jobs no one saw coming. New issue every Sunday.",
       "founder": "I started reading job postings every weekend because the pace scared me. Now you can read them with me.",
       "stats": ["weekly wire", "Sunday issue", "Vol. 1 · No. 19"],
-      "orbit": { "radius": 620, "ecc": 0.04, "tilt": 10, "speedSec": 167, "phase": 120 },
+      "orbit": { "radius": 950, "ecc": 0.04, "tilt": 10, "speedSec": 167, "phase": 120 },
       "body": { "size": 32, "glowCore": "#FDBA74", "glowOuter": "#E25822" }
     },
     {
@@ -119,7 +119,7 @@
       "content": "Topics, weekly halts of what changed, and short paths through ideas. Plain words only. No hype, no doom.",
       "founder": "If I can't explain it to my mum at the dinner table, I haven't understood it yet.",
       "stats": ["topics + halts", "plain English", "no jargon"],
-      "orbit": { "radius": 770, "ecc": 0.06, "tilt": -8, "speedSec": 211, "phase": 180 },
+      "orbit": { "radius": 1150, "ecc": 0.06, "tilt": -8, "speedSec": 211, "phase": 180 },
       "body": { "size": 34, "glowCore": "#A5F3FC", "glowOuter": "#67E8F9" },
       "moons": [
         {
@@ -154,7 +154,7 @@
       "content": "A field-guide for what to build, where to plug in, what to ship. Cyan, green, amber signal palette.",
       "founder": "If you're already in MCP, function-calls, and orchestration land — this is where you sit.",
       "stats": ["cockpit signals", "MCP-aware", "stroke icons"],
-      "orbit": { "radius": 940, "ecc": 0.04, "tilt": 4, "speedSec": 251, "phase": 240 },
+      "orbit": { "radius": 1400, "ecc": 0.04, "tilt": 4, "speedSec": 251, "phase": 240 },
       "body": { "size": 30, "glowCore": "#7DD3FC", "glowOuter": "#0EA5E9" }
     },
     {
@@ -169,7 +169,7 @@
       "content": "A reading reference with sidebar TOC, margin notes, and a long calm column. Light or dark.",
       "founder": "I had to read OpenClaw three times. So I wrote down the version I wish I'd had.",
       "stats": ["sidebar TOC", "margin notes", "calm column"],
-      "orbit": { "radius": 1100, "ecc": 0.05, "tilt": -10, "speedSec": 293, "phase": 300 },
+      "orbit": { "radius": 1600, "ecc": 0.05, "tilt": -10, "speedSec": 293, "phase": 300 },
       "body": { "size": 28, "glowCore": "#FCA5A5", "glowOuter": "#FF2626" }
     }
   ],
@@ -211,6 +211,75 @@
       { "x": 0.71, "y": 0.78, "size": 1.6, "twinkleSec": 5.0 },
       { "x": 0.04, "y": 0.93, "size": 0.9, "twinkleSec": 4.7 },
       { "x": 0.97, "y": 0.09, "size": 1.0, "twinkleSec": 5.8 }
+    ]
+  },
+
+  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Two YouTube broadcasts (long-form, bites) and Ko-fi (give + receive). Two render styles available via ?ext= URL param: 'comets' (default — orbital with tails for YouTubes, fixed beacon for Ko-fi) and 'outposts' (all three on a fixed outer ring). Render mode is a SUSH visual choice — voice + content stay the same.",
+
+  "external": {
+    "channels": [
+      {
+        "slug": "long-form",
+        "name": "Long-form",
+        "url": "https://youtube.com/susanthsutheesh",
+        "type": "📺 YouTube — long-form",
+        "tagline": "the deep dives, on YouTube",
+        "audience": "Anyone who learns better when someone walks them through it on screen.",
+        "content": "Full-length tutorials and walk-throughs. Microsoft cloud, AI, the curious-intern lens.",
+        "founder": "I make these because writing alone doesn't always carry it. Sometimes you need to see my screen.",
+        "stats": ["full-length", "Microsoft cloud + AI", "main channel"],
+        "body": { "size": 24, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
+        "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 90, "tailLen": 220 },
+        "outpost": { "thetaDeg": -120 }
+      },
+      {
+        "slug": "bites",
+        "name": "Bites",
+        "url": "https://youtube.com/aguidetocloud",
+        "type": "📺 YouTube — bites",
+        "tagline": "short clips of the same",
+        "audience": "Anyone who wants a 60-second answer instead of a 15-minute video.",
+        "content": "Bite-sized cuts of the long-form videos. Just the answer, no setup.",
+        "founder": "Same content, less time. For when you just want the bit you came for.",
+        "stats": ["short clips", "cert prep cuts", "no setup"],
+        "body": { "size": 20, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
+        "comet": { "orbitMul": 1.42, "speedSec": 220, "ecc": 0.18, "tilt": -8, "phase": 200, "tailLen": 130 },
+        "outpost": { "thetaDeg": -90 }
+      },
+      {
+        "slug": "kofi",
+        "name": "Ko-fi",
+        "url": "https://ko-fi.com/aguidetocloud",
+        "type": "❤️ Ko-fi — give + receive",
+        "tagline": "free + paid (max $5) + tip jar",
+        "audience": "Anyone who wants the free assets, or wants to grab a paid one for ≤$5, or wants to drop a coffee.",
+        "content": "Free downloadable assets. Paid ones capped at $5 to keep them accessible. Tip jar if something here helped.",
+        "founder": "If something here gave you something, this is where you can give a little back. No pressure — most things are free, the rest are capped at $5.",
+        "stats": ["free assets", "paid ≤ $5", "tip jar"],
+        "body": { "size": 30, "glowCore": "#FECACA", "glowOuter": "#EF4444" },
+        "beacon": { "x": 0.93, "y": 0.86 },
+        "satellites": [
+          {
+            "slug": "kofi-shop",
+            "name": "Downloads",
+            "url": "https://ko-fi.com/aguidetocloud/shop",
+            "tagline": "free + paid (max $5) study assets",
+            "iconSlug": "kofi-download",
+            "body": { "size": 18, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
+            "satOrbit": { "radius": 50, "speedSec": 9, "phase": 0 }
+          },
+          {
+            "slug": "kofi-tip",
+            "name": "Tip jar",
+            "url": "https://ko-fi.com/aguidetocloud",
+            "tagline": "drop a coffee if something helped",
+            "iconSlug": "kofi-cup",
+            "body": { "size": 18, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
+            "satOrbit": { "radius": 50, "speedSec": 11, "phase": 180 }
+          }
+        ],
+        "outpost": { "thetaDeg": -60 }
+      }
     ]
   },
 

@@ -27,7 +27,7 @@ import { blake3 } from '@noble/hashes/blake3.js';
 
 const ACCOUNT_ID = 'd42846fe2c29daf890ec57877fda5e04';
 const PROJECT_NAME = 'cosmos-atlas';
-const BRANCH = 'main';
+const BRANCH = process.argv[2] || 'main';
 const DIST = './dist';
 
 const CF_API = 'https://api.cloudflare.com/client/v4';
