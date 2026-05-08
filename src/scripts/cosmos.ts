@@ -1139,32 +1139,16 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
-  // V2.1 #2 — freshness pulse. Subtle pulsing ring around bodies that shipped recently.
-  // Different cadence (4.6s) and colour (soft amber) from the focus ring.
-  function drawFreshnessPulses(now: number, introBodies: number): void {
-    if (introBodies <= 0 || reducedMotion) return;
-    const t = now / 1000;
-    for (const b of bodies) {
-      if (b.kind === 'star') continue;
-      const fresh = freshnessFor(b.slug);
-      if (fresh <= 0) continue;
-      const isHovered = hoveredSlug === b.slug;
-      const isFocused = focusedSlug === b.slug;
-      const dim = (focusedSlug !== null && !isFocused) || (hoveredSlug !== null && !isHovered);
-      if (dim) continue;
-      const r = b.intrinsicSize * b.scale * cameraZoom;
-      // Pulse oscillates between 1.32× and 1.55× with sin wave; amplitude decays with age.
-      const phase = (t / 4.6) * TWO_PI + (b.slug.charCodeAt(0) * 0.13);
-      const pulse = 0.5 + 0.5 * Math.sin(phase);
-      const ringR = r * (1.32 + pulse * 0.23);
-      const baseAlpha = 0.22 + 0.36 * pulse;
-      const alpha = baseAlpha * fresh * introBodies;
-      ctx.strokeStyle = withAlpha(data.atmosphere.accentSoft, alpha);
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.arc(b.screenX, b.screenY, ringR, 0, TWO_PI);
-      ctx.stroke();
-    }
+  // V3.3.2 — freshness pulse REMOVED (was the always-on outer amber ring at
+  // r*1.32→1.55 around bodies with recent lastShippedAt). Sush feedback 9 May
+  // 2026 PM: this was the "outer pulsating ring" still visible after V3.3.1
+  // around earth/moon/plainai/shift etc. The metadata still lives in the
+  // card meta block (lastShippedAt date), no need for an always-on ring.
+  // Function kept as a no-op so the call site at frame() doesn't break and
+  // future polish can replace this with a quieter "recent ✦" sparkle marker
+  // if we ever want a freshness signal back.
+  function drawFreshnessPulses(_now: number, _introBodies: number): void {
+    return;
   }
 
   // V2.1 #6 — constellation lines from focused body to its connectsTo[] siblings.
