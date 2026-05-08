@@ -159,43 +159,123 @@ const maskId = `pa-${scope}-${slug}-mask`;
 )}
 
 {slug === 'long-form' && (
-  /* V3.3 — Long-form YouTube. The actual YouTube brand shape: red rounded
-     rectangle with a clean white play triangle. Reads instantly as "the
-     YouTube channel" not "a generic media play button". */
-  <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    {/* Soft outer glow so the body still has presence on the dark canvas */}
-    <ellipse cx="16" cy="16" rx="14" ry="10" fill="#7F1D1D" opacity="0.18"/>
-    {/* YouTube-red rounded rectangle (3:2 aspect, the brand shape) */}
-    <rect x="3" y="9" width="26" height="14" rx="3.5" ry="3.5" fill="#DC2626">
+  /* V3.3.1 — Long-form YouTube as a manmade SATELLITE.
+     Real-world satellite character: central body holds the YouTube branding
+     (red rect + play triangle), flanked by two solar panel arrays (blue
+     gridded rectangles), with an antenna up top and a solar flare glint on
+     the upper-right. Reads as "a satellite broadcasting long-form content"
+     not just a floating brand logo. */
+  <svg viewBox="0 0 36 32" width={size * 1.13} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    {/* Soft outer warmth so the body has presence on dark canvas */}
+    <ellipse cx="18" cy="16" rx="17" ry="9" fill="#7F1D1D" opacity="0.16"/>
+
+    {/* LEFT solar panel — blue gridded rectangle, struts to body */}
+    <g>
+      <rect x="1" y="13" width="9" height="6" fill="#1E3A8A" stroke="#60A5FA" stroke-width="0.4"/>
+      <line x1="4" y1="13" x2="4" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="7" y1="13" x2="7" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="1" y1="16" x2="10" y2="16" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="10" y1="16" x2="13" y2="16" stroke="#94A3B8" stroke-width="0.6"/>
+    </g>
+
+    {/* RIGHT solar panel — mirrored */}
+    <g>
+      <rect x="26" y="13" width="9" height="6" fill="#1E3A8A" stroke="#60A5FA" stroke-width="0.4"/>
+      <line x1="29" y1="13" x2="29" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="32" y1="13" x2="32" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="26" y1="16" x2="35" y2="16" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="23" y1="16" x2="26" y2="16" stroke="#94A3B8" stroke-width="0.6"/>
+    </g>
+
+    {/* Antenna — short whisker with blinking transmitter dot */}
+    <line x1="18" y1="11" x2="18" y2="6" stroke="#94A3B8" stroke-width="0.7"/>
+    <circle cx="18" cy="5.5" r="0.9" fill="#FCA5A5">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+
+    {/* Central satellite body — YouTube red rounded rect with play triangle */}
+    <rect x="13" y="11" width="10" height="10" rx="1.6" ry="1.6" fill="#DC2626" stroke="#FCA5A5" stroke-width="0.4">
       <animate attributeName="opacity" values="0.92;1;0.92" dur="2.4s" repeatCount="indefinite"/>
     </rect>
-    {/* Clean white play triangle, slightly inset */}
-    <polygon points="13,12.5 13,19.5 21,16" fill="#FFFFFF"/>
+    <polygon points="15.6,13.5 15.6,18.5 20.4,16" fill="#FFFFFF"/>
+
+    {/* Solar flare glint — short rays radiating from upper-right corner of body */}
+    <g stroke="#FEF3C7" stroke-width="0.5" stroke-linecap="round" opacity="0.9">
+      <line x1="22" y1="11.5" x2="25" y2="9">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2.8s" repeatCount="indefinite"/>
+      </line>
+      <line x1="23" y1="12.5" x2="26" y2="11.8">
+        <animate attributeName="opacity" values="1;0.5;1" dur="2.8s" repeatCount="indefinite"/>
+      </line>
+      <line x1="22.5" y1="11" x2="24.5" y2="7.5">
+        <animate attributeName="opacity" values="0.6;1;0.6" dur="3.2s" repeatCount="indefinite"/>
+      </line>
+    </g>
+    <circle cx="22.5" cy="11.5" r="1" fill="#FEF9C3" opacity="0.85">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
   </svg>
 )}
 
 {slug === 'bites' && (
-  /* V3.3 — Bites = YouTube Shorts-style. Vertical rounded rect (taller than
-     wide) with a single play triangle and tiny up/down chevrons hinting at
-     the swipe-up-for-next pattern. */
+  /* V3.3.1 — Bites = compact Shorts SATELLITE. Same satellite vocabulary as
+     long-form (panels + antenna + flare glint) but with a vertical Shorts-aspect
+     central body to differentiate. Smaller, more nimble — feels like the
+     companion satellite to the bigger long-form bird. */
   <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     {/* Soft glow */}
-    <ellipse cx="16" cy="16" rx="11" ry="13" fill="#9F1239" opacity="0.18"/>
-    {/* Vertical rounded rectangle — Shorts aspect (taller than wide) */}
-    <rect x="9" y="4" width="14" height="24" rx="3" ry="3" fill="#F43F5E">
+    <ellipse cx="16" cy="16" rx="14" ry="11" fill="#9F1239" opacity="0.16"/>
+
+    {/* LEFT solar panel — vertical, smaller than long-form */}
+    <g>
+      <rect x="2" y="11.5" width="6" height="9" fill="#1E3A8A" stroke="#60A5FA" stroke-width="0.4"/>
+      <line x1="5" y1="11.5" x2="5" y2="20.5" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="2" y1="14.5" x2="8" y2="14.5" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="2" y1="17.5" x2="8" y2="17.5" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="8" y1="16" x2="11" y2="16" stroke="#94A3B8" stroke-width="0.6"/>
+    </g>
+
+    {/* RIGHT solar panel — mirrored */}
+    <g>
+      <rect x="24" y="11.5" width="6" height="9" fill="#1E3A8A" stroke="#60A5FA" stroke-width="0.4"/>
+      <line x1="27" y1="11.5" x2="27" y2="20.5" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="24" y1="14.5" x2="30" y2="14.5" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="24" y1="17.5" x2="30" y2="17.5" stroke="#60A5FA" stroke-width="0.3"/>
+      <line x1="21" y1="16" x2="24" y2="16" stroke="#94A3B8" stroke-width="0.6"/>
+    </g>
+
+    {/* Antenna — slightly shorter than long-form's, with transmitter dot */}
+    <line x1="16" y1="6" x2="16" y2="2.5" stroke="#94A3B8" stroke-width="0.6"/>
+    <circle cx="16" cy="2.2" r="0.7" fill="#FCA5A5">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+
+    {/* Central satellite body — vertical Shorts rounded rect */}
+    <rect x="11" y="6" width="10" height="20" rx="2" ry="2" fill="#F43F5E" stroke="#FECDD3" stroke-width="0.4">
       <animate attributeName="opacity" values="0.92;1;0.92" dur="2s" repeatCount="indefinite"/>
     </rect>
     {/* Centred play triangle */}
-    <polygon points="14,12 14,20 20.5,16" fill="#FFFFFF"/>
-    {/* Tiny swipe chevrons — top + bottom — quick pulses for "next short" feel */}
-    <g stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.85">
-      <polyline points="13.5,7.5 16,5.8 18.5,7.5">
-        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite"/>
-      </polyline>
-      <polyline points="13.5,24.5 16,26.2 18.5,24.5">
-        <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite"/>
-      </polyline>
+    <polygon points="13.6,13 13.6,19 18.6,16" fill="#FFFFFF"/>
+    {/* Tiny swipe-up chevron — inside body, hints at Shorts swipe gesture */}
+    <polyline points="13.5,9.5 16,8 18.5,9.5" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.85">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite"/>
+    </polyline>
+    <polyline points="13.5,22.5 16,24 18.5,22.5" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.85">
+      <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite"/>
+    </polyline>
+
+    {/* Solar flare glint — upper-right of body */}
+    <g stroke="#FEF3C7" stroke-width="0.45" stroke-linecap="round" opacity="0.9">
+      <line x1="20.5" y1="7" x2="23" y2="4.5">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2.6s" repeatCount="indefinite"/>
+      </line>
+      <line x1="21.5" y1="8" x2="24" y2="7">
+        <animate attributeName="opacity" values="1;0.5;1" dur="2.6s" repeatCount="indefinite"/>
+      </line>
     </g>
+    <circle cx="20.8" cy="7.3" r="0.85" fill="#FEF9C3" opacity="0.85">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
   </svg>
 )}
 

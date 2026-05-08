@@ -1073,41 +1073,51 @@ export function mountCosmos(data: CosmosData): void {
     ctx.beginPath();
     ctx.arc(x, y, haloR, 0, TWO_PI);
     ctx.fill();
-    // V3.3 — atmospheric ring at r*1.05 was always-on, creating "two rings around
-    // every body" noise (see Sush's polish brief 9 May 2026 PM). Now appears only
-    // on hover/focus as a soft breathing pulse synchronised to the focus ring.
-    if (b.kind !== 'star' && (isHovered || isFocused)) {
+    // V3.3.1 — Inner atmospheric ring (the "spherical" ring) is ALWAYS-ON for
+    // planets and moons only. Sush wants every planet/moon to feel volumetric;
+    // this thin ring gives them a sphere-like edge. At rest it's subtle; on
+    // hover/focus it brightens with a gentle breath, doubling as the click
+    // indicator. The previous OUTER pulsing ring (was at r*2.1+) has been
+    // removed — the brighter halo + brighter inner ring is enough on focus.
+    // External bodies (comets, beacons, outposts) skip this ring because their
+    // satellite/icon shapes aren't spherical — they get the halo gradient only.
+    const isSphereLike = b.kind === 'planet' || b.kind === 'moon';
+    if (isSphereLike) {
       const t = reducedMotion ? 0 : getRealT();
-      // Slow breath: 0..1 oscillator, period ~3.2s on focus, ~2s on hover only.
+      const breathing = (isHovered || isFocused) && !reducedMotion;
+      const periodSec = isFocused ? 3.2 : 2.0;
+      const breath = breathing ? (0.5 + 0.5 * Math.sin((t / periodSec) * TWO_PI)) : 0;
+      const restAlpha = 0.32;
+      const peakAlpha = isFocused ? 0.90 : (isHovered ? 0.58 : restAlpha);
+      const ringAlpha = (breathing
+        ? (restAlpha + (peakAlpha - restAlpha) * breath)
+        : restAlpha) * alpha;
+      ctx.strokeStyle = withAlpha(b.glowOuter, ringAlpha);
+      ctx.lineWidth = isFocused ? 1.5 : 1.2;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.05, 0, TWO_PI);
+      ctx.stroke();
+    }
+    // V3.3.1 — Focus indicator for non-sphere bodies (satellites/beacons): a
+    // soft breathing ring that appears only on hover/focus. Keeps the click
+    // affordance without forcing them into a sphere shape.
+    if (!isSphereLike && b.kind !== 'star' && (isHovered || isFocused)) {
+      const t = reducedMotion ? 0 : getRealT();
       const periodSec = isFocused ? 3.2 : 2.0;
       const breath = 0.5 + 0.5 * Math.sin((t / periodSec) * TWO_PI);
-      const baseAlpha = isFocused ? 0.55 : 0.30;
-      const peakAlpha = isFocused ? 0.85 : 0.50;
-      const ringAlpha = (baseAlpha + (peakAlpha - baseAlpha) * breath) * alpha;
-      const ringR = r * (1.05 + 0.06 * breath); // 1.05× → 1.11× breath
-      ctx.strokeStyle = withAlpha(b.glowOuter, ringAlpha);
-      ctx.lineWidth = 1.3;
+      const baseA = isFocused ? 0.50 : 0.28;
+      const peakA = isFocused ? 0.85 : 0.50;
+      const focusAlpha = (baseA + (peakA - baseA) * breath) * alpha;
+      ctx.strokeStyle = withAlpha(b.glowOuter, focusAlpha);
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(x, y, ringR, 0, TWO_PI);
+      ctx.arc(x, y, r * 1.6, 0, TWO_PI);
       ctx.stroke();
     }
-    // V3.3 — MCP star: keep ONE focus indicator (the larger halo above already
-    // makes it bright). The previous always-on second halo ring was contributing
-    // to the "rings everywhere" noise. Star still pulses via starPulseMul.
-    if (isHovered || isFocused) {
-      // V3.3 — focus/hover ring with breathing pulse instead of static stroke.
-      const t = reducedMotion ? 0 : getRealT();
-      const periodSec = isFocused ? 3.2 : 2.0;
-      const breath = 0.5 + 0.5 * Math.sin((t / periodSec) * TWO_PI + Math.PI / 3);
-      const baseA = isFocused ? 0.65 : 0.45;
-      const peakA = isFocused ? 0.95 : 0.70;
-      const focusAlpha = baseA + (peakA - baseA) * breath;
-      ctx.strokeStyle = withAlpha(data.atmosphere.accent, focusAlpha);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(x, y, r * (2.1 + 0.15 * breath), 0, TWO_PI);
-      ctx.stroke();
-    }
+    // V3.3.1 — outer focus pulse ring (was r*2.1→2.25 sin-wave) DELETED.
+    // Sush feedback 9 May 2026 PM: too noisy when colliding with neighbour
+    // bodies' halos. The inner atmospheric ring (above) now handles both the
+    // spherical-shape job AND the focus indicator role for planets/moons.
   }
 
   // P1 #12 — sonar ping ring expanding from a body, dissipates over PING_DURATION_MS.

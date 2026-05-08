@@ -71,7 +71,7 @@
           "content": "Practice exams for AZ-900, AZ-104, AI-900, MS-900 and more. $9 per cert. One year of access.",
           "founder": "Most cert-prep sites charge $79 for what should cost $9. Honest take? It still costs me to run.",
           "stats": ["12+ certs", "$9 each", "1 year access"],
-          "orbit": { "radius": 75, "speedSec": 14, "phase": 60 },
+          "orbit": { "radius": 55, "speedSec": 14, "phase": 60 },
           "body": { "size": 22, "glowCore": "#F4ECDA", "glowOuter": "#E0D7BE" }
         }
       ]
@@ -230,7 +230,7 @@
         "stats": ["54K+ subscribers", "75 videos", "main channel"],
         "ctaLabel": "Open YouTube channel",
         "ctaIcon": "↗",
-        "body": { "size": 26, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
+        "body": { "size": 30, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
         "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 90, "tailLen": 220 },
         "outpost": { "thetaDeg": -120 }
       },
@@ -246,7 +246,7 @@
         "stats": ["short clips", "cert-prep cuts", "no setup"],
         "ctaLabel": "Open Bites channel",
         "ctaIcon": "↗",
-        "body": { "size": 22, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
+        "body": { "size": 26, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
         "comet": { "orbitMul": 1.42, "speedSec": 220, "ecc": 0.18, "tilt": -8, "phase": 200, "tailLen": 130 },
         "outpost": { "thetaDeg": -90 }
       },
