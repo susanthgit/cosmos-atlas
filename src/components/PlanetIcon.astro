@@ -18,15 +18,19 @@ const maskId = `pa-${scope}-${slug}-mask`;
 ---
 
 {slug === 'earth' && (
-  <img
-    src="/planets/earth-lotus.webp"
-    width={size}
-    height={size}
-    alt=""
-    loading="eager"
-    decoding="async"
-    style={`width:${size}px;height:${size}px;object-fit:contain;display:block`}
-  />
+  /* V3 polish #8 — AVIF lotus with WebP fallback. ~30% smaller, identical visual. */
+  <picture>
+    <source srcset="/planets/earth-lotus.avif" type="image/avif" />
+    <img
+      src="/planets/earth-lotus.webp"
+      width={size}
+      height={size}
+      alt=""
+      loading="eager"
+      decoding="async"
+      style={`width:${size}px;height:${size}px;object-fit:contain;display:block`}
+    />
+  </picture>
 )}
 
 {slug === 'guided' && (

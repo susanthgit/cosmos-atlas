@@ -1,0 +1,233 @@
+---
+// V3 polish #11 — Cosmic 404 page.
+// One quiet sun-corona, a soft starfield, plain words, link home.
+// Voice: honest, gentle. No jargon, no emoji-as-mascot.
+//
+// Reuses Base.astro so the favicon, theme-color, font load, and OG meta apply.
+// Pure SSR — no JS needed. Twinkles are CSS-only and respect reduced motion.
+import Base from '../layouts/Base.astro';
+
+const stars = Array.from({ length: 24 }, (_, i) => ({
+  x: ((i * 37 + 11) % 100),
+  y: ((i * 23 + 7) % 100),
+  delay: ((i * 311) % 4800) / 1000,
+  size: i % 5 === 0 ? 2.5 : 1.5,
+}));
+---
+
+<Base
+  title="Lost in deep space — Cosmos Atlas"
+  description="The page you were looking for has drifted out of orbit. Find your way back to the cosmos."
+  canonical="https://cosmos.aguidetocloud.com/404"
+>
+  <main class="lost">
+    <div class="lost-sky" aria-hidden="true">
+      {stars.map((s) => (
+        <span
+          class="lost-star"
+          style={`left:${s.x}%;top:${s.y}%;width:${s.size}px;height:${s.size}px;animation-delay:${s.delay}s`}
+        ></span>
+      ))}
+      <div class="lost-corona"></div>
+    </div>
+
+    <section class="lost-message">
+      <p class="lost-meta">404 — out of orbit</p>
+      <h1>Lost in the cosmic dark.</h1>
+      <p class="lost-lede">
+        The page you were aiming for isn't on this map. It might have moved, or
+        it never lived here. The atlas itself is fine — just this single coordinate isn't.
+      </p>
+
+      <div class="lost-actions">
+        <a href="/" class="lost-cta">Back to the cosmos</a>
+        <a href="https://www.aguidetocloud.com/" rel="noopener" class="lost-secondary">
+          Or visit A Guide to Cloud →
+        </a>
+      </div>
+
+      <p class="lost-foot">
+        Looking for something specific? Try one of the planets:
+        <a href="/?planet=earth">Earth</a> ·
+        <a href="/?planet=guided">Guided</a> ·
+        <a href="/?planet=plainai">Plain AI</a> ·
+        <a href="/?planet=shift">Shift</a>
+      </p>
+    </section>
+  </main>
+</Base>
+
+<style>
+  .lost {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: var(--space-6);
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 90% 80% at 50% 50%, var(--bg) 0%, var(--bg-edge) 60%, var(--bg-deep) 100%);
+  }
+
+  .lost-sky {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .lost-star {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--hud);
+    opacity: 0.4;
+    box-shadow: 0 0 4px var(--accent-soft);
+    animation: lost-twinkle 4.6s ease-in-out infinite;
+  }
+
+  @keyframes lost-twinkle {
+    0%, 100% { opacity: 0.18; transform: scale(0.85); }
+    50% { opacity: 0.85; transform: scale(1.1); }
+  }
+
+  .lost-corona {
+    position: absolute;
+    left: 50%;
+    top: 18%;
+    width: 320px;
+    height: 320px;
+    margin: -160px 0 0 -160px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      var(--accent) 0%,
+      color-mix(in srgb, var(--accent) 35%, transparent) 22%,
+      color-mix(in srgb, var(--accent) 12%, transparent) 48%,
+      transparent 78%);
+    filter: blur(8px);
+    opacity: 0.55;
+    animation: lost-pulse 6s ease-in-out infinite;
+  }
+
+  @keyframes lost-pulse {
+    0%, 100% { opacity: 0.42; transform: scale(0.98); }
+    50% { opacity: 0.65; transform: scale(1.04); }
+  }
+
+  .lost-message {
+    position: relative;
+    max-width: 560px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .lost-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 var(--space-4);
+  }
+
+  .lost h1 {
+    font-family: var(--display);
+    font-size: clamp(34px, 6vw, 56px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    margin: 0 0 var(--space-5);
+    color: var(--hud);
+  }
+
+  .lost-lede {
+    font-family: var(--display);
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--hud-muted);
+    margin: 0 auto var(--space-6);
+    max-width: 48ch;
+  }
+
+  .lost-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    justify-content: center;
+    align-items: center;
+    margin-bottom: var(--space-7);
+  }
+
+  .lost-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    transition: transform var(--duration-base) var(--ease-out),
+                box-shadow var(--duration-base) var(--ease-out);
+  }
+
+  .lost-cta:hover, .lost-cta:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(255, 179, 71, 0.35);
+    color: var(--bg);
+    text-decoration: none;
+  }
+
+  .lost-cta::after {
+    content: '→';
+    font-family: var(--mono);
+  }
+
+  .lost-secondary {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hud-muted);
+  }
+
+  .lost-secondary:hover, .lost-secondary:focus-visible {
+    color: var(--accent);
+  }
+
+  .lost-foot {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--hud-faint);
+    margin: 0;
+  }
+
+  .lost-foot a {
+    color: var(--hud-muted);
+    margin: 0 4px;
+  }
+
+  .lost-foot a:hover {
+    color: var(--accent);
+  }
+
+  @media (max-width: 640px) {
+    .lost-corona {
+      width: 220px;
+      height: 220px;
+      margin: -110px 0 0 -110px;
+      top: 14%;
+    }
+    .lost-actions { gap: var(--space-3); }
+    .lost-foot { font-size: 11px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lost-star, .lost-corona { animation: none !important; }
+  }
+</style>

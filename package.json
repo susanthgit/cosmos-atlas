@@ -8,21 +8,24 @@
     "dev": "astro dev --port 4287",
     "start": "astro dev --port 4287",
     "freshness": "node scripts/freshness.mjs",
-    "prebuild": "node scripts/freshness.mjs",
+    "build-images": "node scripts/build-images.mjs",
+    "prebuild": "node scripts/freshness.mjs && node scripts/build-images.mjs",
     "build": "astro build",
     "preview": "astro preview --port 4287",
-    "deploy": "node scripts/freshness.mjs && astro build && node deploy.mjs",
+    "deploy": "node scripts/freshness.mjs && node scripts/build-images.mjs && astro build && node deploy.mjs",
     "astro": "astro"
   },
   "dependencies": {
-    "@fontsource/jetbrains-mono": "^5.2.8",
-    "@fontsource/space-grotesk": "^5.2.10",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
+    "@fontsource/caveat": "^5.2.8",
     "astro": "^5.0.0"
   },
   "devDependencies": {
     "@noble/hashes": "^2.2.0",
     "@types/node": "^22.0.0",
     "playwright": "^1.59.1",
+    "sharp": "^0.34.5",
     "typescript": "^5.6.0"
   }
 }

@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 
 const BASE = 'http://localhost:4287/';
-const OUT = 'C:/Users/ssutheesh/.copilot/session-state/2c3459b8-af11-46bb-b23e-bd7ebd5acbe2/files/screens-after';
+const OUT = 'C:/Users/ssutheesh/.copilot/session-state/6556f394-39b3-4c3f-989d-d8349590a842/files/screens-after';
 await fs.mkdir(OUT, { recursive: true });
 
 const browser = await chromium.launch();
@@ -20,7 +20,8 @@ async function snap(label, deviceCfg, target = BASE, actions = async () => {}) {
   await page.goto(target, { waitUntil: 'networkidle' });
   await page.waitForTimeout(800);
   await actions(page);
-  await page.screenshot({ path: path.join(OUT, `${label}.png`), fullPage: false });
+  await page.evaluate(() => document.fonts && document.fonts.ready).catch(() => {});
+  await page.screenshot({ path: path.join(OUT, `${label}.png`), fullPage: false, timeout: 60000 });
   log(`✓ ${label}`);
   await ctx.close();
 }

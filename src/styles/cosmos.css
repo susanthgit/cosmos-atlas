@@ -135,3 +135,61 @@ body[data-view-mode="topdown"] .hud-shortcuts li:nth-child(3) { opacity: 0.4; }
 .cosmos[data-warp] .planet-body__icon { filter: blur(1.6px) drop-shadow(0 0 14px var(--accent-soft)); transition: filter 280ms cubic-bezier(0.18, 0.7, 0.2, 1); }
 .cosmos[data-warp="out"] .planet-body__icon { filter: blur(1.2px) drop-shadow(0 0 10px var(--accent-soft)); }
 @media (prefers-reduced-motion: reduce) { .cosmos[data-warp] .planet-body__icon { filter: drop-shadow(0 0 6px rgba(2, 3, 14, 0.4)); transition: none; } }
+/* V3.x polish #5 — Caveat handwritten founder note. Sush's voice should *look*
+   like handwriting on the napkin, not body copy. Applies in the open card,
+   the moon block inside the open card, and the static SSR fallback. */
+.card-founder,
+.moon-text--founder,
+.static-planet__body p.founder,
+.static-moon p.founder {
+  font-family: var(--handwritten) !important;
+  font-style: normal;
+  font-weight: 400;
+  font-size: clamp(18px, 2.4vw, 22px);
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: var(--hud);
+  border-left: 2px solid var(--accent);
+  padding: var(--space-2) 0 var(--space-2) var(--space-4);
+  transform: rotate(-0.4deg);
+  transform-origin: 0 50%;
+}
+
+.card-founder { background: rgba(255, 179, 71, 0.04); padding-right: var(--space-3); border-radius: 2px; }
+.moon-text--founder { font-size: clamp(16px, 2vw, 19px); }
+.static-planet__body p.founder { font-size: clamp(17px, 2.2vw, 20px); }
+.static-moon p.founder { font-size: clamp(15px, 1.9vw, 18px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card-founder, .moon-text--founder, .static-planet__body p.founder, .static-moon p.founder {
+    transform: none;
+  }
+}
+
+/* V3.x polish — Open follow-up A. The fixed COSMOS VIEW pill in list view sat
+   at low opacity (0.4) which let the italic founder notes show through it as
+   the user scrolled past. Solid backdrop + drop-shadow + a soft fade strip
+   under the top edge so content fades into the chrome instead of intersecting. */
+body.list-view .hud-tools .hud-btn,
+body.list-view .hud-tools .hud-view-btn {
+  background: rgba(2, 3, 14, 0.92);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 4px 18px rgba(2, 3, 14, 0.6), 0 0 0 1px var(--rule);
+}
+
+body.list-view::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: linear-gradient(180deg, rgba(2, 3, 14, 0.85) 0%, rgba(2, 3, 14, 0.55) 60%, transparent 100%);
+  pointer-events: none;
+  z-index: 199;
+}
+
+@media (max-width: 720px) {
+  body.list-view::before { height: 48px; }
+}

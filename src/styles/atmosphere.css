@@ -22,8 +22,9 @@
   --shadow: rgba(2, 3, 14, 0.85);
   --shadow-card: 0 24px 64px rgba(2, 3, 14, 0.8), 0 4px 12px rgba(2, 3, 14, 0.6);
 
-  --display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: 'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --handwritten: 'Caveat', 'Brush Script MT', cursive;
 
   --space-1: 4px;
   --space-2: 8px;
