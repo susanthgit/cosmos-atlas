@@ -139,9 +139,11 @@ export function mountCosmos(data: CosmosData): void {
   const COSMOS_TILT_RAD = (data.atmosphere.tilt ?? 30) * DEG;
 
   // V2.2 — view mode: 'cosmos' (tilted) ↔ 'topdown' (overhead). Tilt lerps to target.
+  // V3.x — topdown is now the default per Sush. Existing visitors who
+  // explicitly toggled to either mode keep their stored preference.
   const viewModeKey = 'cosmosViewMode.v1';
   const storedMode = window.localStorage.getItem(viewModeKey);
-  let viewMode: 'cosmos' | 'topdown' = storedMode === 'topdown' ? 'topdown' : 'cosmos';
+  let viewMode: 'cosmos' | 'topdown' = storedMode === 'cosmos' ? 'cosmos' : 'topdown';
   let targetTiltRad = viewMode === 'topdown' ? 0 : COSMOS_TILT_RAD;
   if (viewMode === 'topdown') setTilt(0);
   function applyViewMode(mode: 'cosmos' | 'topdown', persist = true): void {
@@ -269,7 +271,9 @@ export function mountCosmos(data: CosmosData): void {
         } else {
           qs.delete('pan');
         }
-        if (viewMode === 'topdown') qs.set('view', 'topdown'); else qs.delete('view');
+        // URL convention: default mode is omitted, non-default is set.
+        // Default flipped to topdown in V3.x, so cosmos is now the explicit one.
+        if (viewMode === 'cosmos') qs.set('view', 'cosmos'); else qs.delete('view');
         const next = qs.toString();
         const url = next ? `${window.location.pathname}?${next}` : window.location.pathname;
         window.history.replaceState(null, '', url);
