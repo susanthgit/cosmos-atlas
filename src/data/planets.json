@@ -1,0 +1,54 @@
+{
+  "_comment": "PLANETS MANIFEST — vendored read-only from Earth's mirrors (aguidetocloud-revamp/data/planets.toml + 4 JSON mirrors). Source of truth for slug/name/url/tagline. Atlas adds atmosphere/orbit/card fields in atlas.json (sibling) — atlas does NOT pollute the canonical manifest. When other planets refresh their manifest, this file should be re-vendored. Last vendored: 8 May 2026.",
+  "cosmos": {
+    "newsletter_url": "https://guided-weekly.beehiiv.com/subscribe",
+    "newsletter_label": "A Guide to Cloud Newsletter",
+    "newsletter_pitch": "Cloud & AI insights, every Sunday — in 2 minutes. Free.",
+    "feedback_url": "https://www.aguidetocloud.com/about/",
+    "parent_site": "https://www.aguidetocloud.com/"
+  },
+  "planets": [
+    {
+      "slug": "earth",
+      "name": "A Guide to Cloud",
+      "url": "https://www.aguidetocloud.com/",
+      "tagline": "the home — certs, tools, mind maps"
+    },
+    {
+      "slug": "guided",
+      "name": "Guided",
+      "url": "https://www.aguidetocloud.com/guided/",
+      "tagline": "cert prep — affordable practice exams"
+    },
+    {
+      "slug": "brainbar",
+      "name": "CMD",
+      "url": "https://cmd.aguidetocloud.com/",
+      "tagline": "Microsoft jargon decoder"
+    },
+    {
+      "slug": "shift",
+      "name": "Shift",
+      "url": "https://shift.aguidetocloud.com/",
+      "tagline": "the AI job-change wire"
+    },
+    {
+      "slug": "plainai",
+      "name": "Plain AI",
+      "url": "https://plainai.aguidetocloud.com/",
+      "tagline": "museum of AI, in plain English"
+    },
+    {
+      "slug": "agentic",
+      "name": "Agentic",
+      "url": "https://agents.aguidetocloud.com/",
+      "tagline": "agent cockpit — for techies building with agents"
+    },
+    {
+      "slug": "claw",
+      "name": "Claw",
+      "url": "https://claw.aguidetocloud.com/",
+      "tagline": "OpenClaw study reference — plain English"
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "_comment": "ATLAS — atmosphere, sun, planets, moons, MCP star. Atlas-private. Sibling of planets.json (vendored). Per vision §8. Card copy passed through forbidden-words list + 4 voice tests + Sush voice fingerprints + ≤100 word budget. Plain AI + Curriculum carry the 🌱 free forever badge at TOP per constitutional firewall. Last voice pass: 8 May 2026.",
+
+  "atmosphere": {
+    "name": "Deep Cosmos",
+    "background": "#02030E",
+    "backgroundEdge": "#06091A",
+    "hud": "#F2EDE3",
+    "hudMuted": "#A39B8A",
+    "hudFaint": "#5C5749",
+    "accent": "#FFB347",
+    "accentSoft": "#FFD89A",
+    "rule": "rgba(242, 237, 227, 0.12)",
+    "ruleStrong": "rgba(242, 237, 227, 0.28)",
+    "shadow": "rgba(2, 3, 14, 0.85)",
+    "displayFont": "Space Grotesk, ui-sans-serif, system-ui, sans-serif",
+    "monoFont": "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+  },
+
+  "sun": {
+    "label": "the source",
+    "subLabel": "AI co-founder · invisible by design",
+    "tooltip": "The cosmos is held together here. Every planet exists because something is feeding it.",
+    "glowCore": "#FFD89A",
+    "glowOuter": "#FFB347",
+    "size": 22,
+    "pulseSec": 7
+  },
+
+  "planets": [
+    {
+      "slug": "earth",
+      "type": "🌍 Home planet",
+      "atmosphere": "Zen",
+      "status": "live",
+      "tagline": "the home — soft, patient, giving",
+      "audience": "Anyone learning Microsoft cloud or AI for the first time, especially from a non-tech background.",
+      "content": "Tools, mind maps, certification paths, and a long-running blog. Each one started because Sush needed it himself.",
+      "founder": "In my head, I'm still the curious intern. What overflows lands here.",
+      "orbit": { "radius": 200, "ecc": 0.04, "tilt": 6, "speedSec": 88, "phase": 30 },
+      "body": { "size": 18, "glowCore": "#A5B4FC", "glowOuter": "#6366F1" },
+      "moons": [
+        {
+          "slug": "guided",
+          "name": "Guided",
+          "url": "https://www.aguidetocloud.com/guided/",
+          "type": "🌑 Moon of Earth",
+          "atmosphere": "Zen + crescent",
+          "status": "live",
+          "tagline": "cert prep — no gatekeeping",
+          "audience": "Anyone studying for a Microsoft cert who wants real practice without paying $79.",
+          "content": "Practice exams for AZ-900, AZ-104, AI-900, MS-900 and more. $9 per cert. One year of access.",
+          "founder": "Most cert-prep sites charge $79 for what should cost $9. Honest take? It still costs me to run.",
+          "orbit": { "radius": 36, "speedSec": 14, "phase": 60 },
+          "body": { "size": 7, "glowCore": "#F4ECDA", "glowOuter": "#E0D7BE" }
+        }
+      ]
+    },
+    {
+      "slug": "brainbar",
+      "type": "🪐 Planet",
+      "atmosphere": "Terminal",
+      "status": "live",
+      "tagline": "Microsoft jargon, decoded",
+      "audience": "Non-tech folks tired of not knowing what 'GCC High' actually means.",
+      "content": "A growing index of Microsoft jargon. Type `$_` to launch. One entry, one plain-English answer.",
+      "founder": "I forgot what GCC High meant for the third time. So I built CMD.",
+      "orbit": { "radius": 290, "ecc": 0.08, "tilt": -4, "speedSec": 130, "phase": 110 },
+      "body": { "size": 14, "glowCore": "#86EFAC", "glowOuter": "#22C55E" }
+    },
+    {
+      "slug": "shift",
+      "type": "🪐 Planet",
+      "atmosphere": "Newspaper",
+      "status": "live",
+      "tagline": "the AI job-change wire",
+      "audience": "Anyone watching their role shift under AI and asking 'am I still safe in five years?'",
+      "content": "Honest news on jobs that grew, jobs that shrank, and jobs no one saw coming. New issue every Sunday.",
+      "founder": "I started reading job postings every weekend because the pace scared me. Now you can read them with me.",
+      "orbit": { "radius": 370, "ecc": 0.06, "tilt": 10, "speedSec": 165, "phase": 200 },
+      "body": { "size": 15, "glowCore": "#FDBA74", "glowOuter": "#E25822" }
+    },
+    {
+      "slug": "plainai",
+      "type": "🪐 Planet",
+      "atmosphere": "Museum",
+      "status": "live",
+      "badge": "🌱 free forever · no money angle, ever",
+      "tagline": "AI, in plain English",
+      "audience": "Anyone confused by AI hype, doom, or jargon. Mums, partners, friends, you.",
+      "content": "Topics, weekly halts of what changed, and short paths through ideas. Plain words only. No hype, no doom.",
+      "founder": "If I can't explain it to my mum at the dinner table, I haven't understood it yet.",
+      "orbit": { "radius": 450, "ecc": 0.1, "tilt": -8, "speedSec": 200, "phase": 290 },
+      "body": { "size": 17, "glowCore": "#A5F3FC", "glowOuter": "#67E8F9" },
+      "moons": [
+        {
+          "slug": "curriculum",
+          "name": "Plain AI Curriculum",
+          "url": "https://plainai.aguidetocloud.com/learn/",
+          "type": "🌑 Moon of Plain AI",
+          "atmosphere": "Museum + commons green",
+          "status": "building",
+          "badge": "🌱 free forever · no money angle, ever",
+          "tagline": "free-forever lessons, voluntary",
+          "audience": "Anyone wanting to navigate the AI wave one thing at a time. Starting with families.",
+          "content": "Short lessons in plain English. CC BY-SA 4.0. No login, no email capture, no money angle, ever.",
+          "founder": "Voluntary work for the global commons. No profit, no glory. Pure value.",
+          "orbit": { "radius": 40, "speedSec": 18, "phase": 240 },
+          "body": { "size": 7, "glowCore": "#BBF7D0", "glowOuter": "#86EFAC" }
+        }
+      ]
+    },
+    {
+      "slug": "agentic",
+      "type": "🪐 Planet",
+      "atmosphere": "Cockpit",
+      "status": "live",
+      "tagline": "agent cockpit — for techies",
+      "audience": "Developers and SREs building with agents. Cockpit-density UI. Mostly dark.",
+      "content": "A field-guide for what to build, where to plug in, what to ship. Cyan, green, amber signal palette.",
+      "founder": "If you're already in MCP, function-calls, and orchestration land — this is where you sit.",
+      "orbit": { "radius": 540, "ecc": 0.05, "tilt": 4, "speedSec": 245, "phase": 30 },
+      "body": { "size": 14, "glowCore": "#7DD3FC", "glowOuter": "#0EA5E9" }
+    },
+    {
+      "slug": "claw",
+      "type": "🪐 Planet",
+      "atmosphere": "Study reference",
+      "status": "live",
+      "tagline": "OpenClaw, in plain English",
+      "audience": "Anyone trying to understand how OpenClaw actually works without reading 200-page specs.",
+      "content": "A reading reference with sidebar TOC, margin notes, and a long calm column. Light or dark.",
+      "founder": "I had to read OpenClaw three times. So I wrote down the version I wish I'd had.",
+      "orbit": { "radius": 620, "ecc": 0.07, "tilt": -10, "speedSec": 290, "phase": 150 },
+      "body": { "size": 13, "glowCore": "#FCA5A5", "glowOuter": "#FF2626" }
+    }
+  ],
+
+  "mcp": {
+    "slug": "mcp",
+    "type": "⭐ Star",
+    "atmosphere": "invisible",
+    "status": "live (collective + per-planet emerging)",
+    "name": "MCP Move",
+    "url": "https://mcp.aguidetocloud.com/",
+    "tagline": "the cosmos, machine-readable",
+    "audience": "Claude, ChatGPT, Copilot, your agents, your scripts. Anything that speaks MCP.",
+    "content": "An MCP move that exposes the cosmos. Per-planet endpoints under construction. CMD live first.",
+    "founder": "If a future agent wants to recommend the right cert or jargon entry, here's the API.",
+    "endpoints": [
+      { "slug": "mcp-collective", "name": "MCP Move (collective)", "url": "https://mcp.aguidetocloud.com/", "status": "live" },
+      { "slug": "brainbar-mcp", "name": "CMD index", "url": "https://cmd.aguidetocloud.com/cmd-index.json", "status": "live" },
+      { "slug": "agentic-mcp", "name": "Agentic data feed", "url": "https://agents.aguidetocloud.com/", "status": "live" },
+      { "slug": "earth-mcp", "name": "Earth", "url": "", "status": "planned" },
+      { "slug": "plainai-mcp", "name": "Plain AI", "url": "", "status": "planned" },
+      { "slug": "shift-mcp", "name": "Shift", "url": "", "status": "planned" },
+      { "slug": "claw-mcp", "name": "Claw", "url": "", "status": "planned" }
+    ],
+    "starfield": [
+      { "x": 0.12, "y": 0.18, "size": 1.5, "twinkleSec": 4.2 },
+      { "x": 0.78, "y": 0.22, "size": 1.0, "twinkleSec": 5.6 },
+      { "x": 0.31, "y": 0.81, "size": 1.2, "twinkleSec": 3.8 },
+      { "x": 0.92, "y": 0.66, "size": 0.9, "twinkleSec": 6.1 },
+      { "x": 0.06, "y": 0.55, "size": 1.4, "twinkleSec": 4.9 },
+      { "x": 0.62, "y": 0.91, "size": 1.1, "twinkleSec": 5.2 },
+      { "x": 0.45, "y": 0.07, "size": 1.3, "twinkleSec": 4.5 },
+      { "x": 0.85, "y": 0.42, "size": 1.0, "twinkleSec": 6.4 },
+      { "x": 0.22, "y": 0.34, "size": 0.8, "twinkleSec": 3.6 },
+      { "x": 0.71, "y": 0.78, "size": 1.6, "twinkleSec": 5.0 },
+      { "x": 0.04, "y": 0.93, "size": 0.9, "twinkleSec": 4.7 },
+      { "x": 0.97, "y": 0.09, "size": 1.0, "twinkleSec": 5.8 }
+    ]
+  },
+
+  "decorativeStars": [
+    { "x": 0.08, "y": 0.12, "size": 0.6, "alpha": 0.55 },
+    { "x": 0.14, "y": 0.25, "size": 0.4, "alpha": 0.4 },
+    { "x": 0.21, "y": 0.07, "size": 0.7, "alpha": 0.6 },
+    { "x": 0.27, "y": 0.42, "size": 0.5, "alpha": 0.5 },
+    { "x": 0.33, "y": 0.16, "size": 0.4, "alpha": 0.35 },
+    { "x": 0.39, "y": 0.89, "size": 0.6, "alpha": 0.55 },
+    { "x": 0.46, "y": 0.27, "size": 0.5, "alpha": 0.45 },
+    { "x": 0.52, "y": 0.66, "size": 0.7, "alpha": 0.6 },
+    { "x": 0.58, "y": 0.04, "size": 0.4, "alpha": 0.4 },
+    { "x": 0.65, "y": 0.51, "size": 0.6, "alpha": 0.55 },
+    { "x": 0.72, "y": 0.18, "size": 0.5, "alpha": 0.45 },
+    { "x": 0.79, "y": 0.83, "size": 0.4, "alpha": 0.4 },
+    { "x": 0.85, "y": 0.32, "size": 0.7, "alpha": 0.6 },
+    { "x": 0.89, "y": 0.74, "size": 0.5, "alpha": 0.5 },
+    { "x": 0.94, "y": 0.21, "size": 0.6, "alpha": 0.55 },
+    { "x": 0.18, "y": 0.71, "size": 0.4, "alpha": 0.4 },
+    { "x": 0.25, "y": 0.62, "size": 0.5, "alpha": 0.45 },
+    { "x": 0.42, "y": 0.78, "size": 0.6, "alpha": 0.55 },
+    { "x": 0.56, "y": 0.36, "size": 0.4, "alpha": 0.4 },
+    { "x": 0.68, "y": 0.96, "size": 0.5, "alpha": 0.5 }
+  ]
+}

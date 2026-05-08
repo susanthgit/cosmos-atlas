@@ -1,0 +1,25 @@
+# build artefacts
+node_modules/
+dist/
+.astro/
+.cache/
+
+# env
+.env
+.env.local
+.env.production
+
+# editor + os
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# misc
+*.tsbuildinfo

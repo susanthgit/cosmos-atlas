@@ -1,0 +1,21 @@
+{
+  "name": "cosmos-atlas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The bold, lively, interactive map of the A Guide to Cloud cosmos. Living solar system at cosmos.aguidetocloud.com.",
+  "scripts": {
+    "dev": "astro dev --port 4287",
+    "start": "astro dev --port 4287",
+    "build": "astro build",
+    "preview": "astro preview --port 4287",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

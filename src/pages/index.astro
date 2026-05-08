@@ -1,0 +1,258 @@
+---
+import Base from '../layouts/Base.astro';
+import planets from '../data/planets.json';
+import atlas from '../data/atlas.json';
+
+// Merge planets manifest (canonical slug/name/url/tagline) with atlas entries (atmosphere/cards/orbit)
+type ManifestPlanet = { slug: string; name: string; url: string; tagline: string };
+type AtlasMoon = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; orbit: { radius: number; speedSec: number; phase?: number }; body: { size: number; glowCore: string; glowOuter: string } };
+type AtlasPlanet = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; orbit: { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }; body: { size: number; glowCore: string; glowOuter: string }; moons?: AtlasMoon[] };
+
+const manifestBySlug = new Map<string, ManifestPlanet>();
+for (const p of planets.planets as ManifestPlanet[]) {
+  manifestBySlug.set(p.slug, p);
+}
+
+const composed = (atlas.planets as AtlasPlanet[]).map((p) => {
+  const m = manifestBySlug.get(p.slug);
+  const moons = (p.moons ?? []).map((moon) => {
+    const moonManifest = manifestBySlug.get(moon.slug);
+    return {
+      ...moon,
+      name: moonManifest?.name ?? moon.name ?? moon.slug,
+      url: moonManifest?.url ?? moon.url ?? '',
+    };
+  });
+  return {
+    ...p,
+    name: m?.name ?? p.name ?? p.slug,
+    url: m?.url ?? p.url ?? '',
+    moons,
+  };
+});
+
+// JSON-LD — SiteNavigationElement so search engines understand the planet list
+const navItems = composed.flatMap((p) => {
+  const items: Array<{ name: string; url: string }> = [{ name: p.name, url: p.url }];
+  for (const moon of p.moons ?? []) {
+    if (moon.url) items.push({ name: moon.name, url: moon.url });
+  }
+  return items;
+});
+navItems.push({ name: atlas.mcp.name, url: atlas.mcp.url });
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Cosmos Atlas',
+  url: 'https://cosmos.aguidetocloud.com/',
+  description: 'A living solar system mapping the A Guide to Cloud cosmos.',
+  publisher: {
+    '@type': 'Person',
+    name: 'Susanth Sutheesh',
+  },
+  hasPart: navItems.map((n) => ({
+    '@type': 'WebPage',
+    name: n.name,
+    url: n.url,
+  })),
+};
+
+// Pass merged data + atmosphere to the client-side canvas controller
+const clientData = {
+  atmosphere: atlas.atmosphere,
+  sun: atlas.sun,
+  planets: composed,
+  mcp: atlas.mcp,
+  decorativeStars: atlas.decorativeStars,
+};
+---
+
+<Base
+  title="Cosmos Atlas — A Guide to Cloud"
+  description="A living solar system mapping the A Guide to Cloud cosmos. Click a planet to learn what it is, where it sits, who it's for."
+>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <main class="cosmos" data-state="idle" data-js="pending" id="cosmos-root">
+    <!-- Canvas — the bold, lively, interactive cosmos -->
+    <canvas
+      class="canvas-stage"
+      id="cosmos-canvas"
+      aria-hidden="true"
+      tabindex="-1"
+    ></canvas>
+
+    <!-- HUD overlay -->
+    <div class="hud" role="presentation">
+      <header class="hud-mast">
+        <strong class="mast-mark">🌌 Cosmos Atlas</strong>
+        <span class="mast-rule" aria-hidden="true"></span>
+        <span class="mast-tag">A Guide to Cloud</span>
+      </header>
+
+      <nav class="hud-tools" aria-label="View tools">
+        <button
+          type="button"
+          class="hud-btn"
+          id="toggle-list"
+          aria-pressed="false"
+          aria-label="Tap to read the planet list view"
+          title="Tap for the static planet list (great for screen readers)"
+        >
+          📋 List view
+        </button>
+      </nav>
+
+      <p class="hud-hint" aria-hidden="true">Hover · click a planet to see what it is</p>
+
+      <p class="hud-attribution">
+        <a href="https://www.aguidetocloud.com/about/" rel="noopener">by A Guide to Cloud</a>
+      </p>
+
+      <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- Card panel — slides in when a planet/moon is opened -->
+    <aside
+      class="card-panel"
+      id="card-panel"
+      data-open="false"
+      aria-labelledby="card-name"
+      aria-hidden="true"
+      role="complementary"
+    >
+      <button
+        type="button"
+        class="card-close"
+        id="card-close"
+        aria-label="Close planet card"
+      >×</button>
+      <div class="card-body" id="card-body"></div>
+    </aside>
+
+    <!-- Static SSR fallback — visible without JS, hidden when canvas mounts -->
+    <article class="static-shell" id="static-shell">
+      <header class="static-hero">
+        <h1>The cosmos, mapped.</h1>
+        <p>A growing universe of planets, moons, and a star — each one for a different audience, each with its own atmosphere. The interactive version turns this list into a living solar system. This is the honest fallback.</p>
+        <p class="static-fallback-note">
+          You're reading the static planet list. It's here for screen readers, search engines, low-bandwidth visitors, and anyone whose JavaScript is off. The interactive version lives at the same URL — refresh once JS is enabled.
+        </p>
+      </header>
+
+      <section class="static-section" aria-labelledby="sun-heading">
+        <span class="section-tag">☀️ The source</span>
+        <h2 id="sun-heading">{atlas.sun.label}</h2>
+        <p class="lede">{atlas.sun.subLabel} — every planet exists because something is feeding it. The Sun does not show up on any planet's surface. By design.</p>
+      </section>
+
+      <section class="static-section" aria-labelledby="planets-heading">
+        <span class="section-tag">🪐 7 worlds</span>
+        <h2 id="planets-heading">The planets</h2>
+        <p class="lede">Listed roughly inner-orbit-out. Each card mirrors what you'd see if you opened it in the interactive cosmos.</p>
+
+        <ol class="static-planets" role="list">
+          {composed.map((p) => (
+            <li class="static-planet" id={`planet-${p.slug}`}>
+              <div class="static-planet__head">
+                <h3>{p.name}</h3>
+                <span class="meta">{p.type} · {p.atmosphere} · {p.status}</span>
+              </div>
+
+              {p.badge && <span class="static-firewall">{p.badge}</span>}
+
+              <p class="static-planet__tagline">{p.tagline}</p>
+
+              <div class="static-planet__body">
+                <div>
+                  <span class="label">Who it's for</span>
+                  <p>{p.audience}</p>
+                </div>
+                <div>
+                  <span class="label">What you'll find</span>
+                  <p>{p.content}</p>
+                </div>
+                <div>
+                  <span class="label">Founder note</span>
+                  <p class="founder">"{p.founder}"</p>
+                </div>
+              </div>
+
+              <a class="static-planet__visit" href={p.url} rel="noopener">Visit {p.name}</a>
+
+              {p.moons && p.moons.length > 0 && (
+                <div class="static-moons">
+                  <p class="static-moons-label">Moons</p>
+                  {p.moons.map((m) => (
+                    <article class="static-moon" id={`moon-${m.slug}`}>
+                      <h4>{m.name}</h4>
+                      <span class="meta">{m.type} · {m.atmosphere} · {m.status}</span>
+                      {m.badge && <span class="static-firewall">{m.badge}</span>}
+                      <p>{m.tagline}</p>
+                      <p>{m.content}</p>
+                      <p class="founder">"{m.founder}"</p>
+                      <a class="visit" href={m.url} rel="noopener">Visit {m.name}</a>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section class="static-section static-mcp" aria-labelledby="mcp-heading">
+        <span class="section-tag">⭐ Star</span>
+        <h2 id="mcp-heading">{atlas.mcp.name}</h2>
+        <p class="lede">{atlas.mcp.tagline}. {atlas.mcp.content}</p>
+
+        <div class="static-planet__body">
+          <div>
+            <span class="label">Who it's for</span>
+            <p>{atlas.mcp.audience}</p>
+          </div>
+          <div>
+            <span class="label">Founder note</span>
+            <p class="founder">"{atlas.mcp.founder}"</p>
+          </div>
+        </div>
+
+        <h3 style="font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: 0.02em; margin: 32px 0 8px; color: var(--hud);">Per-planet endpoints</h3>
+        <ul class="static-mcp-endpoints" role="list">
+          {atlas.mcp.endpoints.map((e) => (
+            <li>
+              <div>
+                <span class="name">{e.name}</span>
+                {e.url && (<><br><span class="endpoint-url">{e.url}</span></>)}
+              </div>
+              <span class={e.status === 'live' ? 'status-live' : 'status-planned'}>
+                {e.status}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <footer class="static-footer">
+        <p>
+          Pre-build · drafted 8 May 2026 · part of the <a href="https://www.aguidetocloud.com/" rel="noopener">A Guide to Cloud</a> cosmos.
+        </p>
+      </footer>
+    </article>
+  </main>
+
+  <script type="application/json" id="cosmos-data" set:html={JSON.stringify(clientData)}></script>
+  <script>
+    import { mountCosmos } from '../scripts/cosmos.ts';
+    const dataEl = document.getElementById('cosmos-data') as HTMLScriptElement | null;
+    if (dataEl?.textContent) {
+      try {
+        const data = JSON.parse(dataEl.textContent);
+        mountCosmos(data);
+      } catch (err) {
+        console.warn('[cosmos] Failed to parse cosmos data; static fallback remains visible.', err);
+      }
+    }
+  </script>
+</Base>
