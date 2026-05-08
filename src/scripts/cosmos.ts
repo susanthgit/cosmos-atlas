@@ -1,20 +1,24 @@
-// Cosmos Atlas — canvas controller
-// The bold, lively, interactive heart of the atlas.
+// Cosmos Atlas — canvas controller (v2: 3D tilted view + HTML body overlays)
+// HTML divs render the SVG planet logos (crisp at any size).
+// Canvas renders: starfield, decorative stars, orbit ellipses (3D-projected),
+//                 sun glow, body halos under each planet.
+// Pointer events live on the body divs, not on the canvas.
 // Honours prefers-reduced-motion, keyboard nav, mobile layout.
 
 interface OrbitPlanet { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }
 interface OrbitMoon { radius: number; speedSec: number; phase?: number }
-interface Body { size: number; glowCore: string; glowOuter: string }
+interface BodyVisuals { size: number; glowCore: string; glowOuter: string }
 
 interface Card {
   slug: string; name: string; url: string;
   type: string; atmosphere: string; status: string;
   badge?: string; tagline: string;
   audience: string; content: string; founder: string;
+  stats?: string[];
 }
 
-interface Moon extends Card { orbit: OrbitMoon; body: Body }
-interface Planet extends Card { orbit: OrbitPlanet; body: Body; moons?: Moon[] }
+interface Moon extends Card { orbit: OrbitMoon; body: BodyVisuals }
+interface Planet extends Card { orbit: OrbitPlanet; body: BodyVisuals; moons?: Moon[] }
 
 interface Sun {
   label: string; subLabel: string; tooltip: string;
@@ -27,12 +31,18 @@ interface AtmosphereTokens {
   accent: string; accentSoft: string;
   rule: string; ruleStrong: string; shadow: string;
   displayFont: string; monoFont: string;
+  tilt?: number;
+  focal?: number;
 }
 
 interface McpEndpoint { slug: string; name: string; url: string; status: string }
-interface McpStar { slug: string; name: string; url: string; type: string; atmosphere: string; status: string;
+interface McpAnchor { x: number; y: number; size: number; glowCore: string; glowOuter: string }
+interface McpStar {
+  slug: string; name: string; url: string; type: string; atmosphere: string; status: string;
   tagline: string; audience: string; content: string; founder: string;
-  endpoints: McpEndpoint[]; starfield: { x: number; y: number; size: number; twinkleSec: number }[] }
+  stats?: string[]; anchor?: McpAnchor;
+  endpoints: McpEndpoint[]; starfield: { x: number; y: number; size: number; twinkleSec: number }[];
+}
 
 interface DecorativeStar { x: number; y: number; size: number; alpha: number }
 
@@ -44,18 +54,19 @@ interface CosmosData {
   decorativeStars: DecorativeStar[];
 }
 
-interface PositionedBody {
-  kind: 'planet' | 'moon' | 'mcp-star';
+interface BodyState {
+  el: HTMLButtonElement;
+  kind: 'planet' | 'moon' | 'star';
   slug: string;
   parentSlug?: string;
-  x: number;
-  y: number;
-  size: number;
+  ref: Planet | Moon | McpStar;
+  screenX: number;
+  screenY: number;
+  scale: number;
+  depth: number;
+  intrinsicSize: number;
   glowCore: string;
   glowOuter: string;
-  alpha: number;
-  ref: Planet | Moon | McpStar;
-  hitR: number;
 }
 
 const TWO_PI = Math.PI * 2;
@@ -69,8 +80,9 @@ export function mountCosmos(data: CosmosData): void {
   const cardClose = document.getElementById('card-close') as HTMLButtonElement | null;
   const planetLabel = document.getElementById('planet-label') as HTMLElement | null;
   const toggleList = document.getElementById('toggle-list') as HTMLButtonElement | null;
+  const bodiesRoot = document.getElementById('bodies') as HTMLElement | null;
 
-  if (!root || !canvas || !cardPanel || !cardBody || !cardClose || !planetLabel || !toggleList) {
+  if (!root || !canvas || !cardPanel || !cardBody || !cardClose || !planetLabel || !toggleList || !bodiesRoot) {
     console.warn('[cosmos] Missing required DOM nodes; static fallback remains visible.');
     return;
   }
@@ -81,61 +93,83 @@ export function mountCosmos(data: CosmosData): void {
     return;
   }
 
-  // Mark JS ready — static fallback hides via CSS
   root.dataset.js = 'ready';
   canvas.removeAttribute('aria-hidden');
-  canvas.setAttribute('role', 'application');
-  canvas.setAttribute('aria-label', 'Cosmos Atlas — a living solar system. Use Tab to cycle through planets, Enter to open a planet card, Escape to close.');
-  canvas.setAttribute('tabindex', '0');
+  canvas.setAttribute('role', 'presentation');
 
-  // ───── State ─────
+  const TILT = (data.atmosphere.tilt ?? 38) * DEG;
+  const FOCAL = data.atmosphere.focal ?? 900;
+  const cosTilt = Math.cos(TILT);
+  const sinTilt = Math.sin(TILT);
+
+  const planetBySlug = new Map<string, Planet>();
+  const moonBySlug = new Map<string, { moon: Moon; parent: Planet }>();
+  for (const p of data.planets) {
+    planetBySlug.set(p.slug, p);
+    for (const m of p.moons ?? []) moonBySlug.set(m.slug, { moon: m, parent: p });
+  }
+
+  const bodies: BodyState[] = [];
+  const bodyButtons = bodiesRoot.querySelectorAll<HTMLButtonElement>('.planet-body');
+  for (const btn of Array.from(bodyButtons)) {
+    const slug = btn.dataset.slug ?? '';
+    const kind = btn.dataset.kind as 'planet' | 'moon' | 'star';
+    if (kind === 'planet') {
+      const ref = planetBySlug.get(slug);
+      if (!ref) continue;
+      bodies.push({
+        el: btn, kind, slug, ref,
+        screenX: 0, screenY: 0, scale: 1, depth: 0,
+        intrinsicSize: ref.body.size,
+        glowCore: ref.body.glowCore,
+        glowOuter: ref.body.glowOuter,
+      });
+    } else if (kind === 'moon') {
+      const rec = moonBySlug.get(slug);
+      if (!rec) continue;
+      bodies.push({
+        el: btn, kind, slug, parentSlug: btn.dataset.parent, ref: rec.moon,
+        screenX: 0, screenY: 0, scale: 1, depth: 0,
+        intrinsicSize: rec.moon.body.size,
+        glowCore: rec.moon.body.glowCore,
+        glowOuter: rec.moon.body.glowOuter,
+      });
+    } else if (kind === 'star') {
+      const anchor = data.mcp.anchor;
+      bodies.push({
+        el: btn, kind, slug: data.mcp.slug, ref: data.mcp,
+        screenX: 0, screenY: 0, scale: 1, depth: 0,
+        intrinsicSize: anchor?.size ?? 24,
+        glowCore: anchor?.glowCore ?? '#FFD89A',
+        glowOuter: anchor?.glowOuter ?? '#FFB347',
+      });
+    }
+  }
+
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
   let cw = window.innerWidth;
   let ch = window.innerHeight;
   let cx = cw / 2;
   let cy = ch / 2;
-  let scaleFactor = 1;          // ratio applied to orbit radii based on viewport
+  let scaleFactor = 1;
   let mobileMode = false;
-
-  let mouseX = -9999;
-  let mouseY = -9999;
-  let mouseInside = false;
 
   let hoveredSlug: string | null = null;
   let focusedSlug: string | null = null;
   let lastFocusBeforeOpen: HTMLElement | null = null;
-  let focusKeyboardIndex = -1;       // index in keyboardOrder when navigating via Tab
   let listViewActive = false;
 
-  // Smooth camera. In overview: target = origin (0,0). In focused: target = focused planet's local position.
   let cameraTargetX = 0;
   let cameraTargetY = 0;
-  let cameraTargetScale = 1;
+  let cameraTargetZoom = 1;
   let cameraX = 0;
   let cameraY = 0;
-  let cameraScale = 1;
+  let cameraZoom = 1;
 
-  let startTime = performance.now();
+  const startTime = performance.now();
   let lastFrame = startTime;
 
-  // Slugs in tab order (innermost first)
-  const keyboardOrder: string[] = [];
-  for (const p of data.planets) {
-    keyboardOrder.push(p.slug);
-    for (const moon of p.moons ?? []) keyboardOrder.push(moon.slug);
-  }
-  keyboardOrder.push(data.mcp.slug);
-
-  // Quick lookup for a body by slug
-  const planetBySlug = new Map<string, Planet>();
-  const moonBySlug = new Map<string, { moon: Moon; parent: Planet }>();
-  for (const p of data.planets) {
-    planetBySlug.set(p.slug, p);
-    for (const moon of p.moons ?? []) moonBySlug.set(moon.slug, { moon, parent: p });
-  }
-
-  // ───── Sizing / DPR ─────
   function resize(): void {
     cw = window.innerWidth;
     ch = window.innerHeight;
@@ -148,51 +182,45 @@ export function mountCosmos(data: CosmosData): void {
     cx = cw / 2;
     cy = ch / 2;
 
-    // Compute scale factor so the outermost orbit fits with comfortable margin
     const outermost = Math.max(...data.planets.map((p) => p.orbit.radius));
-    const margin = mobileMode ? 28 : 80;
-    const desiredHalfMin = Math.min(cw, ch) / 2 - margin;
-    scaleFactor = desiredHalfMin / outermost;
-    if (scaleFactor > 1) scaleFactor = 1;
-
     mobileMode = cw < 720;
-    if (mobileMode) scaleFactor = Math.min(scaleFactor, 0.85);
+    const margin = mobileMode ? 50 : 110;
+    const desiredVHalf = (ch / 2 - margin) / cosTilt;
+    const desiredHHalf = (cw / 2 - margin);
+    scaleFactor = Math.min(desiredHHalf / outermost, desiredVHalf / outermost, 1);
+    if (mobileMode) scaleFactor = Math.min(scaleFactor, 0.92);
   }
 
-  // ───── Orbit math ─────
-  function planetPosition(p: Planet, t: number): { x: number; y: number } {
+  function project(xp: number, yp: number): { x: number; y: number; scale: number; depth: number } {
+    const yRot = yp * cosTilt;
+    const zRot = yp * sinTilt;
+    const scale = FOCAL / (FOCAL + zRot);
+    return { x: xp * scale, y: yRot * scale, scale, depth: zRot };
+  }
+
+  function planetOrbitPos(p: Planet, t: number): { x: number; y: number } {
     const angle = reducedMotion
       ? p.orbit.phase * DEG
       : (t / p.orbit.speedSec) * TWO_PI + p.orbit.phase * DEG;
     const r = p.orbit.radius * scaleFactor;
-    const xr = r * Math.cos(angle);
-    const yr = r * Math.sin(angle) * (1 - p.orbit.ecc);
-    const tilt = p.orbit.tilt * DEG;
-    const cosT = Math.cos(tilt);
-    const sinT = Math.sin(tilt);
-    return {
-      x: xr * cosT - yr * sinT,
-      y: xr * sinT + yr * cosT,
-    };
+    const xp = r * Math.cos(angle);
+    const yp = r * Math.sin(angle) * (1 - p.orbit.ecc);
+    const tilt2d = p.orbit.tilt * DEG;
+    const cosT = Math.cos(tilt2d);
+    const sinT = Math.sin(tilt2d);
+    return { x: xp * cosT - yp * sinT, y: xp * sinT + yp * cosT };
   }
 
-  function moonPosition(parentX: number, parentY: number, m: Moon, t: number): { x: number; y: number } {
+  function moonOrbitPos(parentX: number, parentY: number, m: Moon, t: number): { x: number; y: number } {
     const phase = (m.orbit.phase ?? 0) * DEG;
     const angle = reducedMotion ? phase : (t / m.orbit.speedSec) * TWO_PI + phase;
     const r = m.orbit.radius * scaleFactor;
-    return {
-      x: parentX + r * Math.cos(angle),
-      y: parentY + r * Math.sin(angle),
-    };
+    return { x: parentX + r * Math.cos(angle), y: parentY + r * Math.sin(angle) };
   }
 
-  // ───── Drawing ─────
-  function clear(): void {
-    ctx.clearRect(0, 0, cw, ch);
-  }
+  function clear(): void { ctx.clearRect(0, 0, cw, ch); }
 
   function drawStarfield(): void {
-    // Slight twinkle on the small decorative stars; static under prefers-reduced-motion
     const t = (performance.now() - startTime) / 1000;
     for (const s of data.decorativeStars) {
       const x = s.x * cw;
@@ -207,25 +235,23 @@ export function mountCosmos(data: CosmosData): void {
     ctx.globalAlpha = 1;
   }
 
-  function drawMcpStars(): void {
+  function drawMcpStarfield(): void {
     const t = (performance.now() - startTime) / 1000;
     for (const s of data.mcp.starfield) {
       const x = s.x * cw;
       const y = s.y * ch;
       const twinkle = reducedMotion ? 0.8 : 0.55 + 0.45 * Math.abs(Math.sin(t * (TWO_PI / s.twinkleSec)));
+      const halo = ctx.createRadialGradient(x, y, 0, x, y, s.size * 6);
+      halo.addColorStop(0, withAlpha(data.atmosphere.accentSoft, 0.5 * twinkle));
+      halo.addColorStop(1, withAlpha(data.atmosphere.accentSoft, 0));
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(x, y, s.size * 6, 0, TWO_PI);
+      ctx.fill();
       ctx.fillStyle = data.atmosphere.accentSoft;
       ctx.globalAlpha = 0.7 * twinkle;
       ctx.beginPath();
       ctx.arc(x, y, s.size + 0.2, 0, TWO_PI);
-      ctx.fill();
-      // Soft halo
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, s.size * 5);
-      grad.addColorStop(0, withAlpha(data.atmosphere.accentSoft, 0.45 * twinkle));
-      grad.addColorStop(1, withAlpha(data.atmosphere.accentSoft, 0));
-      ctx.fillStyle = grad;
-      ctx.globalAlpha = 1;
-      ctx.beginPath();
-      ctx.arc(x, y, s.size * 5, 0, TWO_PI);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -234,233 +260,220 @@ export function mountCosmos(data: CosmosData): void {
   function drawSun(): void {
     const t = (performance.now() - startTime) / 1000;
     const pulse = reducedMotion ? 0.85 : 0.78 + 0.22 * Math.abs(Math.sin(t * (TWO_PI / data.sun.pulseSec)));
-    const x = cx + cameraX;
-    const y = cy + cameraY;
-    const r = data.sun.size * cameraScale;
-    // Outer halo
-    const haloR = r * 6;
+    const x = cx + cameraX * cameraZoom;
+    const y = cy + cameraY * cameraZoom;
+    const r = data.sun.size * cameraZoom;
+    const haloR = r * 7;
     const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
     halo.addColorStop(0, withAlpha(data.sun.glowOuter, 0.5 * pulse));
-    halo.addColorStop(0.45, withAlpha(data.sun.glowOuter, 0.18 * pulse));
+    halo.addColorStop(0.4, withAlpha(data.sun.glowOuter, 0.16 * pulse));
     halo.addColorStop(1, withAlpha(data.sun.glowOuter, 0));
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(x, y, haloR, 0, TWO_PI);
     ctx.fill();
-    // Core
-    const core = ctx.createRadialGradient(x, y, 0, x, y, r * 1.4);
-    core.addColorStop(0, withAlpha(data.sun.glowCore, 0.95 * pulse));
+    const core = ctx.createRadialGradient(x, y, 0, x, y, r * 1.6);
+    core.addColorStop(0, withAlpha(data.sun.glowCore, pulse));
     core.addColorStop(1, withAlpha(data.sun.glowCore, 0));
     ctx.fillStyle = core;
     ctx.beginPath();
-    ctx.arc(x, y, r * 1.4, 0, TWO_PI);
+    ctx.arc(x, y, r * 1.6, 0, TWO_PI);
     ctx.fill();
   }
 
   function drawOrbits(): void {
     ctx.lineWidth = 1;
+    const SAMPLES = 96;
     for (const p of data.planets) {
-      const r = p.orbit.radius * scaleFactor * cameraScale;
-      const tilt = p.orbit.tilt * DEG;
-      const ecc = p.orbit.ecc;
       const isFocused = focusedSlug === p.slug;
       const isHovered = hoveredSlug === p.slug;
-      ctx.save();
-      ctx.translate(cx + cameraX, cy + cameraY);
-      ctx.rotate(tilt);
+      const moonOfFocus = focusedSlug && (p.moons ?? []).some((m) => m.slug === focusedSlug);
+      const dim = focusedSlug !== null && !isFocused && !moonOfFocus;
+      const r = p.orbit.radius * scaleFactor;
+      const tilt2d = p.orbit.tilt * DEG;
+      const cosT2 = Math.cos(tilt2d);
+      const sinT2 = Math.sin(tilt2d);
       ctx.strokeStyle = isFocused
-        ? withAlpha(data.atmosphere.accent, 0.55)
+        ? withAlpha(data.atmosphere.accent, 0.6)
         : isHovered
-          ? withAlpha(data.atmosphere.hud, 0.32)
-          : withAlpha(data.atmosphere.hud, 0.10);
+          ? withAlpha(data.atmosphere.hud, dim ? 0.16 : 0.36)
+          : withAlpha(data.atmosphere.hud, dim ? 0.05 : 0.12);
       ctx.beginPath();
-      ctx.ellipse(0, 0, r, r * (1 - ecc), 0, 0, TWO_PI);
+      for (let i = 0; i <= SAMPLES; i++) {
+        const a = (i / SAMPLES) * TWO_PI;
+        const xp0 = r * Math.cos(a);
+        const yp0 = r * Math.sin(a) * (1 - p.orbit.ecc);
+        const xp = xp0 * cosT2 - yp0 * sinT2;
+        const yp = xp0 * sinT2 + yp0 * cosT2;
+        const proj = project(xp, yp);
+        const xs = cx + (proj.x + cameraX) * cameraZoom;
+        const ys = cy + (proj.y + cameraY) * cameraZoom;
+        if (i === 0) ctx.moveTo(xs, ys);
+        else ctx.lineTo(xs, ys);
+      }
       ctx.stroke();
-      ctx.restore();
     }
   }
 
-  function drawBody(b: PositionedBody): void {
-    const x = cx + cameraX + b.x * cameraScale;
-    const y = cy + cameraY + b.y * cameraScale;
-    const r = b.size * cameraScale;
+  function drawBodyHalo(b: BodyState): void {
+    if (b.kind === 'star') return;
     const isHovered = hoveredSlug === b.slug;
     const isFocused = focusedSlug === b.slug;
     const dim = focusedSlug !== null && !isFocused;
     const alpha = dim ? 0.32 : 1;
-    // Outer glow
-    const haloR = r * (isHovered || isFocused ? 4.2 : 3);
+    const r = b.intrinsicSize * b.scale * cameraZoom;
+    const haloR = r * (isHovered || isFocused ? 4.4 : 3.0);
+    const x = b.screenX;
+    const y = b.screenY;
     const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
-    halo.addColorStop(0, withAlpha(b.glowOuter, 0.55 * alpha));
-    halo.addColorStop(0.4, withAlpha(b.glowOuter, 0.22 * alpha));
+    halo.addColorStop(0, withAlpha(b.glowOuter, 0.65 * alpha));
+    halo.addColorStop(0.4, withAlpha(b.glowOuter, 0.25 * alpha));
     halo.addColorStop(1, withAlpha(b.glowOuter, 0));
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(x, y, haloR, 0, TWO_PI);
     ctx.fill();
-    // Core gradient
-    const core = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
-    core.addColorStop(0, withAlpha(b.glowCore, alpha));
-    core.addColorStop(1, withAlpha(b.glowOuter, alpha));
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, TWO_PI);
-    ctx.fill();
-    // Hover ring
     if (isHovered || isFocused) {
-      ctx.strokeStyle = withAlpha(data.atmosphere.accent, isFocused ? 0.95 : 0.75);
+      ctx.strokeStyle = withAlpha(data.atmosphere.accent, isFocused ? 0.95 : 0.7);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(x, y, r * 1.7, 0, TWO_PI);
+      ctx.arc(x, y, r * 2.2, 0, TWO_PI);
       ctx.stroke();
     }
-    // Update hit metadata for hit-testing
-    b.hitR = Math.max(r * 1.7, 18);
   }
 
   function drawHud(): void {
-    // Bottom-left: number of planets
     ctx.fillStyle = withAlpha(data.atmosphere.hudFaint, 1);
     ctx.font = `500 11px ${data.atmosphere.monoFont}`;
     ctx.textBaseline = 'bottom';
     const planetCount = data.planets.length;
     const moonCount = data.planets.reduce((acc, p) => acc + (p.moons?.length ?? 0), 0);
-    const txt = `${planetCount} planets · ${moonCount} moons · 1 star`;
-    ctx.fillText(txt, 24, ch - 24);
+    ctx.fillText(`${planetCount} planets · ${moonCount} moons · 1 star`, 24, ch - 24);
   }
 
-  // ───── Frame loop ─────
-  let positioned: PositionedBody[] = [];
-  let mcpPositioned: PositionedBody | null = null;
-
-  function buildPositioned(): void {
+  function updateBodyPositions(): void {
     const t = (performance.now() - startTime) / 1000;
-    positioned = [];
-    for (const p of data.planets) {
-      const pos = planetPosition(p, t);
-      positioned.push({
-        kind: 'planet',
-        slug: p.slug,
-        x: pos.x,
-        y: pos.y,
-        size: p.body.size,
-        glowCore: p.body.glowCore,
-        glowOuter: p.body.glowOuter,
-        alpha: 1,
-        ref: p,
-        hitR: p.body.size * 1.7,
-      });
-      for (const moon of p.moons ?? []) {
-        const mpos = moonPosition(pos.x, pos.y, moon, t);
-        positioned.push({
-          kind: 'moon',
-          slug: moon.slug,
-          parentSlug: p.slug,
-          x: mpos.x,
-          y: mpos.y,
-          size: moon.body.size,
-          glowCore: moon.body.glowCore,
-          glowOuter: moon.body.glowOuter,
-          alpha: 1,
-          ref: moon,
-          hitR: moon.body.size * 1.7,
-        });
+    const planetOP = new Map<string, { x: number; y: number }>();
+    for (const p of data.planets) planetOP.set(p.slug, planetOrbitPos(p, t));
+
+    for (const b of bodies) {
+      if (b.kind === 'planet') {
+        const op = planetOP.get(b.slug);
+        if (!op) continue;
+        const proj = project(op.x, op.y);
+        b.screenX = cx + (proj.x + cameraX) * cameraZoom;
+        b.screenY = cy + (proj.y + cameraY) * cameraZoom;
+        b.scale = proj.scale;
+        b.depth = proj.depth;
+      } else if (b.kind === 'moon' && b.parentSlug) {
+        const parentOP = planetOP.get(b.parentSlug);
+        if (!parentOP) continue;
+        const moon = b.ref as Moon;
+        const op = moonOrbitPos(parentOP.x, parentOP.y, moon, t);
+        const proj = project(op.x, op.y);
+        b.screenX = cx + (proj.x + cameraX) * cameraZoom;
+        b.screenY = cy + (proj.y + cameraY) * cameraZoom;
+        b.scale = proj.scale;
+        b.depth = proj.depth;
+      } else if (b.kind === 'star') {
+        const anchor = data.mcp.anchor;
+        b.screenX = (anchor?.x ?? 0.86) * cw;
+        b.screenY = (anchor?.y ?? 0.18) * ch;
+        b.scale = 1;
+        b.depth = -800;
       }
     }
-    // MCP star pinned to a fixed canvas-space spot in the upper area
-    mcpPositioned = null;
+  }
+
+  function applyBodyTransforms(): void {
+    const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
+    for (let i = 0; i < sorted.length; i++) {
+      const b = sorted[i];
+      if (!b) continue;
+      const isHovered = hoveredSlug === b.slug;
+      const isFocused = focusedSlug === b.slug;
+      const dim = focusedSlug !== null && !isFocused;
+      let scale = b.scale * cameraZoom;
+      if (isHovered) scale *= 1.12;
+      if (isFocused) scale *= 1.35;
+      const opacity = dim ? 0.42 : 1;
+      b.el.style.transform = `translate3d(${b.screenX}px, ${b.screenY}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
+      b.el.style.opacity = String(opacity);
+      b.el.style.zIndex = String(100 + i);
+      b.el.dataset.hovered = isHovered ? 'true' : 'false';
+      b.el.dataset.focused = isFocused ? 'true' : 'false';
+      b.el.dataset.dim = dim ? 'true' : 'false';
+    }
   }
 
   function updateCamera(deltaSec: number): void {
     if (focusedSlug) {
-      // Target the focused body's position
-      const target = positioned.find((b) => b.slug === focusedSlug);
+      const target = bodies.find((b) => b.slug === focusedSlug);
       if (target) {
-        cameraTargetX = -target.x * cameraTargetScale;
-        cameraTargetY = -target.y * cameraTargetScale;
+        const t = (performance.now() - startTime) / 1000;
+        if (target.kind === 'planet') {
+          const p = target.ref as Planet;
+          const op = planetOrbitPos(p, t);
+          cameraTargetX = -op.x;
+          cameraTargetY = -op.y * cosTilt;
+        } else if (target.kind === 'moon' && target.parentSlug) {
+          const parent = planetBySlug.get(target.parentSlug);
+          if (parent) {
+            const parentOP = planetOrbitPos(parent, t);
+            const op = moonOrbitPos(parentOP.x, parentOP.y, target.ref as Moon, t);
+            cameraTargetX = -op.x;
+            cameraTargetY = -op.y * cosTilt;
+          }
+        } else if (target.kind === 'star') {
+          cameraTargetX = 0;
+          cameraTargetY = 0;
+        }
+        cameraTargetZoom = mobileMode ? 1.5 : 1.85;
       }
     } else {
       cameraTargetX = 0;
       cameraTargetY = 0;
-      cameraTargetScale = 1;
+      cameraTargetZoom = 1;
     }
     const lerp = reducedMotion ? 1 : Math.min(1, deltaSec * 4.5);
     cameraX += (cameraTargetX - cameraX) * lerp;
     cameraY += (cameraTargetY - cameraY) * lerp;
-    cameraScale += (cameraTargetScale - cameraScale) * lerp;
+    cameraZoom += (cameraTargetZoom - cameraZoom) * lerp;
   }
 
   function frame(now: number): void {
     const deltaSec = (now - lastFrame) / 1000;
     lastFrame = now;
-    buildPositioned();
     updateCamera(deltaSec);
+    updateBodyPositions();
+    applyBodyTransforms();
     clear();
     drawStarfield();
-    drawMcpStars();
+    drawMcpStarfield();
     drawOrbits();
     drawSun();
-    for (const b of positioned) drawBody(b);
+    const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
+    for (const b of sorted) drawBodyHalo(b);
     drawHud();
-    if (mouseInside) updateHover();
+    if (hoveredSlug) updateHoverLabel();
     requestAnimationFrame(frame);
   }
 
-  // ───── Hit testing ─────
-  function getBodyAt(px: number, py: number): PositionedBody | null {
-    let best: PositionedBody | null = null;
-    let bestD = Infinity;
-    for (const b of positioned) {
-      const bx = cx + cameraX + b.x * cameraScale;
-      const by = cy + cameraY + b.y * cameraScale;
-      const dx = px - bx;
-      const dy = py - by;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      const hitR = Math.max(b.hitR * cameraScale, 22);
-      if (d < hitR && d < bestD) {
-        best = b;
-        bestD = d;
-      }
-    }
-    return best;
-  }
-
-  function updateHover(): void {
-    const body = getBodyAt(mouseX, mouseY);
-    const newSlug = body?.slug ?? null;
-    if (newSlug !== hoveredSlug) {
-      hoveredSlug = newSlug;
-      canvas.style.cursor = body ? 'pointer' : 'default';
-      root.dataset.state = body ? 'hovering' : focusedSlug ? 'focused' : 'idle';
-    }
-    if (body) {
-      const ref = body.ref as Card;
-      const bx = cx + cameraX + body.x * cameraScale;
-      const by = cy + cameraY + body.y * cameraScale;
-      planetLabel.style.transform = `translate(${bx}px, ${by - body.size * cameraScale - 8}px) translate(-50%, -100%)`;
-      planetLabel.textContent = `${ref.name} · ${ref.tagline}`;
-      planetLabel.dataset.visible = 'true';
-    } else {
+  function updateHoverLabel(): void {
+    if (!hoveredSlug) {
       planetLabel.dataset.visible = 'false';
+      return;
     }
-  }
-
-  // ───── Card render ─────
-  function renderPlanetCard(slug: string): void {
-    const planet = planetBySlug.get(slug);
-    const moonRecord = moonBySlug.get(slug);
-    if (planet) {
-      cardBody.innerHTML = renderCardHtml(planet, planet.moons ?? []);
-    } else if (moonRecord) {
-      cardBody.innerHTML = renderCardHtml(moonRecord.moon, []);
-    } else if (slug === data.mcp.slug) {
-      cardBody.innerHTML = renderMcpCardHtml(data.mcp);
+    const b = bodies.find((bb) => bb.slug === hoveredSlug);
+    if (!b) {
+      planetLabel.dataset.visible = 'false';
+      return;
     }
-    cardPanel.dataset.open = 'true';
-    cardPanel.removeAttribute('aria-hidden');
-    // Move focus to card name for screen readers
-    const heading = cardBody.querySelector('#card-name') as HTMLElement | null;
-    heading?.focus();
+    const ref = b.ref as Card;
+    const offset = b.intrinsicSize * b.scale * cameraZoom + 14;
+    planetLabel.style.transform = `translate(${b.screenX}px, ${b.screenY - offset}px) translate(-50%, -100%)`;
+    planetLabel.textContent = `${ref.name} · ${ref.tagline}`;
+    planetLabel.dataset.visible = 'true';
   }
 
   function escapeHtml(s: string): string {
@@ -476,32 +489,66 @@ export function mountCosmos(data: CosmosData): void {
     });
   }
 
-  function renderCardHtml(card: Card & { moons?: Moon[] }, moons: Moon[]): string {
+  function getSourceIconHtml(slug: string): string {
+    const el = bodiesRoot!.querySelector<HTMLElement>(`.planet-body[data-slug="${slug}"] .planet-body__icon`);
+    return el ? el.innerHTML : '';
+  }
+
+  function renderStatsHtml(stats?: string[]): string {
+    if (!stats || stats.length === 0) return '';
+    return `<ul class="card-stats" role="list">${stats.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`;
+  }
+
+  function getGlowForSlug(slug: string): string {
+    if (slug === data.mcp.slug) return data.mcp.anchor?.glowCore ?? '#FFD89A';
+    const p = planetBySlug.get(slug);
+    if (p) return p.body.glowCore;
+    const moonRec = moonBySlug.get(slug);
+    if (moonRec) return moonRec.moon.body.glowCore;
+    return '#F2EDE3';
+  }
+
+  function renderCardHtml(card: Card, _kind: 'planet' | 'moon' | 'star', moons: Moon[]): string {
     const badge = card.badge ? `<span class="card-firewall">${escapeHtml(card.badge)}</span>` : '';
+    const iconHtml = getSourceIconHtml(card.slug);
+    const heroGlow = getGlowForSlug(card.slug);
     const moonsHtml = moons.length === 0 ? '' : `
       <div class="card-moons">
         <span class="card-moons-label">Moon${moons.length > 1 ? 's' : ''}</span>
-        ${moons.map((m) => `
-          <article class="moon">
-            ${m.badge ? `<span class="moon-firewall">${escapeHtml(m.badge)}</span>` : ''}
-            <h4 class="moon-name">${escapeHtml(m.name)}</h4>
-            <p class="moon-tagline">${escapeHtml(m.tagline)}</p>
-            <p class="moon-text">${escapeHtml(m.content)}</p>
-            <p class="moon-text moon-text--founder">"${escapeHtml(m.founder)}"</p>
-            <a class="moon-cta" href="${escapeHtml(m.url)}" rel="noopener">Visit ${escapeHtml(m.name)}</a>
-          </article>
-        `).join('')}
+        ${moons.map((m) => {
+          const moonIcon = getSourceIconHtml(m.slug);
+          return `
+            <article class="moon">
+              <div class="moon-head">
+                <span class="moon-icon" aria-hidden="true">${moonIcon}</span>
+                <h4 class="moon-name">${escapeHtml(m.name)}</h4>
+              </div>
+              ${m.badge ? `<span class="moon-firewall">${escapeHtml(m.badge)}</span>` : ''}
+              <p class="moon-tagline">${escapeHtml(m.tagline)}</p>
+              <p class="moon-text">${escapeHtml(m.content)}</p>
+              ${renderStatsHtml(m.stats)}
+              <p class="moon-text moon-text--founder">"${escapeHtml(m.founder)}"</p>
+              <a class="moon-cta" href="${escapeHtml(m.url)}" rel="noopener">Visit ${escapeHtml(m.name)}</a>
+            </article>
+          `;
+        }).join('')}
       </div>
     `;
     return `
       ${badge}
-      <div class="card-badges">
-        <span class="card-badge card-badge--type">${escapeHtml(card.type)}</span>
-        <span class="card-badge">${escapeHtml(card.atmosphere)}</span>
-        <span class="card-badge card-badge--status">${escapeHtml(card.status)}</span>
+      <div class="card-hero" style="--card-glow: ${heroGlow};">
+        <div class="card-hero-icon">${iconHtml}</div>
+        <div class="card-hero-text">
+          <div class="card-badges">
+            <span class="card-badge card-badge--type">${escapeHtml(card.type)}</span>
+            <span class="card-badge">${escapeHtml(card.atmosphere)}</span>
+            <span class="card-badge card-badge--status">${escapeHtml(card.status)}</span>
+          </div>
+          <h2 class="card-name" id="card-name" tabindex="-1">${escapeHtml(card.name)}</h2>
+          <p class="card-tagline">${escapeHtml(card.tagline)}</p>
+        </div>
       </div>
-      <h2 class="card-name" id="card-name" tabindex="-1">${escapeHtml(card.name)}</h2>
-      <p class="card-tagline">${escapeHtml(card.tagline)}</p>
+      ${renderStatsHtml(card.stats)}
       <div class="card-section">
         <span class="card-section-label">Who it's for</span>
         <p class="card-section-text">${escapeHtml(card.audience)}</p>
@@ -521,135 +568,102 @@ export function mountCosmos(data: CosmosData): void {
     `;
   }
 
-  function renderMcpCardHtml(mcp: McpStar): string {
-    const endpointsHtml = mcp.endpoints.map((e) => `
-      <li>
-        <span class="name">${escapeHtml(e.name)}</span>
-        <span class="${e.status === 'live' ? 'status-live' : 'status-planned'}">${escapeHtml(e.status)}</span>
-      </li>
-    `).join('');
+  function renderMcpExtras(mcp: McpStar): string {
     return `
-      <div class="card-badges">
-        <span class="card-badge card-badge--type">${escapeHtml(mcp.type)}</span>
-        <span class="card-badge">${escapeHtml(mcp.atmosphere)}</span>
-        <span class="card-badge card-badge--status">${escapeHtml(mcp.status)}</span>
-      </div>
-      <h2 class="card-name" id="card-name" tabindex="-1">${escapeHtml(mcp.name)}</h2>
-      <p class="card-tagline">${escapeHtml(mcp.tagline)}</p>
-      <div class="card-section">
-        <span class="card-section-label">Who it's for</span>
-        <p class="card-section-text">${escapeHtml(mcp.audience)}</p>
-      </div>
-      <div class="card-section">
-        <span class="card-section-label">What it does</span>
-        <p class="card-section-text">${escapeHtml(mcp.content)}</p>
-      </div>
-      <div class="card-section">
-        <span class="card-section-label">Founder note</span>
-        <p class="card-section-text card-founder">"${escapeHtml(mcp.founder)}"</p>
-      </div>
       <div class="card-section">
         <span class="card-section-label">Endpoints</span>
-        <ul class="static-mcp-endpoints" role="list">${endpointsHtml}</ul>
-      </div>
-      <div class="card-cta-row">
-        <a class="card-cta" href="${escapeHtml(mcp.url)}" rel="noopener">Visit ${escapeHtml(mcp.name)}</a>
+        <ul class="card-mcp-endpoints" role="list">
+          ${mcp.endpoints.map((e) => `
+            <li>
+              <span class="name">${escapeHtml(e.name)}</span>
+              <span class="${e.status === 'live' ? 'status-live' : 'status-planned'}">${escapeHtml(e.status)}</span>
+            </li>
+          `).join('')}
+        </ul>
       </div>
     `;
   }
 
-  // ───── Open / close ─────
-  function openSlug(slug: string): void {
-    if (focusedSlug === slug) return;
-    lastFocusBeforeOpen = (document.activeElement as HTMLElement) ?? canvas;
-    focusedSlug = slug;
-    cameraTargetScale = mobileMode ? 1.4 : 1.8;
-    root.dataset.state = 'focused';
-    renderPlanetCard(slug);
+  function renderCard(slug: string): void {
+    if (slug === data.mcp.slug) {
+      const mcpAsCard = data.mcp as unknown as Card;
+      cardBody.innerHTML = renderCardHtml(mcpAsCard, 'star', []) + renderMcpExtras(data.mcp);
+    } else {
+      const planet = planetBySlug.get(slug);
+      const moonRec = moonBySlug.get(slug);
+      if (planet) {
+        cardBody.innerHTML = renderCardHtml(planet, 'planet', planet.moons ?? []);
+      } else if (moonRec) {
+        cardBody.innerHTML = renderCardHtml(moonRec.moon, 'moon', []);
+      }
+    }
+    cardPanel.dataset.open = 'true';
+    cardPanel.removeAttribute('aria-hidden');
+    const heading = cardBody.querySelector<HTMLElement>('#card-name');
+    heading?.focus();
   }
 
-  function closePlanet(): void {
+  function openSlug(slug: string): void {
+    if (focusedSlug === slug) return;
+    lastFocusBeforeOpen = (document.activeElement as HTMLElement) ?? null;
+    focusedSlug = slug;
+    root.dataset.state = 'focused';
+    renderCard(slug);
+  }
+
+  function closeCard(): void {
     if (!focusedSlug) return;
     focusedSlug = null;
-    cameraTargetScale = 1;
     cardPanel.dataset.open = 'false';
     cardPanel.setAttribute('aria-hidden', 'true');
     root.dataset.state = hoveredSlug ? 'hovering' : 'idle';
-    if (lastFocusBeforeOpen) {
+    if (lastFocusBeforeOpen && document.body.contains(lastFocusBeforeOpen)) {
       lastFocusBeforeOpen.focus();
-      lastFocusBeforeOpen = null;
-    } else {
-      canvas.focus();
     }
+    lastFocusBeforeOpen = null;
   }
 
-  // ───── Mouse / touch ─────
-  function onPointerMove(e: PointerEvent): void {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    mouseInside = true;
-  }
-  function onPointerLeave(): void {
-    mouseInside = false;
-    hoveredSlug = null;
-    planetLabel.dataset.visible = 'false';
-    canvas.style.cursor = 'default';
-  }
-  function onClick(e: MouseEvent): void {
-    const body = getBodyAt(e.clientX, e.clientY);
-    if (body) {
-      openSlug(body.slug);
-    } else if (focusedSlug) {
-      closePlanet();
-    }
-  }
-
-  canvas.addEventListener('pointermove', onPointerMove);
-  canvas.addEventListener('pointerleave', onPointerLeave);
-  canvas.addEventListener('click', onClick);
-
-  // ───── Keyboard nav ─────
-  canvas.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+  for (const b of bodies) {
+    b.el.addEventListener('mouseenter', () => {
+      hoveredSlug = b.slug;
+      root.dataset.state = focusedSlug ? 'focused' : 'hovering';
+      updateHoverLabel();
+    });
+    b.el.addEventListener('mouseleave', () => {
+      if (hoveredSlug === b.slug) hoveredSlug = null;
+      root.dataset.state = focusedSlug ? 'focused' : 'idle';
+      updateHoverLabel();
+    });
+    b.el.addEventListener('focus', () => {
+      hoveredSlug = b.slug;
+      root.dataset.state = focusedSlug ? 'focused' : 'hovering';
+      updateHoverLabel();
+    });
+    b.el.addEventListener('blur', () => {
+      if (hoveredSlug === b.slug) hoveredSlug = null;
+      updateHoverLabel();
+    });
+    b.el.addEventListener('click', (e) => {
       e.preventDefault();
-      focusKeyboardIndex = (focusKeyboardIndex + 1) % keyboardOrder.length;
-      const slug = keyboardOrder[focusKeyboardIndex];
-      if (slug) hoveredSlug = slug;
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      focusKeyboardIndex = (focusKeyboardIndex - 1 + keyboardOrder.length) % keyboardOrder.length;
-      const slug = keyboardOrder[focusKeyboardIndex];
-      if (slug) hoveredSlug = slug;
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      if (hoveredSlug) {
-        e.preventDefault();
-        openSlug(hoveredSlug);
-      }
-    } else if (e.key === 'Escape') {
-      if (focusedSlug) {
-        e.preventDefault();
-        closePlanet();
-      }
-    }
-  });
+      openSlug(b.slug);
+    });
+  }
 
-  cardClose.addEventListener('click', () => closePlanet());
+  cardClose.addEventListener('click', () => closeCard());
 
-  // Click outside the card panel (on canvas) to close
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape' && focusedSlug) {
-      closePlanet();
+      e.preventDefault();
+      closeCard();
     }
   });
 
-  // ───── List view toggle ─────
   toggleList.addEventListener('click', () => {
     listViewActive = !listViewActive;
     toggleList.setAttribute('aria-pressed', String(listViewActive));
     document.body.classList.toggle('list-view', listViewActive);
     if (listViewActive) {
-      // Close any open card so the list shows cleanly
-      if (focusedSlug) closePlanet();
+      if (focusedSlug) closeCard();
       window.scrollTo({ top: 0, behavior: 'auto' });
       toggleList.textContent = '🌌 Cosmos view';
       toggleList.setAttribute('aria-label', 'Tap to return to the interactive cosmos');
@@ -659,17 +673,21 @@ export function mountCosmos(data: CosmosData): void {
     }
   });
 
-  // ───── Resize ─────
   window.addEventListener('resize', resize, { passive: true });
   window.addEventListener('orientationchange', resize, { passive: true });
 
-  // ───── Boot ─────
   resize();
-  buildPositioned();
-  requestAnimationFrame(frame);
+  bodiesRoot.style.opacity = '0';
+  requestAnimationFrame((now) => {
+    lastFrame = now;
+    updateBodyPositions();
+    applyBodyTransforms();
+    bodiesRoot.style.transition = 'opacity 480ms ease-out';
+    bodiesRoot.style.opacity = '1';
+    requestAnimationFrame(frame);
+  });
 }
 
-// Helper — convert hex (#RRGGBB) to rgba string with alpha
 function withAlpha(hex: string, alpha: number): string {
   if (hex.startsWith('rgba')) return hex;
   if (hex.startsWith('rgb(')) return hex.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);

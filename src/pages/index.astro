@@ -1,12 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
+import PlanetIcon from '../components/PlanetIcon.astro';
 import planets from '../data/planets.json';
 import atlas from '../data/atlas.json';
 
-// Merge planets manifest (canonical slug/name/url/tagline) with atlas entries (atmosphere/cards/orbit)
 type ManifestPlanet = { slug: string; name: string; url: string; tagline: string };
-type AtlasMoon = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; orbit: { radius: number; speedSec: number; phase?: number }; body: { size: number; glowCore: string; glowOuter: string } };
-type AtlasPlanet = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; orbit: { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }; body: { size: number; glowCore: string; glowOuter: string }; moons?: AtlasMoon[] };
+type AtlasMoon = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; speedSec: number; phase?: number }; body: { size: number; glowCore: string; glowOuter: string } };
+type AtlasPlanet = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }; body: { size: number; glowCore: string; glowOuter: string }; moons?: AtlasMoon[] };
+
+type IconSlug = 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp';
 
 const manifestBySlug = new Map<string, ManifestPlanet>();
 for (const p of planets.planets as ManifestPlanet[]) {
@@ -75,13 +77,58 @@ const clientData = {
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
   <main class="cosmos" data-state="idle" data-js="pending" id="cosmos-root">
-    <!-- Canvas — the bold, lively, interactive cosmos -->
+    <!-- Canvas — orbit ellipses, sun glow, starfield, body halos -->
     <canvas
       class="canvas-stage"
       id="cosmos-canvas"
       aria-hidden="true"
-      tabindex="-1"
     ></canvas>
+
+    <!-- Planet bodies — HTML overlays positioned in real time by cosmos.ts.
+         Crisp SVG logos. Pointer events live here, not on the canvas. -->
+    <div class="bodies" id="bodies" aria-label="A Guide to Cloud cosmos — 7 planets, 2 moons, 1 star">
+      {composed.map((p) => (
+        <>
+          <button
+            class="planet-body"
+            data-slug={p.slug}
+            data-kind="planet"
+            type="button"
+            aria-label={`${p.name} · ${p.tagline}`}
+          >
+            <span class="planet-body__icon">
+              <PlanetIcon slug={p.slug as IconSlug} size={56} scope={`atlas-${p.slug}`} />
+            </span>
+          </button>
+          {(p.moons ?? []).map((m) => (
+            <button
+              class="planet-body planet-body--moon"
+              data-slug={m.slug}
+              data-kind="moon"
+              data-parent={p.slug}
+              type="button"
+              aria-label={`${m.name} · ${m.tagline}`}
+            >
+              <span class="planet-body__icon">
+                <PlanetIcon slug={m.slug as IconSlug} size={36} scope={`atlas-${m.slug}`} />
+              </span>
+            </button>
+          ))}
+        </>
+      ))}
+      <!-- MCP star — fixed-canvas-position pulsing star -->
+      <button
+        class="planet-body planet-body--star"
+        data-slug={atlas.mcp.slug}
+        data-kind="star"
+        type="button"
+        aria-label={`${atlas.mcp.name} · ${atlas.mcp.tagline}`}
+      >
+        <span class="planet-body__icon">
+          <PlanetIcon slug="mcp" size={40} scope="atlas-mcp" />
+        </span>
+      </button>
+    </div>
 
     <!-- HUD overlay -->
     <div class="hud" role="presentation">
@@ -156,13 +203,24 @@ const clientData = {
           {composed.map((p) => (
             <li class="static-planet" id={`planet-${p.slug}`}>
               <div class="static-planet__head">
-                <h3>{p.name}</h3>
-                <span class="meta">{p.type} · {p.atmosphere} · {p.status}</span>
+                <span class="static-planet__icon" aria-hidden="true">
+                  <PlanetIcon slug={p.slug as IconSlug} size={48} scope={`static-${p.slug}`} />
+                </span>
+                <div>
+                  <h3>{p.name}</h3>
+                  <span class="meta">{p.type} · {p.atmosphere} · {p.status}</span>
+                </div>
               </div>
 
               {p.badge && <span class="static-firewall">{p.badge}</span>}
 
               <p class="static-planet__tagline">{p.tagline}</p>
+
+              {p.stats && p.stats.length > 0 && (
+                <ul class="static-stats" role="list">
+                  {p.stats.map((s) => (<li>{s}</li>))}
+                </ul>
+              )}
 
               <div class="static-planet__body">
                 <div>
@@ -186,12 +244,24 @@ const clientData = {
                   <p class="static-moons-label">Moons</p>
                   {p.moons.map((m) => (
                     <article class="static-moon" id={`moon-${m.slug}`}>
-                      <h4>{m.name}</h4>
-                      <span class="meta">{m.type} · {m.atmosphere} · {m.status}</span>
+                      <div class="static-moon__head">
+                        <span class="static-moon__icon" aria-hidden="true">
+                          <PlanetIcon slug={m.slug as IconSlug} size={28} scope={`static-${m.slug}`} />
+                        </span>
+                        <div>
+                          <h4>{m.name}</h4>
+                          <span class="meta">{m.type} · {m.atmosphere} · {m.status}</span>
+                        </div>
+                      </div>
                       {m.badge && <span class="static-firewall">{m.badge}</span>}
                       <p>{m.tagline}</p>
                       <p>{m.content}</p>
                       <p class="founder">"{m.founder}"</p>
+                      {m.stats && m.stats.length > 0 && (
+                        <ul class="static-stats static-stats--moon" role="list">
+                          {m.stats.map((s) => (<li>{s}</li>))}
+                        </ul>
+                      )}
                       <a class="visit" href={m.url} rel="noopener">Visit {m.name}</a>
                     </article>
                   ))}
@@ -203,8 +273,15 @@ const clientData = {
       </section>
 
       <section class="static-section static-mcp" aria-labelledby="mcp-heading">
-        <span class="section-tag">⭐ Star</span>
-        <h2 id="mcp-heading">{atlas.mcp.name}</h2>
+        <div class="static-planet__head">
+          <span class="static-planet__icon" aria-hidden="true">
+            <PlanetIcon slug="mcp" size={48} scope="static-mcp" />
+          </span>
+          <div>
+            <span class="section-tag">⭐ Star</span>
+            <h2 id="mcp-heading">{atlas.mcp.name}</h2>
+          </div>
+        </div>
         <p class="lede">{atlas.mcp.tagline}. {atlas.mcp.content}</p>
 
         <div class="static-planet__body">
@@ -218,7 +295,7 @@ const clientData = {
           </div>
         </div>
 
-        <h3 style="font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: 0.02em; margin: 32px 0 8px; color: var(--hud);">Per-planet endpoints</h3>
+        <h3 class="endpoints-heading">Per-planet endpoints</h3>
         <ul class="static-mcp-endpoints" role="list">
           {atlas.mcp.endpoints.map((e) => (
             <li>
@@ -256,3 +333,4 @@ const clientData = {
     }
   </script>
 </Base>
+
