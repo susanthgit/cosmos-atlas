@@ -51,6 +51,11 @@ const {
   <meta name="author" content="Susanth Sutheesh (Sush)">
 
   <slot name="head" />
+
+  <!-- V3.x — Cloudflare Web Analytics (privacy-first, no cookies, no PII).
+       The token below is a public site identifier, not a secret. CF dashboard
+       didn't auto-install for this subdomain so the snippet lives here. -->
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "7c11668cc9e544f2baf2c3d9d7eb2750"}'></script>
 </head>
 <body>
   <a href="#static-shell" class="skip-link">Skip to planet list</a>
