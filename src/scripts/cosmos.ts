@@ -1223,24 +1223,31 @@ export function mountCosmos(data: CosmosData): void {
     const alpha = (dim ? 0.28 : 1) * introBodies;
     const r = b.intrinsicSize * b.scale * cameraZoom;
     // V2.3 — MCP star gets a much bigger halo than planets so it reads as a star, not a body.
-    const baseMult = b.kind === 'star' ? 4.4 : 2.2;
-    const hotMult = b.kind === 'star' ? 6.0 : 3.2;
+    // Phase D polish (Sush 9 May 2026): MCP halo dimmed substantially — was
+    // brighter than the Sun and over-attentioned. Multipliers and rest
+    // alphas reduced. Hover/focus still brightens MCP normally.
+    const baseMult = b.kind === 'star' ? 2.8 : 2.2;
+    const hotMult = b.kind === 'star' ? 4.5 : 3.2;
     const haloR = r * (isHovered || isFocused ? hotMult : baseMult);
     const x = b.screenX;
     const y = b.screenY;
     // V2.3 — MCP star always pulses (not gated on hover) so it draws the eye.
+    // Phase D polish: pulse range narrowed (was 0.85+0.35 → now 0.92+0.18) so
+    // the star breathes without throbbing at the user.
     let starPulseMul = 1;
     if (b.kind === 'star' && !reducedMotion) {
       const t = getRealT();
-      starPulseMul = 0.85 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.4));
+      starPulseMul = 0.92 + 0.18 * (0.5 + 0.5 * Math.sin(t * 1.4));
     }
     // V3.3 — quieter halo at rest (was 0.55→0.20). Restless cosmos was visually
     // noisy because every body shouted; planets at rest now whisper, hover/focus
     // brings them up. Star keeps its full glow because it IS the loud thing.
-    const restG = b.kind === 'star' ? 0.55 : 0.34;
-    const restM = b.kind === 'star' ? 0.20 : 0.12;
+    // Phase D polish: star rest alphas dropped to planet level (0.28/0.10) so
+    // it stops competing with the Sun. Hover/focus still gives full glow.
+    const restG = b.kind === 'star' ? 0.28 : 0.34;
+    const restM = b.kind === 'star' ? 0.10 : 0.12;
     const hotG = b.kind === 'star' ? 0.55 : 0.55;
-    const hotM = b.kind === 'star' ? 0.20 : 0.22;
+    const hotM = b.kind === 'star' ? 0.22 : 0.22;
     const g = (isHovered || isFocused) ? hotG : restG;
     const m = (isHovered || isFocused) ? hotM : restM;
     const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
@@ -2379,7 +2386,8 @@ export function mountCosmos(data: CosmosData): void {
       const ctrlY = my + py;
 
       // Faint guide path under the dots so the route is visible at rest
-      const guideAlpha = (isMcpFocused ? 0.16 : 0.08) * introBodies;
+      // Phase D polish: guide line + dots dimmed at rest (Sush 9 May).
+      const guideAlpha = (isMcpFocused ? 0.16 : 0.04) * introBodies;
       ctx.strokeStyle = withAlpha(guideColor, guideAlpha);
       ctx.lineWidth = 0.6;
       ctx.beginPath();
@@ -2396,7 +2404,7 @@ export function mountCosmos(data: CosmosData): void {
         const y = u * u * target.screenY + 2 * u * tt * ctrlY + tt * tt * star.screenY;
         const fadeIn = Math.min(1, tt * 8);
         const fadeOut = Math.min(1, (1 - tt) * 8);
-        const dotAlpha = (isMcpFocused ? 0.95 : 0.78) * Math.min(fadeIn, fadeOut) * introBodies;
+        const dotAlpha = (isMcpFocused ? 0.95 : 0.32) * Math.min(fadeIn, fadeOut) * introBodies;
         ctx.fillStyle = withAlpha(dotColor, dotAlpha);
         ctx.beginPath();
         ctx.arc(x, y, 1.6, 0, TWO_PI);
@@ -2427,7 +2435,9 @@ export function mountCosmos(data: CosmosData): void {
     const minR = star.intrinsicSize * star.scale * cameraZoom * 1.6;
     if (maxR <= minR) return;
     const isMcpFocused = focusedSlug === data.mcp.slug;
-    const baseAlpha = (isMcpFocused ? 0.32 : 0.20) * introBodies;
+    // Phase D polish: outward pulse rest alpha dropped from 0.20 to 0.06
+    // (Sush feedback: MCP was over-bright). Focus state retains 0.32.
+    const baseAlpha = (isMcpFocused ? 0.32 : 0.06) * introBodies;
     const ringColor = data.mcp.anchor?.glowCore ?? '#FFE6B0';
     ctx.save();
     for (let i = 0; i < N_RINGS; i++) {
