@@ -2048,6 +2048,10 @@ export function mountCosmos(data: CosmosData): void {
     root.dataset.state = 'focused';
     // V3.5 — card-open dim: fade canvas-stage to 30% so the card reads cleanly.
     root.dataset.cardOpen = 'true';
+    // V3.6 — expose the current card's slug on the panel for both audit checks
+    // and possible per-slug CSS targeting. Set BEFORE renderCard so the audit
+    // can read it as soon as data-open flips to true.
+    cardPanel.dataset.slug = slug;
     if (!reducedMotion) {
       warpStartMs = performance.now();
       root.dataset.warp = 'in';
@@ -2073,6 +2077,8 @@ export function mountCosmos(data: CosmosData): void {
     root.dataset.state = hoveredSlug ? 'hovering' : 'idle';
     // V3.5 — restore canvas brightness when the card closes.
     delete root.dataset.cardOpen;
+    // V3.6 — clear the card's tracked slug.
+    delete cardPanel.dataset.slug;
     if (!reducedMotion) {
       warpStartMs = performance.now();
       root.dataset.warp = 'out';
@@ -2244,16 +2250,19 @@ export function mountCosmos(data: CosmosData): void {
     if (listViewActive) return; // let the page scroll naturally
     const target = e.target as HTMLElement;
     // V3.x — click-outside-to-close. If a card is open and the user taps any
-    // empty canvas area (not the card panel, not a planet body, not HUD chrome),
-    // close the card. Sush asked for this — the close button alone meant
-    // dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution')) {
+    // empty canvas area (not the card panel, not a planet body, not HUD chrome,
+    // not the first-visit coach), close the card. Sush asked for this — the
+    // close button alone meant dismissing felt fiddly, especially on mobile.
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .cosmos-coach')) {
       markInteraction();
       closeCard();
       return;
     }
     // Ignore clicks on planet bodies — those have their own click handlers.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast')) return;
+    // V3.6 — also ignore clicks on the first-visit coach. Without this,
+    // root.setPointerCapture() stole click events from coach buttons (next,
+    // back, skip) so they never advanced. Found by Sush in V3.5.
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .cosmos-coach')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {

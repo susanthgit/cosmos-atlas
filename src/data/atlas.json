@@ -187,8 +187,8 @@
     "content": "A relay that ingests data from each planet and exposes it to outside agents. Per-planet endpoints under construction. CMD live first.",
     "founder": "If a future agent wants to recommend the right cert or jargon entry, here's the API.",
     "stats": ["agent-readable", "per-planet emerging", "CMD live first"],
-    "position": { "rOrbit": 1500, "thetaDeg": -30 },
-    "anchor": { "x": 0.92, "y": 0.10, "size": 44, "glowCore": "#FFE6B0", "glowOuter": "#FFB347" },
+    "position": { "rOrbit": 1500, "thetaDeg": 135 },
+    "anchor": { "x": 0.08, "y": 0.92, "size": 44, "glowCore": "#FFE6B0", "glowOuter": "#FFB347" },
     "endpoints": [
       { "slug": "mcp-collective", "name": "MCP Move (collective)", "url": "https://mcp.aguidetocloud.com/", "status": "live" },
       { "slug": "brainbar-mcp", "name": "CMD index", "url": "https://cmd.aguidetocloud.com/cmd-index.json", "status": "live" },
@@ -214,7 +214,7 @@
     ]
   },
 
-  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Two YouTube broadcasts (long-form, bites) render as comets in default style. Ko-fi is split into two stationary outposts on the outer ring: 🎁 Free Stuff (downloads) + ☕ Tip Jar (give back). The split honestly separates the two different things Ko-fi actually is — receiving free things vs giving back. Two render styles via ?ext= URL param: 'comets' (default — comets for YouTubes, outposts for Ko-fi pair) and 'outposts' (everything on a fixed outer ring).",
+  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Three orbital satellites (long-form, bites, kofi-shop) sweep on elliptical paths just outside the outermost planet. One stationary corner beacon (kofi-tip) sits at the bottom-right. Each satellite has its own character — long-form broadcasts, bites is the speedy companion, kofi-shop is the delivery drone with a wrapped gift. Render mode is fixed (V3.6); the ?ext= param is no longer respected.",
 
   "external": {
     "channels": [
@@ -230,7 +230,7 @@
         "stats": ["54K+ subscribers", "75 videos", "main channel"],
         "ctaLabel": "Open YouTube channel",
         "ctaIcon": "↗",
-        "body": { "size": 30, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
+        "body": { "size": 36, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
         "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 90, "tailLen": 220 },
         "outpost": { "thetaDeg": -120 }
       },
@@ -246,7 +246,7 @@
         "stats": ["short clips", "cert-prep cuts", "no setup"],
         "ctaLabel": "Open Bites channel",
         "ctaIcon": "↗",
-        "body": { "size": 26, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
+        "body": { "size": 32, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
         "comet": { "orbitMul": 1.42, "speedSec": 220, "ecc": 0.18, "tilt": -8, "phase": 200, "tailLen": 130 },
         "outpost": { "thetaDeg": -90 }
       },
@@ -262,7 +262,8 @@
         "stats": ["free assets", "paid ≤ $5", "Ko-fi shop"],
         "ctaLabel": "Browse downloads",
         "ctaIcon": "↓",
-        "body": { "size": 26, "glowCore": "#FDE68A", "glowOuter": "#F59E0B" },
+        "body": { "size": 34, "glowCore": "#FDE68A", "glowOuter": "#F59E0B" },
+        "comet": { "orbitMul": 1.49, "speedSec": 300, "ecc": 0.08, "tilt": 12, "phase": 320, "tailLen": 170 },
         "outpost": { "thetaDeg": -64 }
       },
       {
@@ -277,7 +278,8 @@
         "stats": ["tip jar", "no pressure", "thank-you"],
         "ctaLabel": "Drop a coffee tip",
         "ctaIcon": "☕",
-        "body": { "size": 26, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
+        "body": { "size": 30, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
+        "beacon": { "x": 0.93, "y": 0.86 },
         "outpost": { "thetaDeg": -56 }
       }
     ]
