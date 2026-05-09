@@ -267,13 +267,17 @@ for (const vp of VIEWPORTS) {
     totalFails++;
   }
 
-  // V3.3 — External channels: long-form, bites, kofi must render as bodies on
-  // canvas, must open the card panel (NOT navigate / open new tab), and the
-  // ko-fi card must have exactly 2 CTAs (downloads + tip). Growing-guardrail
-  // — Sat 9 May 2026: prior versions opened external channels via window.open
-  // which broke the click-to-card pattern; this check pins the new behaviour.
-  console.log(`\n=== ${vp.name} / external channels (V3.3) ===`);
-  const externalSlugs = ['long-form', 'bites', 'kofi'];
+  // V3.5 — External channels: long-form, bites, kofi-shop, kofi-tip must
+  // render as bodies on canvas, must open the card panel (NOT navigate / open
+  // new tab), and EACH must have ≥1 CTA with target="_blank". Growing-guardrail
+  // — Sat 9 May 2026 (V3.3): prior versions opened externals via window.open
+  // which broke the click-to-card pattern.
+  // — Fri 9 May 2026 (V3.5): Ko-fi was split from one body with 2 CTAs into
+  // two separate bodies (🎁 kofi-shop + ☕ kofi-tip), each with 1 CTA. Pair
+  // must always be present together — split honours the give-vs-receive
+  // separation. If one disappears, fail.
+  console.log(`\n=== ${vp.name} / external channels (V3.5) ===`);
+  const externalSlugs = ['long-form', 'bites', 'kofi-shop', 'kofi-tip'];
   const externalsExist = await page.evaluate((slugs) => {
     const map = {};
     for (const s of slugs) {
@@ -288,6 +292,15 @@ for (const vp of VIEWPORTS) {
     } else {
       console.log(`  external ${s}: ✓ body present`);
     }
+  }
+
+  // V3.5 — Ko-fi pair guardrail: both kofi-shop AND kofi-tip must always
+  // exist together. Catches accidental re-merge or drop of either half.
+  if (externalsExist['kofi-shop'] && externalsExist['kofi-tip']) {
+    console.log(`  kofi pair: ✓ both 🎁 kofi-shop and ☕ kofi-tip present`);
+  } else {
+    console.log(`  kofi pair: 🔴 split incomplete — kofi-shop=${!!externalsExist['kofi-shop']} kofi-tip=${!!externalsExist['kofi-tip']}`);
+    totalFails++;
   }
 
   // Track popups: external CTAs use target="_blank" so a popup IS expected on
@@ -328,8 +341,9 @@ for (const vp of VIEWPORTS) {
       console.log(`  external ${slug}: 🔴 body click opened a new tab/window`);
       totalFails++;
     }
-    // For kofi, verify the card has exactly 2 CTAs both target=_blank
-    if (slug === 'kofi' && opened) {
+    // V3.5 — Each external card must have ≥ 1 CTA, all target="_blank".
+    // Replaces the V3.3 kofi-specific 2-CTA check now that Ko-fi is split.
+    if (opened) {
       const ctaInfo = await page.evaluate(() => {
         const panel = document.querySelector('.card-panel[data-open="true"]');
         if (!panel) return { count: 0, allBlank: false };
@@ -341,10 +355,10 @@ for (const vp of VIEWPORTS) {
           allBlank: linkArr.every((a) => a.getAttribute('target') === '_blank'),
         };
       });
-      if (ctaInfo.count === 2 && ctaInfo.allBlank) {
-        console.log(`  kofi card: ✓ 2 CTAs, both target=_blank`);
+      if (ctaInfo.count >= 1 && ctaInfo.allBlank) {
+        console.log(`  ${slug} card: ✓ ${ctaInfo.count} CTA(s), all target=_blank`);
       } else {
-        console.log(`  kofi card: 🔴 expected 2 CTAs target=_blank, got count=${ctaInfo.count} allBlank=${ctaInfo.allBlank}`);
+        console.log(`  ${slug} card: 🔴 expected ≥1 CTA target=_blank, got count=${ctaInfo.count} allBlank=${ctaInfo.allBlank}`);
         totalFails++;
       }
     }
@@ -353,15 +367,16 @@ for (const vp of VIEWPORTS) {
   }
   page.context().off('page', popupHandler);
 
-  // V3.3 — List-view must contain the 3 external channel entries.
-  // Growing-guardrail — Sat 9 May 2026: previously externals only existed as
+  // V3.5 — List-view must contain ALL 4 external channel entries.
+  // Growing-guardrail — Sat 9 May 2026 (V3.3): externals only existed as
   // canvas bodies, leaving the no-JS / list-view fallback incomplete.
+  // V3.5: ko-fi split → 4 entries (was 3).
   const lvBtn = await page.$('#toggle-list');
   if (lvBtn) {
     await lvBtn.click();
     await page.waitForTimeout(450);
     const listExternals = await page.evaluate(() => {
-      const ids = ['external-long-form', 'external-bites', 'external-kofi'];
+      const ids = ['external-long-form', 'external-bites', 'external-kofi-shop', 'external-kofi-tip'];
       const found = {};
       for (const id of ids) found[id] = !!document.getElementById(id);
       return found;
@@ -374,7 +389,7 @@ for (const vp of VIEWPORTS) {
       }
     }
     if (lvFails === 0) {
-      console.log(`  list-view externals: ✓ all 3 entries present (long-form, bites, kofi)`);
+      console.log(`  list-view externals: ✓ all 4 entries present (long-form, bites, kofi-shop, kofi-tip)`);
     } else {
       totalFails += lvFails;
     }

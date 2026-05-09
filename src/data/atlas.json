@@ -176,15 +176,15 @@
 
   "mcp": {
     "slug": "mcp",
-    "type": "⭐ Star",
+    "type": "📡 Relay",
     "atmosphere": "invisible",
     "status": "live (collective + per-planet emerging)",
     "lastShippedAt": "2026-05-08",
-    "name": "MCP Move",
+    "name": "MCP Relay",
     "url": "https://mcp.aguidetocloud.com/",
     "tagline": "the cosmos, machine-readable",
     "audience": "Claude, ChatGPT, Copilot, your agents, your scripts. Anything that speaks MCP.",
-    "content": "An MCP move that exposes the cosmos. Per-planet endpoints under construction. CMD live first.",
+    "content": "A relay that ingests data from each planet and exposes it to outside agents. Per-planet endpoints under construction. CMD live first.",
     "founder": "If a future agent wants to recommend the right cert or jargon entry, here's the API.",
     "stats": ["agent-readable", "per-planet emerging", "CMD live first"],
     "position": { "rOrbit": 1500, "thetaDeg": -30 },
@@ -214,7 +214,7 @@
     ]
   },
 
-  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Two YouTube broadcasts (long-form, bites) and Ko-fi (give + receive). Two render styles available via ?ext= URL param: 'comets' (default — orbital with tails for YouTubes, fixed beacon for Ko-fi) and 'outposts' (all three on a fixed outer ring). Render mode is a SUSH visual choice — voice + content stay the same.",
+  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Two YouTube broadcasts (long-form, bites) render as comets in default style. Ko-fi is split into two stationary outposts on the outer ring: 🎁 Free Stuff (downloads) + ☕ Tip Jar (give back). The split honestly separates the two different things Ko-fi actually is — receiving free things vs giving back. Two render styles via ?ext= URL param: 'comets' (default — comets for YouTubes, outposts for Ko-fi pair) and 'outposts' (everything on a fixed outer ring).",
 
   "external": {
     "channels": [
@@ -251,22 +251,34 @@
         "outpost": { "thetaDeg": -90 }
       },
       {
-        "slug": "kofi",
-        "name": "Ko-fi",
+        "slug": "kofi-shop",
+        "name": "Free Stuff",
+        "url": "https://ko-fi.com/aguidetocloud/shop",
+        "type": "🎁 Ko-fi — downloads",
+        "tagline": "free + paid (max $5) downloads",
+        "audience": "Anyone who wants the free assets, or wants to grab a paid one for ≤$5.",
+        "content": "Free downloadable assets. Paid ones capped at $5 to keep them accessible.",
+        "founder": "Most things are free. The rest are capped at $5 because that's what feels right.",
+        "stats": ["free assets", "paid ≤ $5", "Ko-fi shop"],
+        "ctaLabel": "Browse downloads",
+        "ctaIcon": "↓",
+        "body": { "size": 26, "glowCore": "#FDE68A", "glowOuter": "#F59E0B" },
+        "outpost": { "thetaDeg": -64 }
+      },
+      {
+        "slug": "kofi-tip",
+        "name": "Tip Jar",
         "url": "https://ko-fi.com/aguidetocloud",
-        "type": "❤️ Ko-fi — give + receive",
-        "tagline": "free + paid (max $5) + tip jar",
-        "audience": "Anyone who wants the free assets, or wants to grab a paid one for ≤$5, or wants to drop a coffee.",
-        "content": "Free downloadable assets. Paid ones capped at $5 to keep them accessible. Tip jar if something here helped.",
-        "founder": "If something here gave you something, this is where you can give a little back. No pressure — most things are free, the rest are capped at $5.",
-        "stats": ["free assets", "paid ≤ $5", "tip jar"],
-        "ctas": [
-          { "label": "Browse downloads", "icon": "↓", "url": "https://ko-fi.com/aguidetocloud/shop", "kind": "primary" },
-          { "label": "Drop a coffee tip", "icon": "☕", "url": "https://ko-fi.com/aguidetocloud", "kind": "secondary" }
-        ],
-        "body": { "size": 28, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
-        "beacon": { "x": 0.93, "y": 0.86 },
-        "outpost": { "thetaDeg": -60 }
+        "type": "☕ Ko-fi — tip jar",
+        "tagline": "drop a coffee · no pressure",
+        "audience": "Anyone who wants to drop a coffee tip if something here helped.",
+        "content": "A small thank-you, optional, no strings. Goes toward keeping the lights on.",
+        "founder": "If something here gave you something, this is where you can give a little back. No pressure.",
+        "stats": ["tip jar", "no pressure", "thank-you"],
+        "ctaLabel": "Drop a coffee tip",
+        "ctaIcon": "☕",
+        "body": { "size": 26, "glowCore": "#FED7AA", "glowOuter": "#F97316" },
+        "outpost": { "thetaDeg": -56 }
       }
     ]
   },

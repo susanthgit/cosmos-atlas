@@ -8,7 +8,7 @@
  *   earth · guided · brainbar · shift · plainai · agentic · claw · curriculum · mcp
  */
 interface Props {
-  slug: 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi';
+  slug: 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi-shop' | 'kofi-tip';
   size?: number;
   scope?: string;
 }
@@ -122,39 +122,64 @@ const maskId = `pa-${scope}-${slug}-mask`;
 )}
 
 {slug === 'mcp' && (
-  /* V3.1 — unambiguous "star" icon. Five gold points with a bright core, plus four
-     subtle longer rays (the MCP "reaching to all planets" metaphor). Distinct from
-     Claw's `[*]` brand mark so the cosmos's one-true-star reads as a star at a glance. */
+  /* V3.5 — MCP reimagined as a satellite DISH (the relay), not a star.
+     Honest data flow: planets publish → dish ingests → outside agents query.
+     Distinct from long-form/bites satellites (which have solar panels + branded
+     bodies). This is a parabolic dish + support strut + soft signal pulse. */
   <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    {/* Long thin rays — the MCP "reach" — pulse softly */}
-    <g stroke="#FFB347" stroke-width="0.9" stroke-linecap="round" opacity="0.55">
-      <line x1="16" y1="1" x2="16" y2="6">
-        <animate attributeName="opacity" values="0.3;0.75;0.3" dur="2.4s" repeatCount="indefinite"/>
-      </line>
-      <line x1="16" y1="26" x2="16" y2="31">
-        <animate attributeName="opacity" values="0.75;0.3;0.75" dur="2.4s" repeatCount="indefinite"/>
-      </line>
-      <line x1="1" y1="16" x2="6" y2="16">
-        <animate attributeName="opacity" values="0.3;0.75;0.3" dur="2.8s" repeatCount="indefinite"/>
-      </line>
-      <line x1="26" y1="16" x2="31" y2="16">
-        <animate attributeName="opacity" values="0.75;0.3;0.75" dur="2.8s" repeatCount="indefinite"/>
-      </line>
+    {/* Outer warm halo so the dish sits on dark canvas */}
+    <ellipse cx="16" cy="17" rx="14" ry="11" fill="#FFB347" opacity="0.14">
+      <animate attributeName="opacity" values="0.10;0.20;0.10" dur="3.4s" repeatCount="indefinite"/>
+    </ellipse>
+
+    {/* Tripod base struts — three short legs anchoring the strut */}
+    <g stroke="#A39B8A" stroke-width="0.9" stroke-linecap="round">
+      <line x1="13" y1="28" x2="16" y2="22"/>
+      <line x1="19" y1="28" x2="16" y2="22"/>
+      <line x1="16" y1="28" x2="16" y2="22"/>
     </g>
-    {/* Five-point star body — gold fill, outline for crispness on dark background */}
-    <polygon
-      points="16,4 19.4,12.4 28.4,12.4 21.1,17.6 23.9,26 16,20.8 8.1,26 10.9,17.6 3.6,12.4 12.6,12.4"
+
+    {/* Vertical support strut from base to dish */}
+    <line x1="16" y1="22" x2="16" y2="14" stroke="#C9C2B4" stroke-width="1.1" stroke-linecap="round"/>
+
+    {/* Parabolic dish — opens upward and slightly toward viewer.
+        Path: shallow parabola, gold rim with darker interior so it reads as a bowl. */}
+    <path
+      d="M 4 12 Q 16 -2 28 12 L 25 14 Q 16 6 7 14 Z"
       fill="#FFD89A"
       stroke="#FFB347"
       stroke-width="0.9"
       stroke-linejoin="round"
     >
-      <animate attributeName="opacity" values="0.92;1;0.92" dur="2s" repeatCount="indefinite"/>
-    </polygon>
-    {/* Bright pulsing core */}
-    <circle cx="16" cy="16" r="2.2" fill="#FFFFFF" opacity="0.9">
-      <animate attributeName="r" values="1.8;2.6;1.8" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.92;1;0.92" dur="2.6s" repeatCount="indefinite"/>
+    </path>
+
+    {/* Inner dish shadow — gives the bowl depth */}
+    <path
+      d="M 7 14 Q 16 6 25 14 L 23 14.6 Q 16 8.5 9 14.6 Z"
+      fill="#7A4A1A"
+      opacity="0.35"
+    />
+
+    {/* Receiver feed at focal point — small bright dot on a thin support */}
+    <line x1="16" y1="13.5" x2="16" y2="9" stroke="#FFB347" stroke-width="0.7" stroke-linecap="round"/>
+    <circle cx="16" cy="9" r="1.3" fill="#FFFFFF" opacity="0.95">
+      <animate attributeName="r" values="1.0;1.6;1.0" dur="1.8s" repeatCount="indefinite"/>
     </circle>
+
+    {/* Soft signal arcs above the dish — three concentric arcs that pulse, the
+        "listening / collecting" signal coming in from above */}
+    <g fill="none" stroke="#FFE9C4" stroke-linecap="round" opacity="0.7">
+      <path d="M 11 6 Q 16 2 21 6" stroke-width="0.7">
+        <animate attributeName="opacity" values="0.2;0.85;0.2" dur="2.2s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 9 4 Q 16 -1 23 4" stroke-width="0.6">
+        <animate attributeName="opacity" values="0.85;0.2;0.85" dur="2.2s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 7 2 Q 16 -3 25 2" stroke-width="0.5">
+        <animate attributeName="opacity" values="0.2;0.85;0.2" dur="2.2s" begin="0.7s" repeatCount="indefinite"/>
+      </path>
+    </g>
   </svg>
 )}
 
@@ -279,12 +304,54 @@ const maskId = `pa-${scope}-${slug}-mask`;
   </svg>
 )}
 
-{slug === 'kofi' && (
-  /* V3.3 — Ko-fi reimagined. No more "tiny solar system in the corner". One
-     warm coffee mug with a heart-shaped spot (Ko-fi's actual brand feel),
-     gently glowing. Heart-on-mug = the give-and-receive mark. */
+{slug === 'kofi-shop' && (
+  /* V3.5 — Ko-fi split. 🎁 Free Stuff = a gift box (downloads).
+     Warm amber palette to match its glow tokens (FDE68A / F59E0B).
+     Pairs visually with kofi-tip (the coffee mug) on the outer ring. */
+  <svg viewBox="0 0 32 32" width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    {/* Outer warm halo */}
+    <ellipse cx="16" cy="18" rx="14" ry="11" fill="#F59E0B" opacity="0.16">
+      <animate attributeName="opacity" values="0.10;0.22;0.10" dur="3.4s" repeatCount="indefinite"/>
+    </ellipse>
+
+    {/* Box body — slightly trapezoidal for depth, warm cream face */}
+    <rect x="6" y="13" width="20" height="14" rx="1.6" ry="1.6"
+          fill="#FFFBEA" stroke="#F59E0B" stroke-width="1.2"/>
+    {/* Box lid — sits on top, slightly wider */}
+    <rect x="5" y="11" width="22" height="4" rx="1" ry="1"
+          fill="#FDE68A" stroke="#F59E0B" stroke-width="1.2"/>
+
+    {/* Vertical ribbon — soft red/amber, runs through both lid and body */}
+    <rect x="14.5" y="11" width="3" height="16" fill="#F97316" opacity="0.85"/>
+    {/* Subtle ribbon highlight */}
+    <line x1="15.2" y1="11" x2="15.2" y2="27" stroke="#FED7AA" stroke-width="0.6" opacity="0.7"/>
+
+    {/* Bow loops — left + right, soft pulse */}
+    <g fill="#F97316" stroke="#EA580C" stroke-width="0.7">
+      <path d="M 16 11 Q 11 7 11 9 Q 11 11 16 11 Z">
+        <animate attributeName="opacity" values="0.85;1;0.85" dur="2.4s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 16 11 Q 21 7 21 9 Q 21 11 16 11 Z">
+        <animate attributeName="opacity" values="1;0.85;1" dur="2.4s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    {/* Bow knot — small circle at the centre */}
+    <circle cx="16" cy="11" r="1.3" fill="#EA580C"/>
+
+    {/* Tiny down-arrow on the box face — hints at "downloads" */}
+    <g stroke="#F59E0B" stroke-width="1.1" stroke-linecap="round" fill="none" opacity="0.75">
+      <line x1="16" y1="18" x2="16" y2="23"/>
+      <polyline points="13.5,21 16,23.5 18.5,21"/>
+    </g>
+  </svg>
+)}
+
+{slug === 'kofi-tip' && (
+  /* V3.5 — Ko-fi split. ☕ Tip Jar = warm coffee mug with a small heart on it.
+     Inherits the original kofi mug shape (Ko-fi brand feel) but slimmer +
+     paired visually with kofi-shop (the gift box) on the outer ring. */
   <svg viewBox="0 0 36 32" width={size * 1.13} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    {/* Outer warm glow */}
+    {/* Outer warm halo */}
     <ellipse cx="18" cy="17" rx="15" ry="12" fill="#F97316" opacity="0.16">
       <animate attributeName="opacity" values="0.10;0.22;0.10" dur="3.6s" repeatCount="indefinite"/>
     </ellipse>
@@ -304,9 +371,9 @@ const maskId = `pa-${scope}-${slug}-mask`;
       stroke-width="1.6"
       stroke-linecap="round"
     />
-    {/* Heart on the mug — the Ko-fi mark itself */}
+    {/* Heart on the mug — small, warm */}
     <path
-      d="M 16 21 C 16 21, 10 17, 10 13.5 C 10 11.6, 11.4 10.5, 13 10.5 C 14.5 10.5, 15.5 11.5, 16 12.4 C 16.5 11.5, 17.5 10.5, 19 10.5 C 20.6 10.5, 22 11.6, 22 13.5 C 22 17, 16 21, 16 21 Z"
+      d="M 16 20 C 16 20, 11 17, 11 14 C 11 12.4, 12.2 11.5, 13.5 11.5 C 14.7 11.5, 15.6 12.3, 16 13 C 16.4 12.3, 17.3 11.5, 18.5 11.5 C 19.8 11.5, 21 12.4, 21 14 C 21 17, 16 20, 16 20 Z"
       fill="#EF4444"
     >
       <animate attributeName="opacity" values="0.92;1;0.92" dur="1.8s" repeatCount="indefinite"/>

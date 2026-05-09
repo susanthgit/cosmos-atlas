@@ -367,7 +367,19 @@ export function mountCosmos(data: CosmosData): void {
   const IDLE_THRESHOLD_MS = 30_000;
   function markInteraction(): void {
     lastInteractionMs = performance.now();
+    // V3.5 — Earth first-touch pulse stops on first user interaction.
+    // Uses a closure flag set inside the mountCosmos body (see Earth pulse
+    // activation block near the end of mount).
+    if (earthFirstPulseActive) {
+      earthFirstPulseActive = false;
+      const earthBody = document.querySelector('.planet-body[data-slug="earth"]') as HTMLElement | null;
+      if (earthBody) earthBody.removeAttribute('data-first-pulse');
+    }
   }
+
+  // V3.5 — Earth first-touch pulse state. Activated on mount if Earth body
+  // exists and reduced-motion is off. Cleared on first markInteraction.
+  let earthFirstPulseActive = false;
 
   // V2.1 #2 — Freshness pulse. Bodies whose lastShippedAt is within FRESHNESS_DAYS
   // wear a subtle pulsing ring (different cadence + colour from the focus ring).
@@ -532,7 +544,10 @@ export function mountCosmos(data: CosmosData): void {
     // Mobile gets gentler depth compression so inner planets don't cluster.
     FOCAL = narrowMode ? FOCAL_NARROW : FOCAL_DESKTOP;
     // Tighter margins on phones so the outermost orbit still fits.
-    const margin = narrowMode ? 22 : mobileMode ? 36 : 110;
+    // Desktop margin reduced from 110 → 32 (May 2026) so the cosmos uses
+    // almost the full viewport. HUD chips live in absolute corners and
+    // aren't affected. MCP star self-clamps to viewport edge so 32 is safe.
+    const margin = narrowMode ? 22 : mobileMode ? 36 : 32;
     const desiredVHalf = (ch / 2 - margin) / cosTilt;
     const desiredHHalf = (cw / 2 - margin);
     scaleFactor = Math.min(desiredHHalf / fittingOutermost, desiredVHalf / fittingOutermost, 1);
@@ -885,15 +900,16 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
-  // P0 #3 — MCP star light rays to LIVE endpoints. Animated dashed lines.
+  // V3.5 — MCP relay flow lines.
+  //   PLANNED endpoints  → faint static dashed grey line (no animation).
+  //   LIVE    endpoints  → drawn as animated dots flowing planet → MCP in
+  //                        drawMcpStream() below. drawMcpRays leaves them alone
+  //                        so the dots have a clean stage.
+  // The slugMap maps MCP endpoint slugs (e.g. brainbar-mcp) to planet slugs.
   function drawMcpRays(introBodies: number): void {
     if (introBodies <= 0) return;
-    const t = getRealT();
     const star = bodies.find((b) => b.kind === 'star');
     if (!star) return;
-    const isMcpFocused = focusedSlug === data.mcp.slug;
-    const isMcpHovered = hoveredSlug === data.mcp.slug;
-    // Map endpoint slug → planet slug. Endpoint 'brainbar-mcp' → planet 'brainbar' etc.
     const slugMap: Record<string, string> = {
       'brainbar-mcp': 'brainbar',
       'agentic-mcp': 'agentic',
@@ -902,27 +918,24 @@ export function mountCosmos(data: CosmosData): void {
       'shift-mcp': 'shift',
       'claw-mcp': 'claw',
     };
+    ctx.save();
+    ctx.lineWidth = 0.7;
+    ctx.setLineDash([2, 8]);
     for (const ep of data.mcp.endpoints) {
-      if (ep.status !== 'live') continue;
+      if (ep.status !== 'planned') continue;
       const targetSlug = slugMap[ep.slug];
       if (!targetSlug) continue;
       const target = bodies.find((b) => b.slug === targetSlug);
       if (!target) continue;
-      const baseAlpha = isMcpFocused ? 0.55 : isMcpHovered ? 0.40 : 0.18;
-      const alpha = baseAlpha * introBodies;
-      const grad = ctx.createLinearGradient(star.screenX, star.screenY, target.screenX, target.screenY);
-      grad.addColorStop(0, withAlpha(data.mcp.anchor?.glowCore ?? '#FFD89A', alpha));
-      grad.addColorStop(1, withAlpha(target.glowOuter, alpha * 0.5));
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 9]);
-      ctx.lineDashOffset = -t * 22;
+      const alpha = 0.14 * introBodies;
+      ctx.strokeStyle = withAlpha(data.atmosphere.hudMuted, alpha);
       ctx.beginPath();
       ctx.moveTo(star.screenX, star.screenY);
       ctx.lineTo(target.screenX, target.screenY);
       ctx.stroke();
-      ctx.setLineDash([]);
     }
+    ctx.setLineDash([]);
+    ctx.restore();
   }
 
   // P1 #8 ignition — orbits draw progressively from a starting angle.
@@ -1587,6 +1600,7 @@ export function mountCosmos(data: CosmosData): void {
     drawMcpRays(intro.bodies);
     drawConstellationLines(intro.bodies, deltaSec);
     drawMcpStream(intro.bodies);
+    drawMcpOutwardPulse(intro.bodies);
     drawBodyShadows(intro.bodies);
     drawExternalDecorations(intro.bodies);
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
@@ -1860,44 +1874,113 @@ export function mountCosmos(data: CosmosData): void {
     heading?.focus();
   }
 
-  // V3.4 — MCP data stream lines. Faint dashed quadratic curves from MCP star
-  // to the planets that consume MCP data (Brainbar, Plain AI, Agentic). Makes
-  // MCP feel purposeful instead of orphaned at the edge of the cosmos.
-  // Drawn before body shadows so bodies render on top.
+  // V3.5 — MCP live data streams. Dots flow PLANET → MCP relay (data being
+  // ingested), reinforcing that MCP collects from each live planet rather than
+  // broadcasts to them. Planned endpoints are handled by drawMcpRays as faint
+  // static dashed lines. Three dots per live path with phase offsets, on a
+  // gentle quadratic curve so multiple paths read distinctly.
   function drawMcpStream(introBodies: number): void {
     if (introBodies <= 0 || reducedMotion) return;
     const star = bodies.find((b) => b.kind === 'star');
     if (!star) return;
-    // Pull consumer slugs from the data.mcp.connections array — only those with
-    // status === 'live' get a stream line (planned ones are quiet for now).
-    const liveConsumers = (data.mcp.connections ?? [])
-      .filter((c: { slug: string; status?: string }) => c.status === 'live')
-      .map((c: { slug: string }) => c.slug.replace('-mcp', ''))
-      .filter((s: string) => s !== 'mcp-collective');
-    const seen = new Set<string>();
+    const slugMap: Record<string, string> = {
+      'brainbar-mcp': 'brainbar',
+      'agentic-mcp': 'agentic',
+      'earth-mcp': 'earth',
+      'plainai-mcp': 'plainai',
+      'shift-mcp': 'shift',
+      'claw-mcp': 'claw',
+    };
     const t = getRealT();
+    const PERIOD_SEC = 2.4;
+    const N_DOTS = 3;
+    const isMcpFocused = focusedSlug === data.mcp.slug;
+    const dotColor = data.mcp.anchor?.glowCore ?? '#FFE6B0';
+    const guideColor = data.mcp.anchor?.glowOuter ?? '#FFB347';
+
     ctx.save();
-    ctx.lineWidth = 0.9;
-    ctx.setLineDash([3, 7]);
-    ctx.lineDashOffset = -t * 12; // slow flow toward planets
-    for (const slug of liveConsumers) {
-      if (seen.has(slug)) continue;
-      seen.add(slug);
-      const target = bodies.find((b) => b.slug === slug);
+    for (const ep of data.mcp.endpoints) {
+      if (ep.status !== 'live') continue;
+      const targetSlug = slugMap[ep.slug];
+      if (!targetSlug) continue;
+      const target = bodies.find((b) => b.slug === targetSlug);
       if (!target) continue;
-      const dx = target.screenX - star.screenX;
-      const dy = target.screenY - star.screenY;
+
+      const dx = star.screenX - target.screenX;
+      const dy = star.screenY - target.screenY;
       const dist = Math.hypot(dx, dy);
       if (dist < 50) continue;
-      // Curved arc using midpoint offset perpendicular for organic feel
-      const mx = (star.screenX + target.screenX) / 2;
-      const my = (star.screenY + target.screenY) / 2;
-      const px = -dy / dist * Math.min(60, dist * 0.18);
-      const py = dx / dist * Math.min(60, dist * 0.18);
-      ctx.strokeStyle = withAlpha(data.atmosphere.accentSoft, 0.20);
+      // Curve control point — perpendicular offset so paths fan out
+      const mx = (target.screenX + star.screenX) / 2;
+      const my = (target.screenY + star.screenY) / 2;
+      const offsetMag = Math.min(50, dist * 0.14);
+      const px = -dy / dist * offsetMag;
+      const py = dx / dist * offsetMag;
+      const ctrlX = mx + px;
+      const ctrlY = my + py;
+
+      // Faint guide path under the dots so the route is visible at rest
+      const guideAlpha = (isMcpFocused ? 0.16 : 0.08) * introBodies;
+      ctx.strokeStyle = withAlpha(guideColor, guideAlpha);
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
-      ctx.moveTo(star.screenX, star.screenY);
-      ctx.quadraticCurveTo(mx + px, my + py, target.screenX, target.screenY);
+      ctx.moveTo(target.screenX, target.screenY);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, star.screenX, star.screenY);
+      ctx.stroke();
+
+      // Animated dots along the same path. tt=0 is at planet, tt=1 is at star.
+      for (let i = 0; i < N_DOTS; i++) {
+        const phase = i / N_DOTS;
+        const tt = ((t / PERIOD_SEC) + phase) % 1;
+        const u = 1 - tt;
+        const x = u * u * target.screenX + 2 * u * tt * ctrlX + tt * tt * star.screenX;
+        const y = u * u * target.screenY + 2 * u * tt * ctrlY + tt * tt * star.screenY;
+        const fadeIn = Math.min(1, tt * 8);
+        const fadeOut = Math.min(1, (1 - tt) * 8);
+        const dotAlpha = (isMcpFocused ? 0.95 : 0.78) * Math.min(fadeIn, fadeOut) * introBodies;
+        ctx.fillStyle = withAlpha(dotColor, dotAlpha);
+        ctx.beginPath();
+        ctx.arc(x, y, 1.6, 0, TWO_PI);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // V3.5 — MCP outward signal pulse. Concentric rings expand from the relay
+  // toward the nearest viewport edge, signalling "outside agents can read this"
+  // — the bridge between the cosmos and the wider world. Three rings on
+  // staggered phases. Capped at viewport edge + 80px so it never bursts off
+  // weird angles.
+  function drawMcpOutwardPulse(introBodies: number): void {
+    if (introBodies <= 0 || reducedMotion) return;
+    const star = bodies.find((b) => b.kind === 'star');
+    if (!star) return;
+    const t = getRealT();
+    const PERIOD_SEC = 4.0;
+    const N_RINGS = 3;
+    const distLeft = star.screenX;
+    const distRight = cw - star.screenX;
+    const distTop = star.screenY;
+    const distBottom = ch - star.screenY;
+    const edgeDist = Math.min(distLeft, distRight, distTop, distBottom);
+    const maxR = Math.max(60, edgeDist + 80);
+    const minR = star.intrinsicSize * star.scale * cameraZoom * 1.6;
+    if (maxR <= minR) return;
+    const isMcpFocused = focusedSlug === data.mcp.slug;
+    const baseAlpha = (isMcpFocused ? 0.32 : 0.20) * introBodies;
+    const ringColor = data.mcp.anchor?.glowCore ?? '#FFE6B0';
+    ctx.save();
+    for (let i = 0; i < N_RINGS; i++) {
+      const phase = i / N_RINGS;
+      const tt = ((t / PERIOD_SEC) + phase) % 1;
+      const r = minR + (maxR - minR) * tt;
+      const alpha = (1 - tt) * baseAlpha;
+      if (alpha <= 0.01) continue;
+      ctx.strokeStyle = withAlpha(ringColor, alpha);
+      ctx.lineWidth = 1.0 + (1 - tt) * 0.8;
+      ctx.beginPath();
+      ctx.arc(star.screenX, star.screenY, r, 0, TWO_PI);
       ctx.stroke();
     }
     ctx.restore();
@@ -1963,6 +2046,8 @@ export function mountCosmos(data: CosmosData): void {
     lastFocusBeforeOpen = (document.activeElement as HTMLElement) ?? null;
     focusedSlug = slug;
     root.dataset.state = 'focused';
+    // V3.5 — card-open dim: fade canvas-stage to 30% so the card reads cleanly.
+    root.dataset.cardOpen = 'true';
     if (!reducedMotion) {
       warpStartMs = performance.now();
       root.dataset.warp = 'in';
@@ -1986,6 +2071,8 @@ export function mountCosmos(data: CosmosData): void {
     cardPanel.dataset.open = 'false';
     cardPanel.setAttribute('aria-hidden', 'true');
     root.dataset.state = hoveredSlug ? 'hovering' : 'idle';
+    // V3.5 — restore canvas brightness when the card closes.
+    delete root.dataset.cardOpen;
     if (!reducedMotion) {
       warpStartMs = performance.now();
       root.dataset.warp = 'out';
@@ -2381,6 +2468,76 @@ export function mountCosmos(data: CosmosData): void {
     }, showAt);
   }
   maybeShowGestureHint();
+
+  // V3.5 — Lede + Earth first-touch pulse + first-visit coach.
+  // Coach is the boss: if it's going to show (no localStorage flag), the
+  // lede is removed so they don't compete. Returning visitors see only the
+  // lede, briefly, then nothing. First-time visitors see only the coach.
+  // Both honour prefers-reduced-motion.
+  const COACH_FLAG = 'cosmosCoachSeen';
+  let coachWillShow = false;
+  try {
+    coachWillShow = !window.localStorage.getItem(COACH_FLAG) && !reducedMotion;
+  } catch (_) {
+    // No storage access — fall back to "show lede, skip coach" for safety.
+    coachWillShow = false;
+  }
+
+  // Earth first-touch pulse: activate now (cleared by markInteraction).
+  if (!reducedMotion) {
+    const earthBody = bodiesRoot.querySelector('.planet-body[data-slug="earth"]') as HTMLElement | null;
+    if (earthBody) {
+      earthBody.dataset.firstPulse = 'true';
+      earthFirstPulseActive = true;
+    }
+  }
+
+  // Lede: shown only when the coach is NOT going to. Auto-fade at ~6.5s.
+  const ledeEl = document.getElementById('cosmos-lede') as HTMLElement | null;
+  if (ledeEl) {
+    if (coachWillShow) {
+      ledeEl.remove();
+    } else {
+      window.setTimeout(() => { ledeEl.dataset.visible = 'true'; }, 240);
+      window.setTimeout(() => { ledeEl.dataset.visible = 'false'; }, 6500);
+      window.setTimeout(() => { ledeEl.remove(); }, 7300);
+    }
+  }
+
+  // First-visit coach: 3 steps with skip + back + next.
+  const coachEl = document.getElementById('cosmos-coach') as HTMLElement | null;
+  const coachSkipBtn = document.getElementById('coach-skip') as HTMLButtonElement | null;
+  const coachBackBtn = document.getElementById('coach-back') as HTMLButtonElement | null;
+  const coachNextBtn = document.getElementById('coach-next') as HTMLButtonElement | null;
+  if (coachEl) {
+    if (!coachWillShow) {
+      coachEl.remove();
+    } else {
+      const setStep = (n: number): void => {
+        const clamped = Math.max(0, Math.min(2, n));
+        coachEl.dataset.step = String(clamped);
+        if (coachBackBtn) coachBackBtn.style.visibility = clamped === 0 ? 'hidden' : 'visible';
+        if (coachNextBtn) coachNextBtn.textContent = clamped === 2 ? 'done' : 'next →';
+      };
+      const dismiss = (): void => {
+        coachEl.dataset.visible = 'false';
+        try { window.localStorage.setItem(COACH_FLAG, '1'); } catch (_) { /* noop */ }
+        window.setTimeout(() => { coachEl.remove(); }, 600);
+      };
+      setStep(0);
+      window.setTimeout(() => { coachEl.dataset.visible = 'true'; }, 1200);
+      coachSkipBtn?.addEventListener('click', dismiss);
+      coachBackBtn?.addEventListener('click', () => {
+        const cur = parseInt(coachEl.dataset.step ?? '0', 10);
+        setStep(cur - 1);
+      });
+      coachNextBtn?.addEventListener('click', () => {
+        const cur = parseInt(coachEl.dataset.step ?? '0', 10);
+        if (cur >= 2) dismiss();
+        else setStep(cur + 1);
+      });
+    }
+  }
 
   requestAnimationFrame((now) => {
     lastFrame = now;

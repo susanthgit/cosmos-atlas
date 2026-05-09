@@ -24,7 +24,7 @@ type ManifestPlanet = { slug: string; name: string; url: string; tagline: string
 type AtlasMoon = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; speedSec: number; phase?: number }; body: { size: number; glowCore: string; glowOuter: string } };
 type AtlasPlanet = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }; body: { size: number; glowCore: string; glowOuter: string }; moons?: AtlasMoon[] };
 
-type IconSlug = 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi';
+type IconSlug = 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi-shop' | 'kofi-tip';
 
 const manifestBySlug = new Map<string, ManifestPlanet>();
 for (const p of planets.planets as ManifestPlanet[]) {
@@ -181,6 +181,13 @@ const clientData = {
         <span class="mast-tag">A Guide to Cloud</span>
       </header>
 
+      {/* V3.5 — One-line lede above the canvas. Fades after ~6s once user
+           sees it. Suppressed when first-visit coach is going to show
+           (coach explains the same things and more). */}
+      <p class="cosmos-lede" id="cosmos-lede" data-visible="false" aria-live="polite">
+        a living map of everything in the A Guide to Cloud cosmos. tap a planet to start.
+      </p>
+
       <nav class="hud-tools" aria-label="View tools">
         <button
           type="button"
@@ -215,6 +222,42 @@ const clientData = {
         <span class="gesture-hint__line">↔ swipe to pan</span>
         <span class="gesture-hint__line">⊕ pinch to zoom</span>
         <span class="gesture-hint__line">tap a planet to open</span>
+      </div>
+
+      {/* V3.5 — First-visit coach. 3 cards, dismissable. Sets
+           localStorage.cosmosCoachSeen so it never repeats for the same
+           visitor. Suppresses the lede when active. */}
+      <div
+        class="cosmos-coach"
+        id="cosmos-coach"
+        data-step="0"
+        data-visible="false"
+        role="dialog"
+        aria-labelledby="coach-title-0"
+        aria-modal="false"
+      >
+        <button class="cosmos-coach__skip" id="coach-skip" type="button" aria-label="Skip the intro">Skip</button>
+        <div class="cosmos-coach__step cosmos-coach__step--0">
+          <span class="cosmos-coach__title" id="coach-title-0">a quick tour · 1 of 3</span>
+          <p class="cosmos-coach__body">this is the cosmos — a living map of <strong>A Guide to Cloud</strong>. each planet is a different audience.</p>
+        </div>
+        <div class="cosmos-coach__step cosmos-coach__step--1">
+          <span class="cosmos-coach__title" id="coach-title-1">the source · 2 of 3</span>
+          <p class="cosmos-coach__body">the glow at the centre is the <strong>Sun</strong> — the AI co-founder. invisible by design.</p>
+        </div>
+        <div class="cosmos-coach__step cosmos-coach__step--2">
+          <span class="cosmos-coach__title" id="coach-title-2">how to roam · 3 of 3</span>
+          <p class="cosmos-coach__body"><strong>Earth</strong> is the home. tap it to start. drag to pan · wheel to zoom · tap any planet.</p>
+        </div>
+        <div class="cosmos-coach__nav">
+          <span class="cosmos-coach__dots" aria-hidden="true">
+            <span class="cosmos-coach__dot"></span>
+            <span class="cosmos-coach__dot"></span>
+            <span class="cosmos-coach__dot"></span>
+          </span>
+          <button class="cosmos-coach__btn" id="coach-back" type="button">← back</button>
+          <button class="cosmos-coach__btn cosmos-coach__btn--primary" id="coach-next" type="button">next →</button>
+        </div>
       </div>
     </div>
 

@@ -474,3 +474,186 @@ body.list-view .static-shell {
   color: rgba(255, 255, 255, 0.45);
   margin-left: auto;
 }
+
+/* ─────────── V3.5 — One-line lede + Earth first-touch pulse + card-open dim ─────────── */
+/* Lede sits centred at the top of the canvas. Visible on mount (after a brief
+   delay so the cosmos has rendered), fades out at ~6 seconds. Suppressed
+   while the first-visit coach is active. */
+.cosmos-lede {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  margin: 0;
+  padding: 11px 22px;
+  font-family: var(--display, 'Space Grotesk', system-ui, sans-serif);
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  color: var(--hud);
+  text-align: center;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  max-width: min(560px, 86vw);
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+  opacity: 0;
+  transform: translate(-50%, -10px);
+  transition: opacity 600ms ease-out, transform 600ms ease-out;
+  box-shadow: 0 4px 24px var(--shadow);
+}
+.cosmos-lede[data-visible="true"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (max-width: 480px) {
+  .cosmos-lede { top: 14px; padding: 9px 16px; font-size: 13px; max-width: 90vw; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-lede { transition: none; transform: translate(-50%, 0); }
+}
+
+/* Earth first-touch pulse — gentle scale + glow ring while the visitor hasn't
+   engaged yet. Removed (data attr deleted) on first markInteraction. The
+   freshness pulse already handles "shipped recently" — this is its own
+   data-first-pulse track so they don't collide. */
+@keyframes earth-first-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 0 0 transparent); }
+  50%      { transform: translate(-50%, -50%) scale(1.08); filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 60%, transparent)); }
+}
+.planet-body[data-slug="earth"][data-first-pulse="true"] .planet-body__icon {
+  animation: earth-first-pulse 2.6s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .planet-body[data-slug="earth"][data-first-pulse="true"] .planet-body__icon {
+    animation: none;
+  }
+}
+
+/* Card-open dim — when a card panel is open, the canvas (orbits, nebulae,
+   starfield) fades to 30%. Bodies stay full opacity so the focused planet
+   reads cleanly and other planets remain identifiable. Smooth 250ms ease. */
+.cosmos[data-card-open="true"] .canvas-stage {
+  opacity: 0.30;
+  transition: opacity 250ms ease-out;
+}
+.cosmos:not([data-card-open="true"]) .canvas-stage {
+  opacity: 1;
+  transition: opacity 250ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cosmos[data-card-open="true"] .canvas-stage,
+  .cosmos:not([data-card-open="true"]) .canvas-stage {
+    transition: none;
+  }
+}
+
+/* ─────────── V3.5 — First-visit coach (3 cards, dismissable) ─────────── */
+/* Centre-bottom positioned. Slide-up entry. Skip + Back + Next + Done.
+   localStorage flag cosmosCoachSeen prevents replay. Suppresses the lede. */
+.cosmos-coach {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translate(-50%, 18px);
+  width: min(380px, calc(100vw - 36px));
+  padding: 18px 20px 14px 20px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  border: 1px solid var(--rule-strong);
+  border-radius: 14px;
+  color: var(--hud);
+  font-family: var(--display, 'Space Grotesk', system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.45;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  z-index: 6;
+  box-shadow: 0 12px 48px var(--shadow);
+  transition: opacity 320ms ease-out, transform 320ms ease-out;
+}
+.cosmos-coach[data-visible="true"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.cosmos-coach__step { display: none; }
+.cosmos-coach[data-step="0"] .cosmos-coach__step--0,
+.cosmos-coach[data-step="1"] .cosmos-coach__step--1,
+.cosmos-coach[data-step="2"] .cosmos-coach__step--2 { display: block; }
+.cosmos-coach__title {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-faint);
+  margin-bottom: 6px;
+}
+.cosmos-coach__body { margin: 0 0 14px 0; color: var(--hud); }
+.cosmos-coach__body strong { color: var(--accent-soft); font-weight: 600; }
+.cosmos-coach__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.cosmos-coach__dots {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: auto;
+}
+.cosmos-coach__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hud) 22%, transparent);
+}
+.cosmos-coach[data-step="0"] .cosmos-coach__dot:nth-child(1),
+.cosmos-coach[data-step="1"] .cosmos-coach__dot:nth-child(2),
+.cosmos-coach[data-step="2"] .cosmos-coach__dot:nth-child(3) {
+  background: var(--accent);
+}
+.cosmos-coach__btn {
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  color: var(--hud);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out;
+}
+.cosmos-coach__btn:hover { background: color-mix(in srgb, var(--hud) 8%, transparent); }
+.cosmos-coach__btn--primary {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  color: var(--accent-soft);
+}
+.cosmos-coach__btn--primary:hover { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+.cosmos-coach__skip {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--hud-faint);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color 140ms ease-out, background 140ms ease-out;
+}
+.cosmos-coach__skip:hover { color: var(--hud); background: color-mix(in srgb, var(--hud) 6%, transparent); }
+@media (max-width: 480px) {
+  .cosmos-coach { bottom: 24px; padding: 14px 16px 12px 16px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-coach { transition: none; transform: translate(-50%, 0); }
+}
