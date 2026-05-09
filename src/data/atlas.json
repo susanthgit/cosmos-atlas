@@ -214,27 +214,41 @@
     ]
   },
 
-  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Phase B-2 (9 May 2026): long-form + bites merged into one 'youtube' body with two CTAs (long videos + shorts). LinkedIn added as a passing comet. Kofi-shop stays as comet, kofi-tip stays as corner beacon (give vs receive split honoured). Render mode is fixed (V3.6); the ?ext= param is no longer respected.",
+  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Phase D (9 May 2026): YouTube split back into TWO bodies — youtube (long-form, on susanthsutheesh) + bites (10–20 min, on aguidetocloud). They orbit in formation: same orbitMul + speedSec + ecc + tilt, with a 12° phase offset so they fly together with constant angular separation. Both are real distribution channels. LinkedIn added as a passing comet. Kofi-shop stays as comet, kofi-tip stays as corner beacon (give vs receive split honoured).",
 
   "external": {
     "channels": [
       {
         "slug": "youtube",
-        "name": "YouTube",
+        "name": "YouTube — Long videos",
         "url": "https://youtube.com/susanthsutheesh",
-        "type": "📺 YouTube — long videos + shorts",
-        "tagline": "the long videos and the short clips",
-        "audience": "Anyone who learns better watching than reading.",
-        "content": "Long-form deep dives on susanthsutheesh, plus short cert-prep cuts on aguidetocloud. Same brain, two formats.",
-        "founder": "Same content, two formats. Long if you want the walk-through, short if you just want the answer.",
-        "stats": ["long videos", "short clips", "cert prep"],
-        "ctas": [
-          { "label": "Open long-form", "icon": "↗", "url": "https://youtube.com/susanthsutheesh", "kind": "primary" },
-          { "label": "Open shorts", "icon": "↗", "url": "https://youtube.com/aguidetocloud", "kind": "secondary" }
-        ],
+        "type": "📺 YouTube — long videos",
+        "tagline": "the deep dives, on YouTube",
+        "audience": "Anyone who learns better when someone walks them through it on screen.",
+        "content": "Full-length tutorials and walk-throughs. Microsoft cloud, AI, the curious-intern lens.",
+        "founder": "I make these because writing alone doesn't always carry it. Sometimes you need to see my screen.",
+        "stats": ["long-form", "deep dives", "main channel"],
+        "ctaLabel": "Open long-form channel",
+        "ctaIcon": "↗",
         "body": { "size": 36, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
         "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 90, "tailLen": 220 },
         "outpost": { "thetaDeg": -120 }
+      },
+      {
+        "slug": "bites",
+        "name": "YouTube — Bites",
+        "url": "https://youtube.com/aguidetocloud",
+        "type": "📺 YouTube — 10–20 min Bites",
+        "tagline": "shorter cuts, same brain",
+        "audience": "Anyone who wants the answer in 15 minutes instead of an hour.",
+        "content": "10–20 minute focused videos on a single topic. Cert prep cuts, M365 deep-dives, AI explainers — sized for a coffee break.",
+        "founder": "Same content as long-form, but tighter. Made for when you only have 15 minutes between meetings.",
+        "stats": ["10–20 min", "cert prep cuts", "scaled distribution"],
+        "ctaLabel": "Open Bites channel",
+        "ctaIcon": "↗",
+        "body": { "size": 30, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
+        "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 102, "tailLen": 160 },
+        "outpost": { "thetaDeg": -110 }
       },
       {
         "slug": "linkedin",

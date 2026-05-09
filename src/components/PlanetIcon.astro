@@ -8,7 +8,7 @@
  *   earth · guided · brainbar · shift · plainai · agentic · claw · curriculum · mcp
  */
 interface Props {
-  slug: 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'youtube' | 'linkedin' | 'kofi-shop' | 'kofi-tip';
+  slug: 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'youtube' | 'bites' | 'linkedin' | 'kofi-shop' | 'kofi-tip';
   size?: number;
   scope?: string;
 }
@@ -260,6 +260,100 @@ const maskId = `pa-${scope}-${slug}-mask`;
       </g>
       <circle cx="23.5" cy="12.5" r="1" fill="#FEF9C3" opacity="0.85">
         <animate attributeName="opacity" values="0.6;1;0.6" dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+  </svg>
+)}
+
+{slug === 'bites' && (
+  /* Phase D — Bites = formation-flying companion to Long videos. Same
+     YouTube DNA (red play body, panels, antenna) but smaller and tighter
+     so they read as related-but-distinct. Sush note: Bites = 10–20 min
+     videos (NOT YouTube Shorts) — a real distribution channel for
+     coffee-break-length cuts. ONE trailing motion line (not three swipe
+     chevrons) hints at "shorter pace" without invoking Shorts vocabulary.
+     A subtle "10-20" timecode hint is rendered in mono on the body so
+     the size promise is legible at a glance. */
+  <svg viewBox="0 0 34 32" width={size * 1.06} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    {/* Soft pink-red warmth — matches Long videos but a touch cooler */}
+    <ellipse cx="17" cy="16" rx="14" ry="9" fill="#9F1239" opacity="0.18"/>
+
+    {/* Single trailing motion line behind the body — hints "this one moves
+        faster / shorter" without reading as "shorts swipe". */}
+    <g stroke="#FECACA" stroke-width="0.6" stroke-linecap="round" opacity="0.55">
+      <line x1="2" y1="16" x2="6.5" y2="16">
+        <animate attributeName="opacity" values="0.85;0.2;0.85" dur="1.4s" repeatCount="indefinite"/>
+      </line>
+    </g>
+
+    {/* Whole satellite — slightly faster wobble than Long videos, signalling
+        the tighter rhythm of bite-sized publishing. */}
+    <g>
+      <animateTransform attributeName="transform" type="rotate"
+                        values="-2 17 16; 2 17 16; -2 17 16"
+                        dur="3.6s" repeatCount="indefinite"/>
+
+      {/* LEFT solar panel — smaller than Long videos to telegraph "junior
+          sibling" (same DNA, smaller body). */}
+      <g>
+        <rect x="1.5" y="13" width="6.5" height="6" fill="#1E3A8A" stroke="#60A5FA" stroke-width="0.4"/>
+        <line x1="3.6" y1="13" x2="3.6" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+        <line x1="5.7" y1="13" x2="5.7" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+        <line x1="1.5" y1="16" x2="8" y2="16" stroke="#60A5FA" stroke-width="0.3"/>
+        <line x1="8" y1="16" x2="11" y2="16" stroke="#94A3B8" stroke-width="0.55"/>
+      </g>
+
+      {/* RIGHT solar panel — mirrored */}
+      <g>
+        <rect x="26" y="13" width="6.5" height="6" fill="#1E3A8A" stroke="#60A5FA" stroke-width="0.4"/>
+        <line x1="28.1" y1="13" x2="28.1" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+        <line x1="30.2" y1="13" x2="30.2" y2="19" stroke="#60A5FA" stroke-width="0.3"/>
+        <line x1="26" y1="16" x2="32.5" y2="16" stroke="#60A5FA" stroke-width="0.3"/>
+        <line x1="23" y1="16" x2="26" y2="16" stroke="#94A3B8" stroke-width="0.55"/>
+      </g>
+
+      {/* Antenna — short whisker with blinking transmitter dot */}
+      <line x1="17" y1="11" x2="17" y2="6.8" stroke="#94A3B8" stroke-width="0.6"/>
+      <circle cx="17" cy="6.5" r="0.85" fill="#FCA5A5">
+        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite"/>
+      </circle>
+
+      {/* Central body — horizontal red rounded rect (same orientation as
+          Long videos, just smaller). Distinguishing pink-red tint vs the
+          deep red of Long videos. */}
+      <rect x="11" y="11" width="12" height="10" rx="1.6" ry="1.6" fill="#F43F5E" stroke="#FECDD3" stroke-width="0.4">
+        <animate attributeName="opacity" values="0.92;1;0.92" dur="2.2s" repeatCount="indefinite"/>
+      </rect>
+      <polygon points="13.6,13.6 13.6,18.4 17.5,16" fill="#FFFFFF"/>
+
+      {/* "10–20" timecode label — tiny mono text inside the right side
+          of the body. Tells the user this channel is 10–20 min videos at
+          a single glance, distinguishing from Long videos. */}
+      <text x="20.6" y="14.4" text-anchor="middle"
+            font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="3.2" font-weight="700" fill="#FFFFFF" opacity="0.95">10</text>
+      <text x="20.6" y="18.6" text-anchor="middle"
+            font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="3.2" font-weight="700" fill="#FFFFFF" opacity="0.95">20</text>
+      <line x1="18.4" y1="16.5" x2="22.8" y2="16.5" stroke="#FECDD3" stroke-width="0.35" opacity="0.85"/>
+
+      {/* REC indicator — small white blinking dot, slightly faster than
+          Long videos to telegraph "more frequent uploads" */}
+      <circle cx="12.4" cy="12.5" r="0.55" fill="#FFFFFF">
+        <animate attributeName="opacity" values="1;0.2;1" dur="0.7s" repeatCount="indefinite"/>
+      </circle>
+
+      {/* Solar flare glint — upper-right of body */}
+      <g stroke="#FEF3C7" stroke-width="0.45" stroke-linecap="round" opacity="0.85">
+        <line x1="22" y1="12" x2="24.4" y2="9.8">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="2.4s" repeatCount="indefinite"/>
+        </line>
+        <line x1="23" y1="12.8" x2="25.4" y2="12.2">
+          <animate attributeName="opacity" values="1;0.5;1" dur="2.4s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <circle cx="22.4" cy="12.2" r="0.85" fill="#FEF9C3" opacity="0.85">
+        <animate attributeName="opacity" values="0.6;1;0.6" dur="2.4s" repeatCount="indefinite"/>
       </circle>
     </g>
   </svg>

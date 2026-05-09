@@ -304,7 +304,7 @@ for (const vp of VIEWPORTS) {
   // Belt-and-braces: also force-clear card panel state via Escape key
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
-  const externalSlugs = ['youtube', 'linkedin', 'kofi-shop', 'kofi-tip'];
+  const externalSlugs = ['youtube', 'bites', 'linkedin', 'kofi-shop', 'kofi-tip'];
   const externalsExist = await page.evaluate((slugs) => {
     const map = {};
     for (const s of slugs) {
@@ -420,7 +420,7 @@ for (const vp of VIEWPORTS) {
     await lvBtn.click();
     await page.waitForTimeout(450);
     const listExternals = await page.evaluate(() => {
-      const ids = ['external-youtube', 'external-linkedin', 'external-kofi-shop', 'external-kofi-tip'];
+      const ids = ['external-youtube', 'external-bites', 'external-linkedin', 'external-kofi-shop', 'external-kofi-tip'];
       const found = {};
       for (const id of ids) found[id] = !!document.getElementById(id);
       return found;
@@ -433,7 +433,7 @@ for (const vp of VIEWPORTS) {
       }
     }
     if (lvFails === 0) {
-      console.log(`  list-view externals: ✓ all 4 entries present (youtube, linkedin, kofi-shop, kofi-tip)`);
+      console.log(`  list-view externals: ✓ all 5 entries present (youtube, bites, linkedin, kofi-shop, kofi-tip)`);
     } else {
       totalFails += lvFails;
     }
@@ -713,6 +713,118 @@ for (const vp of VIEWPORTS) {
       if (opt) opt.click();
     });
     await page.waitForTimeout(900);
+
+    // ── Phase D — distribution checks ──
+    console.log(`\n=== ${vp.name} / Phase D ===`);
+
+    // 13. ⌘K opens the search overlay (same overlay as `/`).
+    // Use Control+K on Windows test runner; cosmos.ts accepts metaKey OR ctrlKey.
+    const searchClosedBefore = await page.evaluate(() =>
+      document.querySelector('.cosmos-search')?.dataset.open
+    );
+    if (searchClosedBefore === 'false') {
+      await page.keyboard.press('Control+k');
+      await page.waitForTimeout(220);
+      const opened = await page.evaluate(() =>
+        document.querySelector('.cosmos-search')?.dataset.open
+      );
+      if (opened === 'true') console.log(`  ⌘K palette: ✓ opened search overlay`);
+      else { console.log(`  ⌘K palette: 🔴 did not open (data-open="${opened}")`); totalFails++; }
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(220);
+    } else {
+      console.log(`  ⌘K palette: 🟡 search already open at test start — skipping`);
+    }
+
+    // 14. Audience filter pills — clicking one toggles aria-pressed and
+    //     dims at least one planet body.
+    const filterState = await page.evaluate(() => {
+      const root = document.getElementById('audience-filter');
+      if (!root) return { hasRoot: false };
+      const pills = root.querySelectorAll('.audience-filter__pill');
+      return { hasRoot: true, pillCount: pills.length };
+    });
+    if (filterState.hasRoot && filterState.pillCount === 4) {
+      await page.evaluate(() => {
+        const techie = document.querySelector('.audience-filter__pill[data-audience="techie"]');
+        if (techie) techie.click();
+      });
+      await page.waitForTimeout(220);
+      const filterApplied = await page.evaluate(() => {
+        const techie = document.querySelector('.audience-filter__pill[data-audience="techie"]');
+        const dimmed = document.querySelectorAll('.planet-body[data-audience-dim="true"]').length;
+        return { pressed: techie?.getAttribute('aria-pressed'), dimmed };
+      });
+      if (filterApplied.pressed === 'true' && filterApplied.dimmed > 0) {
+        console.log(`  audience filter: ✓ "techie" pressed, ${filterApplied.dimmed} bodies dimmed`);
+      } else {
+        console.log(`  audience filter: 🔴 ${JSON.stringify(filterApplied)}`);
+        totalFails++;
+      }
+      // Clear filter
+      await page.evaluate(() => {
+        const clear = document.getElementById('audience-filter-clear');
+        if (clear) clear.click();
+      });
+      await page.waitForTimeout(220);
+    } else {
+      console.log(`  audience filter: 🔴 ${JSON.stringify(filterState)}`);
+      totalFails++;
+    }
+
+    // 15. Tour mode — start tour, verify body[data-tour="active"], stop via Esc.
+    const tourBefore = await page.evaluate(() => document.body.dataset.tour);
+    if (tourBefore !== 'active') {
+      await page.click('#start-tour');
+      await page.waitForTimeout(400);
+      const tourActive = await page.evaluate(() => document.body.dataset.tour);
+      if (tourActive === 'active') {
+        console.log(`  tour mode: ✓ activated (body.dataset.tour="active")`);
+        // Esc cancels the tour cleanly even when a card is open (which it
+        // is — tour just opened earth's card and that covers the hud-aux
+        // start-tour button).
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(400);
+        const tourStopped = await page.evaluate(() => document.body.dataset.tour);
+        if (tourStopped !== 'active') {
+          console.log(`  tour mode Esc: ✓ stopped via Esc`);
+        } else {
+          console.log(`  tour mode Esc: 🔴 still active after Esc`);
+          totalFails++;
+        }
+        // Also close any open card so subsequent tests start clean.
+        await page.evaluate(() => document.getElementById('card-close')?.click());
+        await page.waitForTimeout(300);
+      } else {
+        console.log(`  tour mode: 🔴 not activated (got="${tourActive}")`);
+        totalFails++;
+      }
+    } else {
+      console.log(`  tour mode: 🟡 already active at test start — skipping`);
+    }
+
+    // 16. Mini-cosmos widget — verify /mini-cosmos.js is served and is JS.
+    const miniResp = await page.goto((vp.name === 'desktop' ? URL : URL).replace(/\/$/, '') + '/mini-cosmos.js', { waitUntil: 'load' });
+    if (miniResp && miniResp.status() === 200) {
+      const ct = (miniResp.headers()['content-type'] || '').toLowerCase();
+      if (ct.includes('javascript') || ct.includes('text/js')) {
+        console.log(`  mini-cosmos.js: ✓ served (${ct.split(';')[0]})`);
+      } else {
+        console.log(`  mini-cosmos.js: 🔴 wrong content-type "${ct}"`);
+        totalFails++;
+      }
+    } else {
+      console.log(`  mini-cosmos.js: 🔴 status=${miniResp?.status()}`);
+      totalFails++;
+    }
+    // Navigate back so subsequent tests run against the cosmos page.
+    await page.goto(URL, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => {
+      const skip = document.getElementById('coach-skip');
+      if (skip) skip.click();
+    });
+    await page.waitForTimeout(500);
   }
 
   // Drag-pan limits (desktop only — touch drag on mobile is different)

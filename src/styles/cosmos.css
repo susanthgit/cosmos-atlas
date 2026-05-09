@@ -531,10 +531,16 @@ body.list-view .static-shell {
 /* Earth first-touch pulse — gentle scale + glow ring while the visitor hasn't
    engaged yet. Removed (data attr deleted) on first markInteraction. The
    freshness pulse already handles "shipped recently" — this is its own
-   data-first-pulse track so they don't collide. */
+   data-first-pulse track so they don't collide.
+   🐛 Bug fix (Phase D, 9 May 2026): the keyframe used to include
+   `translate(-50%, -50%)` which shifted the icon by 50% of its OWN size
+   (the icon is already centred via flex inside the button — no translate
+   needed). This caused Earth to render visibly OUTSIDE its orbit ring
+   during the first 2-3s on a fresh page load until first user interaction
+   removed the data attribute and snapped Earth back. Caught by Sush 9 May. */
 @keyframes earth-first-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 0 0 transparent); }
-  50%      { transform: translate(-50%, -50%) scale(1.08); filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 60%, transparent)); }
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  50%      { transform: scale(1.08); filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 60%, transparent)); }
 }
 .planet-body[data-slug="earth"][data-first-pulse="true"] .planet-body__icon {
   animation: earth-first-pulse 2.6s ease-in-out infinite;
@@ -1184,4 +1190,102 @@ body[data-lens="audience"] .lens-audience-cols { display: grid; }
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-edge) 80%, transparent);
+}
+
+/* ═══════════════ Phase D — audience filter pills ═══════════════ */
+.audience-filter {
+  position: absolute;
+  top: 24px;
+  right: 130px; /* clear list-view button on the right */
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  z-index: 215;
+  pointer-events: auto;
+  font-family: var(--mono);
+  flex-wrap: wrap;
+  max-width: calc(100% - 320px);
+}
+.audience-filter__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-edge) 78%, transparent);
+  color: color-mix(in srgb, var(--hud) 80%, transparent);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+}
+.audience-filter__pill:hover,
+.audience-filter__pill:focus-visible {
+  outline: 0;
+  color: var(--hud);
+  border-color: color-mix(in srgb, var(--hud) 38%, transparent);
+}
+.audience-filter__pill[aria-pressed="true"] {
+  color: var(--accent-soft);
+  border-color: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-edge));
+}
+.audience-filter__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+}
+.audience-filter__pill[aria-pressed="true"] .audience-filter__dot { opacity: 1; }
+.audience-filter__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--hud) 70%, transparent);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+.audience-filter__clear:hover { color: var(--hud); border-color: var(--accent-soft); }
+
+/* When the filter is active, dim non-matching planet bodies to 30% via
+   data-audience-dim attribute set by JS. Magnetism / focus pulses stay
+   intact — this is purely a visual filter overlay. */
+.planet-body[data-audience-dim="true"] {
+  opacity: 0.3 !important;
+  filter: saturate(0.5) brightness(0.7);
+}
+
+@media (max-width: 720px) {
+  .audience-filter { right: 16px; top: 56px; gap: 4px; }
+  .audience-filter__pill { font-size: 9.5px; padding: 4px 8px; }
+}
+body.list-view .audience-filter { display: none; }
+
+/* ═══════════════ Phase D — tour mode visual cue ═══════════════ */
+body[data-tour="active"] .lens-pill,
+body[data-tour="active"] .audience-filter,
+body[data-tour="active"] .blog-asteroid {
+  opacity: 0.35;
+  pointer-events: none;
+  transition: opacity 300ms var(--ease-out);
+}
+body[data-tour="active"] #start-tour {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, rgba(2, 3, 14, 0.6));
 }

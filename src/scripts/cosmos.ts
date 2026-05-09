@@ -2795,7 +2795,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .lens-pill, .cosmos-coach, .cosmos-shortcuts')) {
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2808,7 +2808,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .lens-pill, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -2973,7 +2973,12 @@ export function mountCosmos(data: CosmosData): void {
     if (e.target === searchOverlay) closeSearch();
   });
   document.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key !== '/') return;
+    // Phase D — open search via "/" OR Cmd/Ctrl-K (industry-standard
+    // command palette shortcut). Any of the three triggers the same
+    // overlay, so it's familiar across muscle-memory styles.
+    const isSlash = e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey;
+    const isCmdK = (e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K');
+    if (!isSlash && !isCmdK) return;
     const tag = (document.activeElement as HTMLElement | null)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     e.preventDefault();
@@ -3015,7 +3020,7 @@ export function mountCosmos(data: CosmosData): void {
         <section>
           <h3>Search &amp; help</h3>
           <ul>
-            <li><kbd>/</kbd><span>open search</span></li>
+            <li><kbd>/</kbd> · <kbd>⌘</kbd>+<kbd>K</kbd><span>open search</span></li>
             <li><kbd>?</kbd><span>this menu</span></li>
           </ul>
         </section>
@@ -3051,6 +3056,105 @@ export function mountCosmos(data: CosmosData): void {
   // Wire the corner ? button (also shown next to ⓘ replay button).
   const openShortcutsBtn = document.getElementById('open-shortcuts') as HTMLButtonElement | null;
   openShortcutsBtn?.addEventListener('click', () => { markInteraction(); openShortcuts(); });
+
+  // Phase D — audience filter pills. Multi-select; OR semantics; clears
+  // the dim when nothing selected. Bodies are tagged with their primary
+  // audience via the same AUDIENCE_MAP used by the audience LENS in Phase C.
+  const audienceFilterRoot = document.getElementById('audience-filter') as HTMLElement | null;
+  const audienceFilterClear = document.getElementById('audience-filter-clear') as HTMLButtonElement | null;
+  const activeAudiences = new Set<string>();
+  function applyAudienceFilter(): void {
+    const anyActive = activeAudiences.size > 0;
+    if (audienceFilterClear) audienceFilterClear.hidden = !anyActive;
+    for (const b of bodies) {
+      const audience = AUDIENCE_MAP[b.slug];
+      const matches = !anyActive || (audience !== undefined && activeAudiences.has(audience));
+      if (matches) {
+        delete b.el.dataset.audienceDim;
+      } else {
+        b.el.dataset.audienceDim = 'true';
+      }
+    }
+  }
+  if (audienceFilterRoot) {
+    const pills = audienceFilterRoot.querySelectorAll<HTMLButtonElement>('.audience-filter__pill');
+    pills.forEach((p) => {
+      p.addEventListener('click', () => {
+        markInteraction();
+        const aud = p.dataset.audience;
+        if (!aud) return;
+        if (activeAudiences.has(aud)) activeAudiences.delete(aud);
+        else activeAudiences.add(aud);
+        p.setAttribute('aria-pressed', String(activeAudiences.has(aud)));
+        applyAudienceFilter();
+      });
+    });
+    audienceFilterClear?.addEventListener('click', () => {
+      markInteraction();
+      activeAudiences.clear();
+      pills.forEach((p) => p.setAttribute('aria-pressed', 'false'));
+      applyAudienceFilter();
+    });
+  }
+
+  // Phase D — tour mode. 35-second auto-flythrough of the 7 main bodies.
+  // openSlug() is called for each stop in turn with 5s per stop. User
+  // interrupts: Esc, manual click on a different body, or clicking the
+  // tour button again (which becomes a "stop" while active).
+  const TOUR_STOPS: string[] = ['earth', 'brainbar', 'plainai', 'shift', 'agentic', 'claw', data.mcp.slug];
+  const TOUR_PER_STOP_MS = 5000;
+  let tourActive = false;
+  let tourIndex = 0;
+  let tourTimer: number | null = null;
+  const startTourBtn = document.getElementById('start-tour') as HTMLButtonElement | null;
+  function advanceTour(): void {
+    if (!tourActive) return;
+    if (tourIndex >= TOUR_STOPS.length) {
+      stopTour(true);
+      return;
+    }
+    const slug = TOUR_STOPS[tourIndex];
+    if (slug) openSlug(slug);
+    tourTimer = window.setTimeout(() => {
+      tourIndex++;
+      advanceTour();
+    }, TOUR_PER_STOP_MS);
+  }
+  function startTour(): void {
+    if (tourActive) return;
+    tourActive = true;
+    document.body.dataset.tour = 'active';
+    if (startTourBtn) {
+      startTourBtn.textContent = '■';
+      startTourBtn.setAttribute('aria-label', 'Stop the cosmos tour');
+      startTourBtn.title = 'Stop the tour';
+    }
+    tourIndex = 0;
+    advanceTour();
+  }
+  function stopTour(naturalEnd = false): void {
+    if (!tourActive) return;
+    tourActive = false;
+    delete document.body.dataset.tour;
+    if (tourTimer !== null) { window.clearTimeout(tourTimer); tourTimer = null; }
+    if (startTourBtn) {
+      startTourBtn.textContent = '▶';
+      startTourBtn.setAttribute('aria-label', 'Start the cosmos tour');
+      startTourBtn.title = 'Watch the cosmos (35s tour)';
+    }
+    if (focusedSlug && naturalEnd) closeCard();
+  }
+  startTourBtn?.addEventListener('click', () => {
+    markInteraction();
+    if (tourActive) stopTour(false);
+    else startTour();
+  });
+  // Esc cancels tour without closing-then-reopening cards weirdly.
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && tourActive) {
+      stopTour(false);
+    }
+  });
 
   // Reset zoom + pan with key 'r' for keyboard users.
   document.addEventListener('keydown', (e: KeyboardEvent) => {
