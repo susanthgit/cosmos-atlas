@@ -214,40 +214,42 @@
     ]
   },
 
-  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Three orbital satellites (long-form, bites, kofi-shop) sweep on elliptical paths just outside the outermost planet. One stationary corner beacon (kofi-tip) sits at the bottom-right. Each satellite has its own character — long-form broadcasts, bites is the speedy companion, kofi-shop is the delivery drone with a wrapped gift. Render mode is fixed (V3.6); the ?ext= param is no longer respected.",
+  "_externalNote": "External channels — not planets, not destinations inside the cosmos. They sit OUTSIDE the planet orbits and connect the cosmos to the wider world. Phase B-2 (9 May 2026): long-form + bites merged into one 'youtube' body with two CTAs (long videos + shorts). LinkedIn added as a passing comet. Kofi-shop stays as comet, kofi-tip stays as corner beacon (give vs receive split honoured). Render mode is fixed (V3.6); the ?ext= param is no longer respected.",
 
   "external": {
     "channels": [
       {
-        "slug": "long-form",
-        "name": "Long-form",
+        "slug": "youtube",
+        "name": "YouTube",
         "url": "https://youtube.com/susanthsutheesh",
-        "type": "📺 YouTube — long-form",
-        "tagline": "the deep dives, on YouTube",
-        "audience": "Anyone who learns better when someone walks them through it on screen.",
-        "content": "Full-length tutorials and walk-throughs. Microsoft cloud, AI, the curious-intern lens.",
-        "founder": "I make these because writing alone doesn't always carry it. Sometimes you need to see my screen.",
-        "stats": ["54K+ subscribers", "75 videos", "main channel"],
-        "ctaLabel": "Open YouTube channel",
-        "ctaIcon": "↗",
+        "type": "📺 YouTube — long videos + shorts",
+        "tagline": "the long videos and the short clips",
+        "audience": "Anyone who learns better watching than reading.",
+        "content": "Long-form deep dives on susanthsutheesh, plus short cert-prep cuts on aguidetocloud. Same brain, two formats.",
+        "founder": "Same content, two formats. Long if you want the walk-through, short if you just want the answer.",
+        "stats": ["long videos", "short clips", "cert prep"],
+        "ctas": [
+          { "label": "Open long-form", "icon": "↗", "url": "https://youtube.com/susanthsutheesh", "kind": "primary" },
+          { "label": "Open shorts", "icon": "↗", "url": "https://youtube.com/aguidetocloud", "kind": "secondary" }
+        ],
         "body": { "size": 36, "glowCore": "#FCA5A5", "glowOuter": "#DC2626" },
         "comet": { "orbitMul": 1.55, "speedSec": 380, "ecc": 0.12, "tilt": 6, "phase": 90, "tailLen": 220 },
         "outpost": { "thetaDeg": -120 }
       },
       {
-        "slug": "bites",
-        "name": "Bites",
-        "url": "https://youtube.com/aguidetocloud",
-        "type": "📺 YouTube — bites",
-        "tagline": "short clips of the same",
-        "audience": "Anyone who wants a 60-second answer instead of a 15-minute video.",
-        "content": "Bite-sized cuts of the long-form videos. Just the answer, no setup.",
-        "founder": "Same content, less time. For when you just want the bit you came for.",
-        "stats": ["short clips", "cert-prep cuts", "no setup"],
-        "ctaLabel": "Open Bites channel",
+        "slug": "linkedin",
+        "name": "LinkedIn",
+        "url": "https://www.linkedin.com/in/susanthsutheesh/",
+        "type": "🔗 LinkedIn — passing comet",
+        "tagline": "where I think out loud, professionally",
+        "audience": "Anyone who'd rather follow the work day-to-day than wait for a finished video.",
+        "content": "Short posts on what I'm seeing in Microsoft cloud + AI from the field. Connect there if it's useful.",
+        "founder": "I post less than I want to. But what's there is honest — same voice, same lens.",
+        "stats": ["field notes", "career", "connect"],
+        "ctaLabel": "Open LinkedIn profile",
         "ctaIcon": "↗",
-        "body": { "size": 32, "glowCore": "#FECACA", "glowOuter": "#F43F5E" },
-        "comet": { "orbitMul": 1.42, "speedSec": 220, "ecc": 0.18, "tilt": -8, "phase": 200, "tailLen": 130 },
+        "body": { "size": 32, "glowCore": "#7DD3FC", "glowOuter": "#0284C7" },
+        "comet": { "orbitMul": 1.62, "speedSec": 460, "ecc": 0.14, "tilt": -10, "phase": 220, "tailLen": 180 },
         "outpost": { "thetaDeg": -90 }
       },
       {

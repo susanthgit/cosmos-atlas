@@ -95,6 +95,7 @@ interface CosmosData {
   decorativeStars: DecorativeStar[];
   nebulae?: Nebula[];
   external?: { channels: ExternalChannel[] };
+  blogPosts?: Array<{ title: string; url: string; pubDate: string | null }>;
 }
 
 interface BodyState {
@@ -1655,6 +1656,37 @@ export function mountCosmos(data: CosmosData): void {
       b.el.dataset.focused = isFocused ? 'true' : 'false';
       b.el.dataset.dim = dim ? 'true' : 'false';
     }
+    applyBlogBelt(introBodies);
+  }
+
+  // Phase B-2 — blog asteroid belt around Earth. Each anchor element
+  // (rendered by index.astro from blog-feed.json) gets positioned every
+  // frame at a different angular offset around Earth. Slow rotation, fades
+  // out when a card is open (keeps focus state clean).
+  const blogAsteroids = Array.from(document.querySelectorAll<HTMLElement>('.blog-asteroid'));
+  const BLOG_ORBIT_PADDING = 36; // px outside Earth's body
+  const BLOG_ROT_SPEED = 0.045;  // radians per second — very slow
+  function applyBlogBelt(introBodies: number): void {
+    if (blogAsteroids.length === 0) return;
+    const earth = bodies.find((b) => b.slug === 'earth');
+    if (!earth) {
+      for (const a of blogAsteroids) a.style.opacity = '0';
+      return;
+    }
+    const t = getRealT();
+    const baseAngle = t * BLOG_ROT_SPEED;
+    const earthRadius = earth.intrinsicSize * earth.scale * cameraZoom * 0.5;
+    const orbitR = earthRadius + BLOG_ORBIT_PADDING;
+    const visible = focusedSlug === null && introBodies > 0.6;
+    for (let i = 0; i < blogAsteroids.length; i++) {
+      const el = blogAsteroids[i]!;
+      const angle = baseAngle + (i / blogAsteroids.length) * TWO_PI;
+      const x = earth.screenX + Math.cos(angle) * orbitR;
+      const y = earth.screenY + Math.sin(angle) * orbitR;
+      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+      el.style.opacity = visible ? String(0.85 * introBodies) : '0';
+      el.style.pointerEvents = visible ? 'auto' : 'none';
+    }
   }
 
   function updateCamera(deltaSec: number): void {
@@ -1758,6 +1790,7 @@ export function mountCosmos(data: CosmosData): void {
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
     for (const b of sorted) drawBodyHalo(b, intro.bodies);
     drawFreshnessPulses(now, intro.bodies);
+    drawCardTether(deltaSec);
     drawCardParticles(now);
     drawPings(now);
     drawAtmosphereBlur();
@@ -2161,22 +2194,26 @@ export function mountCosmos(data: CosmosData): void {
     const toY = cardRect.top + cardRect.height * 0.35;
     const now = performance.now();
     const color = body.glowOuter ?? '#FFFFFF';
-    const count = 10;
+    // Phase B-2 — card flyby (lite): bumped from 10 to 18 particles with
+    // longer streamline + brighter cores. Combined with the tether drawn
+    // in drawCardTether below, the card visually arrives FROM the focused
+    // body rather than just sliding in from the side.
+    const count = 18;
     for (let i = 0; i < count; i++) {
       cardParticles.push({
-        fromX: body.screenX + (Math.random() - 0.5) * 12,
-        fromY: body.screenY + (Math.random() - 0.5) * 12,
-        toX: toX + (Math.random() - 0.5) * 16,
-        toY: toY + (Math.random() - 0.5) * 16,
-        startMs: now + i * 28,
+        fromX: body.screenX + (Math.random() - 0.5) * 14,
+        fromY: body.screenY + (Math.random() - 0.5) * 14,
+        toX: toX + (Math.random() - 0.5) * 18,
+        toY: toY + (Math.random() - 0.5) * 18,
+        startMs: now + i * 24,
         color,
-        size: 1.6 + Math.random() * 1.4,
+        size: 1.8 + Math.random() * 1.6,
       });
     }
   }
   function drawCardParticles(now: number): void {
     if (cardParticles.length === 0) return;
-    const dur = 720;
+    const dur = 900;
     for (let i = cardParticles.length - 1; i >= 0; i--) {
       const p = cardParticles[i]!;
       const tt = (now - p.startMs) / dur;
@@ -2186,11 +2223,54 @@ export function mountCosmos(data: CosmosData): void {
       const x = p.fromX + (p.toX - p.fromX) * eased;
       const y = p.fromY + (p.toY - p.fromY) * eased;
       const alpha = (1 - tt) * 0.95;
+      // Soft halo behind the bright core — gives the streaming particle real glow.
+      ctx.fillStyle = withAlpha(p.color, alpha * 0.32);
+      ctx.beginPath();
+      ctx.arc(x, y, p.size * 2.4, 0, TWO_PI);
+      ctx.fill();
+      // Bright core
       ctx.fillStyle = withAlpha(p.color, alpha);
       ctx.beginPath();
       ctx.arc(x, y, p.size, 0, TWO_PI);
       ctx.fill();
     }
+  }
+
+  // Phase B-2 — persistent tether between focused body and card panel.
+  // While a card is open, a thin animated gradient thread connects the
+  // focused planet to the card's left edge — visually anchoring "this
+  // card belongs to that body" beyond the initial particle burst. Honours
+  // reduced-motion (drawn but no dash animation).
+  let cardTetherFade = 0;
+  function drawCardTether(deltaSec: number): void {
+    const target = focusedSlug ? 1 : 0;
+    const lerp = reducedMotion ? 1 : Math.min(1, deltaSec * 4);
+    cardTetherFade += (target - cardTetherFade) * lerp;
+    if (cardTetherFade < 0.04 || !focusedSlug) return;
+    const body = bodies.find((b) => b.slug === focusedSlug);
+    if (!body) return;
+    const cardEl = document.querySelector('.card-panel') as HTMLElement | null;
+    if (!cardEl) return;
+    const cardRect = cardEl.getBoundingClientRect();
+    if (cardRect.width === 0) return;
+    // Anchor at left-middle of card panel (the panel slides in from right).
+    const toX = cardRect.left + 6;
+    const toY = cardRect.top + cardRect.height * 0.42;
+    const t = getRealT();
+    const baseAlpha = 0.32 * cardTetherFade;
+    const grad = ctx.createLinearGradient(body.screenX, body.screenY, toX, toY);
+    grad.addColorStop(0, withAlpha(body.glowOuter, baseAlpha * 1.1));
+    grad.addColorStop(0.5, withAlpha(data.atmosphere.accentSoft, baseAlpha));
+    grad.addColorStop(1, withAlpha(data.atmosphere.accentSoft, baseAlpha * 0.55));
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 6]);
+    ctx.lineDashOffset = -t * 18;
+    ctx.beginPath();
+    ctx.moveTo(body.screenX, body.screenY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   function openSlug(slug: string): void {

@@ -8,11 +8,12 @@
     "dev": "astro dev --port 4287",
     "start": "astro dev --port 4287",
     "freshness": "node scripts/freshness.mjs",
+    "blog-feed": "node scripts/blog-feed.mjs",
     "build-images": "node scripts/build-images.mjs",
-    "prebuild": "node scripts/freshness.mjs && node scripts/build-images.mjs",
+    "prebuild": "node scripts/freshness.mjs && node scripts/blog-feed.mjs && node scripts/build-images.mjs",
     "build": "astro build",
     "preview": "astro preview --port 4287",
-    "deploy": "node scripts/freshness.mjs && node scripts/build-images.mjs && astro build && node deploy.mjs",
+    "deploy": "node scripts/freshness.mjs && node scripts/blog-feed.mjs && node scripts/build-images.mjs && astro build && node deploy.mjs",
     "astro": "astro"
   },
   "dependencies": {

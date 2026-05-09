@@ -20,11 +20,22 @@ function freshnessFor(slug: string): string | undefined {
   return freshness.planets?.[slug]?.lastShippedAt;
 }
 
+// Phase B-2 — blog feed baked at build time by scripts/blog-feed.mjs.
+// Cosmos reads this and renders an asteroid belt of dots around Earth,
+// each dot = one recent blog post. Click → opens that post in a new tab.
+let blogFeed: { posts?: Array<{ title: string; url: string; pubDate: string | null }> } = { posts: [] };
+try {
+  const mod = await import('../data/blog-feed.json');
+  blogFeed = (mod.default ?? mod) as typeof blogFeed;
+} catch (_) {
+  // Empty feed if not yet built — belt simply won't render.
+}
+
 type ManifestPlanet = { slug: string; name: string; url: string; tagline: string };
 type AtlasMoon = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; speedSec: number; phase?: number }; body: { size: number; glowCore: string; glowOuter: string } };
 type AtlasPlanet = { slug: string; name?: string; url?: string; type: string; atmosphere: string; status: string; badge?: string; tagline: string; audience: string; content: string; founder: string; stats?: string[]; orbit: { radius: number; ecc: number; tilt: number; speedSec: number; phase: number }; body: { size: number; glowCore: string; glowOuter: string }; moons?: AtlasMoon[] };
 
-type IconSlug = 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'long-form' | 'bites' | 'kofi-shop' | 'kofi-tip';
+type IconSlug = 'earth' | 'guided' | 'brainbar' | 'shift' | 'plainai' | 'agentic' | 'claw' | 'curriculum' | 'mcp' | 'youtube' | 'linkedin' | 'kofi-shop' | 'kofi-tip';
 
 const manifestBySlug = new Map<string, ManifestPlanet>();
 for (const p of planets.planets as ManifestPlanet[]) {
@@ -92,6 +103,7 @@ const clientData = {
   mcp: mcpEnriched,
   decorativeStars: atlas.decorativeStars,
   external: atlas.external ?? { channels: [] },
+  blogPosts: blogFeed.posts ?? [],
 };
 ---
 
@@ -153,6 +165,23 @@ const clientData = {
           <PlanetIcon slug="mcp" size={40} scope="atlas-mcp" />
         </span>
       </button>
+
+      {/* Phase B-2 — blog asteroid belt around Earth. JS positions each
+           anchor per frame; we just render the placeholder anchors here so
+           SSR contains the link URLs (good for crawlers + no-JS users). */}
+      {(blogFeed.posts ?? []).map((post, idx) => (
+        <a
+          class="blog-asteroid"
+          data-blog-idx={idx}
+          href={post.url}
+          target="_blank"
+          rel="noopener"
+          title={post.title}
+          aria-label={`Read: ${post.title}`}
+        >
+          <span class="blog-asteroid__dot" aria-hidden="true"></span>
+        </a>
+      ))}
 
       {/* V3.2 — external channels (YouTubes + Ko-fi). Kind is resolved at runtime
            by cosmos.ts based on URL param ?ext=comets|outposts. data-kind here

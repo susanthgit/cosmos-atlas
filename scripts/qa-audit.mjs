@@ -304,7 +304,7 @@ for (const vp of VIEWPORTS) {
   // Belt-and-braces: also force-clear card panel state via Escape key
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
-  const externalSlugs = ['long-form', 'bites', 'kofi-shop', 'kofi-tip'];
+  const externalSlugs = ['youtube', 'linkedin', 'kofi-shop', 'kofi-tip'];
   const externalsExist = await page.evaluate((slugs) => {
     const map = {};
     for (const s of slugs) {
@@ -420,7 +420,7 @@ for (const vp of VIEWPORTS) {
     await lvBtn.click();
     await page.waitForTimeout(450);
     const listExternals = await page.evaluate(() => {
-      const ids = ['external-long-form', 'external-bites', 'external-kofi-shop', 'external-kofi-tip'];
+      const ids = ['external-youtube', 'external-linkedin', 'external-kofi-shop', 'external-kofi-tip'];
       const found = {};
       for (const id of ids) found[id] = !!document.getElementById(id);
       return found;
@@ -433,7 +433,7 @@ for (const vp of VIEWPORTS) {
       }
     }
     if (lvFails === 0) {
-      console.log(`  list-view externals: ✓ all 4 entries present (long-form, bites, kofi-shop, kofi-tip)`);
+      console.log(`  list-view externals: ✓ all 4 entries present (youtube, linkedin, kofi-shop, kofi-tip)`);
     } else {
       totalFails += lvFails;
     }
@@ -612,6 +612,33 @@ for (const vp of VIEWPORTS) {
       }
     } else {
       console.log(`  sun reveal: 🟡 already visible at test start — skipping trigger`);
+    }
+
+    // 9. Blog asteroid belt — Phase B-2. Anchors are rendered server-side
+    //    from blog-feed.json. JS positions them every frame around Earth.
+    //    Verify: count > 0, anchors have valid hrefs, anchors fade in
+    //    (non-zero opacity) once the cosmos has settled.
+    await page.waitForTimeout(800); // give belt time to fade in (introBodies > 0.6)
+    const beltState = await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('.blog-asteroid'));
+      const visible = items.filter((el) => parseFloat(el.style.opacity || '0') > 0.1);
+      return {
+        count: items.length,
+        visibleCount: visible.length,
+        firstHref: items[0]?.getAttribute('href') ?? null,
+        firstTitle: items[0]?.getAttribute('title') ?? null,
+      };
+    });
+    if (beltState.count === 0) {
+      console.log(`  blog belt: 🟡 0 asteroids — blog-feed.json may be empty`);
+    } else if (beltState.visibleCount === 0) {
+      console.log(`  blog belt: 🔴 ${beltState.count} anchors but 0 visible (opacity stuck at 0)`);
+      totalFails++;
+    } else if (!beltState.firstHref || !beltState.firstHref.startsWith('http')) {
+      console.log(`  blog belt: 🔴 anchor missing valid href (${beltState.firstHref})`);
+      totalFails++;
+    } else {
+      console.log(`  blog belt: ✓ ${beltState.count} asteroids, ${beltState.visibleCount} visible — first: "${beltState.firstTitle?.slice(0, 40)}"`);
     }
   }
 

@@ -968,3 +968,56 @@ body.list-view .hud-aux { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .sun-reveal { transition: opacity 240ms linear; transform: translate(-50%, -50%); }
 }
+
+/* ═══════════════ Phase B-2 — blog asteroid belt ═══════════════ */
+.blog-asteroid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  text-decoration: none;
+  z-index: 60;
+  transform: translate3d(-9999px, -9999px, 0);
+  opacity: 0;
+  transition: opacity 600ms var(--ease-out), transform 0s linear;
+  outline: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.blog-asteroid__dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hud) 75%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--hud) 35%, transparent);
+  transition: width 200ms var(--ease-out),
+              height 200ms var(--ease-out),
+              background 200ms var(--ease-out),
+              box-shadow 200ms var(--ease-out);
+}
+.blog-asteroid:hover .blog-asteroid__dot,
+.blog-asteroid:focus-visible .blog-asteroid__dot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent-soft);
+  box-shadow: 0 0 14px var(--accent);
+}
+.blog-asteroid:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 999px;
+}
+body.list-view .blog-asteroid { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .blog-asteroid__dot { transition: none; }
+}
