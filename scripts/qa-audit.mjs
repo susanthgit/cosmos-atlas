@@ -948,7 +948,7 @@ for (const vp of VIEWPORTS) {
           volPresent: !!vol,
         };
       });
-      if (ambReport.panelOpen && ambReport.modeCount >= 3 && ambReport.volPresent) {
+      if (ambReport.panelOpen && ambReport.modeCount >= 4 && ambReport.volPresent) {
         console.log(`  ambient panel: ✓ opened, ${ambReport.modeCount} modes (${ambReport.modes.join('/')}) + volume slider`);
       } else {
         console.log(`  ambient panel: 🔴 panelOpen=${ambReport.panelOpen}, modes=${ambReport.modeCount}, vol=${ambReport.volPresent}`);

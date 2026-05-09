@@ -1706,3 +1706,10 @@ body.list-view .hud-orientation { display: none; }
   .bodies-count { top: 220px; font-size: 10px; }
   .hud-orientation { top: 246px; gap: 6px; }
 }
+/* ═══════════════ Wave 3 polish — 4-mode ambient grid ═══════════════ */
+/* With 4 ambient modes (Off / Cosmic hum / Aum hum / Lo-fi pad), switch
+   the mode buttons to a 2x2 grid. Cleaner than 4-across on the narrow
+   popover panel, easier to read. */
+.ambient-modes {
+  grid-template-columns: 1fr 1fr;
+}

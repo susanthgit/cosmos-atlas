@@ -3473,7 +3473,7 @@ export function mountCosmos(data: CosmosData): void {
     const modeBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.ambient-mode'));
     if (!ambBtn || !panel || !volSlider || modeBtns.length === 0) return;
 
-    type Mode = 'off' | 'hum' | 'lofi';
+    type Mode = 'off' | 'hum' | 'aum' | 'lofi';
     let audioCtx: AudioContext | null = null;
     let mainGain: GainNode | null = null;
     let activeNodes: AudioNode[] = [];
@@ -3482,7 +3482,7 @@ export function mountCosmos(data: CosmosData): void {
     let savedVol = 0.6;
     try {
       const m = window.localStorage.getItem('cosmosAmbientMode');
-      if (m === 'hum' || m === 'lofi' || m === 'off') savedMode = m;
+      if (m === 'hum' || m === 'aum' || m === 'lofi' || m === 'off') savedMode = m;
       const v = window.localStorage.getItem('cosmosAmbientVolume');
       if (v) {
         const f = parseFloat(v);
@@ -3574,6 +3574,62 @@ export function mountCosmos(data: CosmosData): void {
       }
     }
 
+    function startAum(): void {
+      const ctx = ensureCtx();
+      // Aum / Om hum — meditative resonance built from a harmonic stack at
+      // A2 (110 Hz). Fundamental sine + 4 triangle harmonics with slight
+      // detuning for organic warmth. A peaking biquad at 700 Hz adds the
+      // open-vowel "ah/oh" formant character of a sustained chant. A slow
+      // breath LFO (~1 cycle per 8s) modulates amplitude — like the rhythm
+      // of long, slow breaths in meditation. 4-second fade-in.
+      const fundamental = 110;
+      const harmonics: Array<{ mult: number; gain: number }> = [
+        { mult: 1, gain: 1.00 },
+        { mult: 2, gain: 0.55 },
+        { mult: 3, gain: 0.35 },
+        { mult: 4, gain: 0.18 },
+        { mult: 5, gain: 0.10 },
+      ];
+      const aumGain = ctx.createGain();
+      aumGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      aumGain.gain.exponentialRampToValueAtTime(0.85, ctx.currentTime + 4.0);
+
+      // Vowel formant — peaking filter at "ah" formant frequency.
+      const formant = ctx.createBiquadFilter();
+      formant.type = 'peaking';
+      formant.frequency.value = 700;
+      formant.Q.value = 4;
+      formant.gain.value = 7;  // dB boost
+      aumGain.connect(formant);
+      formant.connect(mainGain!);
+
+      // Slow breath LFO — adds a subtle inhale/exhale modulation.
+      const breathLfo = ctx.createOscillator();
+      breathLfo.type = 'sine';
+      breathLfo.frequency.value = 1 / 8;  // ~7.5s per cycle
+      const breathGain = ctx.createGain();
+      breathGain.gain.value = 0.18;
+      breathLfo.connect(breathGain);
+      breathGain.connect(aumGain.gain);
+      breathLfo.start();
+      activeNodes.push(aumGain, formant, breathLfo, breathGain);
+
+      for (const h of harmonics) {
+        const osc = ctx.createOscillator();
+        osc.type = h.mult === 1 ? 'sine' : 'triangle';
+        osc.frequency.value = fundamental * h.mult;
+        // Slight detune (±4 cents) for organic warmth — pure harmonics
+        // sound synthetic; tiny detuning adds "human voice" feel.
+        osc.detune.value = (Math.random() - 0.5) * 8;
+        const g = ctx.createGain();
+        g.gain.value = h.gain * 0.30;
+        osc.connect(g);
+        g.connect(aumGain);
+        osc.start();
+        activeNodes.push(osc, g);
+      }
+    }
+
     function applyMode(mode: Mode): void {
       stopAll();
       currentMode = mode;
@@ -3593,6 +3649,7 @@ export function mountCosmos(data: CosmosData): void {
       const ctx = ensureCtx();
       const startOscillators = (): void => {
         if (mode === 'hum') startHum();
+        else if (mode === 'aum') startAum();
         else if (mode === 'lofi') startLofi();
       };
       if (ctx.state === 'suspended') {
