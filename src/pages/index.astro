@@ -223,7 +223,8 @@ const clientData = {
 
       {/* V5 polish — original tour / replay / shortcuts buttons moved here from
            the bottom-right hud-aux row. They're orientation aids — natural
-           home is with the rest of the top-left meta UI. */}
+           home is with the rest of the top-left meta UI. Drift toggle 🌙
+           also lives here now (was bottom-right). */}
       <div class="hud-orientation" aria-label="Orientation">
         <button
           type="button"
@@ -246,6 +247,14 @@ const clientData = {
           aria-label="Show keyboard shortcuts"
           title="Keyboard shortcuts (press ?)"
         >?</button>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="drift-toggle"
+          aria-label="Drift mode (slow screensaver)"
+          aria-pressed="false"
+          title="Drift mode — slow screensaver (any input exits)"
+        >🌙</button>
       </div>
 
       <nav class="hud-tools" aria-label="View tools">
@@ -315,73 +324,64 @@ const clientData = {
         </div>
       </div>
 
-      <!-- Wave 5 — Bottom-right hud-aux now hosts ONLY the drift toggle.
-           Pomodoro and ambient have moved to inline cards in the left column. -->
-      <div class="hud-aux" aria-label="Focus companion">
-        <button
-          type="button"
-          class="hud-aux__btn"
-          id="drift-toggle"
-          aria-label="Drift mode (slow screensaver)"
-          aria-pressed="false"
-          title="Drift mode — slow screensaver (any input exits)"
-        >🌙</button>
+      <!-- Wave 5 — Bottom-right hud-aux removed entirely. Drift toggle moved
+           up to .hud-orientation (top-left next to ▶ ⓘ ?). All controls now
+           live in the left column. -->
+
+      {/* Wave 5 polish — left-column stack wraps the ambient player + pomodoro
+           card so when one expands, the other naturally pushes down (flex
+           column flow instead of fighting absolute positions). */}
+      <div class="left-stack">
+        <aside class="ambient-player" id="ambient-player" data-state="expanded" data-playing="false" aria-label="Cosmos sounds">
+          <button type="button" class="ambient-player__head" id="ambient-toggle-panel" aria-expanded="true" aria-controls="ambient-player-body">
+            <span class="ambient-player__icon" aria-hidden="true">🎵</span>
+            <span class="ambient-player__title">cosmos sounds</span>
+            <span class="ambient-player__state" id="ambient-state">off</span>
+            <span class="ambient-player__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="ambient-player__body" id="ambient-player-body">
+            <p class="ambient-now" id="ambient-now-track" aria-live="polite">— pick a track to start</p>
+            <div class="ambient-transport" role="toolbar" aria-label="Player transport">
+              <button type="button" class="ambient-btn" id="ambient-prev" aria-label="Previous track" title="Previous">⏮</button>
+              <button type="button" class="ambient-btn ambient-btn--play" id="ambient-play" aria-label="Play" aria-pressed="false" title="Play / pause">▶</button>
+              <button type="button" class="ambient-btn" id="ambient-next" aria-label="Next track" title="Next">⏭</button>
+              <span class="ambient-transport__spacer" aria-hidden="true"></span>
+              <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-shuffle" aria-pressed="false" title="Shuffle">🔀</button>
+              <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-repeat" data-repeat="off" aria-pressed="false" title="Repeat: off">🔁</button>
+            </div>
+            <label class="ambient-volume-row">
+              <span class="ambient-volume-row__label" aria-hidden="true">vol</span>
+              <input type="range" id="ambient-volume" class="ambient-volume-input" min="0" max="100" value="60" aria-label="Volume" />
+            </label>
+            <details class="ambient-list-toggle" id="ambient-list-toggle">
+              <summary class="ambient-list-toggle__summary"><span id="ambient-track-count">11</span> tracks</summary>
+              <ul class="ambient-list" id="ambient-list" role="list"></ul>
+            </details>
+          </div>
+          <audio id="ambient-audio" preload="none" aria-hidden="true"></audio>
+        </aside>
+
+        <aside class="pomodoro-card" id="pomodoro-card" data-state="expanded" aria-label="Focus timer">
+          <button type="button" class="pomodoro-card__head" id="pomodoro-toggle-panel" aria-expanded="true" aria-controls="pomodoro-card-body">
+            <span class="pomodoro-card__icon" aria-hidden="true">⏱</span>
+            <span class="pomodoro-card__title">focus timer</span>
+            <span class="pomodoro-card__state" id="pomodoro-card-state">idle</span>
+            <span class="pomodoro-card__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="pomodoro-card__body" id="pomodoro-card-body">
+            <div class="pomodoro-display" id="pomodoro-display">
+              <span class="pomodoro-time" id="pomodoro-time">25:00</span>
+              <span class="pomodoro-phase" id="pomodoro-phase">focus</span>
+            </div>
+            <div class="pomodoro-actions">
+              <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min</button>
+              <button type="button" class="pomodoro-btn pomodoro-btn--ghost" id="pomodoro-stop" hidden>Stop</button>
+            </div>
+            <p class="pomodoro-hint">auto-engages drift while focusing.</p>
+            <p class="pomodoro-counter" id="pomodoro-counter" hidden></p>
+          </div>
+        </aside>
       </div>
-
-      {/* Wave 4 (V5) — Cosmos Sounds player. Real CC0 ambient tracks from
-           Pixabay (free for commercial use, no attribution required) loaded
-           on demand. Lives in the left column under the lens grid. */}
-      <aside class="ambient-player" id="ambient-player" data-state="collapsed" data-playing="false" aria-label="Cosmos sounds">
-        <button type="button" class="ambient-player__head" id="ambient-toggle-panel" aria-expanded="false" aria-controls="ambient-player-body">
-          <span class="ambient-player__icon" aria-hidden="true">🎵</span>
-          <span class="ambient-player__title">cosmos sounds</span>
-          <span class="ambient-player__state" id="ambient-state">off</span>
-          <span class="ambient-player__chevron" aria-hidden="true">▾</span>
-        </button>
-        <div class="ambient-player__body" id="ambient-player-body" hidden>
-          <p class="ambient-now" id="ambient-now-track" aria-live="polite">— pick a track to start</p>
-          <div class="ambient-transport" role="toolbar" aria-label="Player transport">
-            <button type="button" class="ambient-btn" id="ambient-prev" aria-label="Previous track" title="Previous">⏮</button>
-            <button type="button" class="ambient-btn ambient-btn--play" id="ambient-play" aria-label="Play" aria-pressed="false" title="Play / pause">▶</button>
-            <button type="button" class="ambient-btn" id="ambient-next" aria-label="Next track" title="Next">⏭</button>
-            <span class="ambient-transport__spacer" aria-hidden="true"></span>
-            <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-shuffle" aria-pressed="false" title="Shuffle">🔀</button>
-            <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-repeat" data-repeat="off" aria-pressed="false" title="Repeat: off">🔁</button>
-          </div>
-          <label class="ambient-volume-row">
-            <span class="ambient-volume-row__label" aria-hidden="true">vol</span>
-            <input type="range" id="ambient-volume" class="ambient-volume-input" min="0" max="100" value="60" aria-label="Volume" />
-          </label>
-          <details class="ambient-list-toggle" id="ambient-list-toggle">
-            <summary class="ambient-list-toggle__summary"><span id="ambient-track-count">11</span> tracks</summary>
-            <ul class="ambient-list" id="ambient-list" role="list"></ul>
-          </details>
-        </div>
-        <audio id="ambient-audio" preload="none" aria-hidden="true"></audio>
-      </aside>
-
-      {/* Wave 5 — Pomodoro inline card (left column, below ambient player).
-           Replaces the bottom-right popover. Same UX, same JS hooks. */}
-      <aside class="pomodoro-card" id="pomodoro-card" data-state="collapsed" aria-label="Focus timer">
-        <button type="button" class="pomodoro-card__head" id="pomodoro-toggle-panel" aria-expanded="false" aria-controls="pomodoro-card-body">
-          <span class="pomodoro-card__icon" aria-hidden="true">⏱</span>
-          <span class="pomodoro-card__title">focus timer</span>
-          <span class="pomodoro-card__state" id="pomodoro-card-state">idle</span>
-          <span class="pomodoro-card__chevron" aria-hidden="true">▾</span>
-        </button>
-        <div class="pomodoro-card__body" id="pomodoro-card-body" hidden>
-          <div class="pomodoro-display" id="pomodoro-display">
-            <span class="pomodoro-time" id="pomodoro-time">25:00</span>
-            <span class="pomodoro-phase" id="pomodoro-phase">focus</span>
-          </div>
-          <div class="pomodoro-actions">
-            <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min</button>
-            <button type="button" class="pomodoro-btn pomodoro-btn--ghost" id="pomodoro-stop" hidden>Stop</button>
-          </div>
-          <p class="pomodoro-hint">auto-engages drift while focusing.</p>
-          <p class="pomodoro-counter" id="pomodoro-counter" hidden></p>
-        </div>
-      </aside>
 
       <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>
 

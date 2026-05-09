@@ -2196,3 +2196,36 @@ body.list-view .pomodoro-card { display: none; }
 .pomodoro-card__body[hidden] {
   display: none !important;
 }
+/* ═══════════════ Wave 5 polish — flex left-stack + drift relocated ═══════════════ */
+
+/* Wrap ambient + pomodoro in a flex column so when one expands, the other
+   naturally pushes down. Replaces the previous absolute-positioned conflict. */
+.left-stack {
+  position: absolute;
+  top: 230px;
+  left: var(--space-5);
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 215;
+  pointer-events: auto;
+  max-height: calc(100vh - 260px);
+}
+body.list-view .left-stack { display: none; }
+
+/* Within the stack, cards no longer need absolute positioning. Reset. */
+.left-stack .ambient-player,
+.left-stack .pomodoro-card {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  width: 100%;
+  max-height: none;
+}
+
+/* Mobile: hide the left stack too (already hidden via individual cards but
+   also hide the wrapper for clarity). */
+@media (max-width: 720px) {
+  .left-stack { display: none !important; }
+}
