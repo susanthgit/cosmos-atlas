@@ -1933,9 +1933,12 @@ export function mountCosmos(data: CosmosData): void {
   // (rendered by index.astro from blog-feed.json) gets positioned every
   // frame at a different angular offset around Earth. Slow rotation, fades
   // out when a card is open (keeps focus state clean).
+  // Phase D polish (Sush 9 May 2026): bumped padding 36→52 so dots have
+  // breathing room from Earth's icon; rotation slowed 0.045→0.028 rad/sec
+  // so dots are easier to track visually.
   const blogAsteroids = Array.from(document.querySelectorAll<HTMLElement>('.blog-asteroid'));
-  const BLOG_ORBIT_PADDING = 36; // px outside Earth's body
-  const BLOG_ROT_SPEED = 0.045;  // radians per second — very slow
+  const BLOG_ORBIT_PADDING = 52; // px outside Earth's body
+  const BLOG_ROT_SPEED = 0.028;  // radians per second — very slow, trackable
   function applyBlogBelt(introBodies: number): void {
     if (blogAsteroids.length === 0) return;
     const earth = bodies.find((b) => b.slug === 'earth');

@@ -1002,8 +1002,8 @@ body.list-view .this-week-ribbon { display: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -1018,24 +1018,38 @@ body.list-view .this-week-ribbon { display: none; }
   outline: 0;
   -webkit-tap-highlight-color: transparent;
 }
+/* Phase D polish (Sush 9 May 2026): blog asteroids were 4px and hard to
+   spot against the parallax starfield. Bumped to 7px with an amber tint
+   + larger glow halo + a subtle inner pulse so they read as "rocks
+   orbiting Earth" instead of "background stars". */
 .blog-asteroid__dot {
   display: inline-block;
-  width: 4px;
-  height: 4px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--hud) 75%, transparent);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--hud) 35%, transparent);
+  background: var(--accent-soft);
+  box-shadow:
+    0 0 4px var(--accent),
+    0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: blog-asteroid-breathe 3.6s ease-in-out infinite;
   transition: width 200ms var(--ease-out),
               height 200ms var(--ease-out),
               background 200ms var(--ease-out),
               box-shadow 200ms var(--ease-out);
 }
+@keyframes blog-asteroid-breathe {
+  0%, 100% { box-shadow: 0 0 4px var(--accent), 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
+  50%      { box-shadow: 0 0 6px var(--accent-soft), 0 0 18px color-mix(in srgb, var(--accent) 65%, transparent); }
+}
 .blog-asteroid:hover .blog-asteroid__dot,
 .blog-asteroid:focus-visible .blog-asteroid__dot {
-  width: 7px;
-  height: 7px;
-  background: var(--accent-soft);
-  box-shadow: 0 0 14px var(--accent);
+  width: 11px;
+  height: 11px;
+  background: #FFFFFF;
+  box-shadow:
+    0 0 8px var(--accent-soft),
+    0 0 22px var(--accent);
+  animation: none;
 }
 .blog-asteroid:focus-visible {
   outline: 2px solid var(--accent);
@@ -1044,7 +1058,7 @@ body.list-view .this-week-ribbon { display: none; }
 }
 body.list-view .blog-asteroid { display: none; }
 @media (prefers-reduced-motion: reduce) {
-  .blog-asteroid__dot { transition: none; }
+  .blog-asteroid__dot { transition: none; animation: none; }
 }
 
 /* ═══════════════ Phase C — lens pill ═══════════════ */
