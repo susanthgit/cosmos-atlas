@@ -217,22 +217,13 @@ const clientData = {
         a living map of everything in the A Guide to Cloud cosmos. tap a planet to start.
       </p>
 
-      {/* Phase B — this-week ribbon. Auto-derived from atlas + freshness.json.
-           Single line listing bodies shipped in last 7 days. Hidden entirely
-           when nothing is fresh. Sits below the lede slot so they don't
-           compete; once the lede fades, the ribbon becomes the calm top-of-
-           page signal. */}
-      <div class="this-week-ribbon" id="this-week-ribbon" data-visible="false" aria-live="polite"></div>
-
       {/* V5 polish — bodies-count summary moved from canvas (was bottom-left
-           overlap with MCP star) to top-left under the this-week ribbon, where
-           the rest of the cosmos's quiet meta-text lives. Populated by JS. */}
+           overlap with MCP star) to top-left. Populated by JS. */}
       <p class="bodies-count" id="bodies-count" aria-live="polite"></p>
 
       {/* V5 polish — original tour / replay / shortcuts buttons moved here from
            the bottom-right hud-aux row. They're orientation aids — natural
-           home is with the rest of the top-left meta UI. The new focus
-           companion buttons (drift / ambient / pomodoro) stay bottom-right. */}
+           home is with the rest of the top-left meta UI. */}
       <div class="hud-orientation" aria-label="Orientation">
         <button
           type="button"
@@ -294,10 +285,38 @@ const clientData = {
         <button type="button" class="audience-filter__clear" id="audience-filter-clear" aria-label="Clear audience filter" hidden>×</button>
       </div>
 
-      <!-- V5 polish — original tour / replay / shortcuts buttons relocated
-           to .hud-orientation (top-left under this-week ribbon). The bottom-
-           right hud-aux row now hosts only the focus-companion toggles
-           (drift / ambient / pomodoro). -->
+      {/* Wave 5 — Lens grid (always-visible 2x2). Replaces the old expandable
+           lens-pill. Lives in the left column on desktop, top-right compact
+           pill on mobile. Encourages exploration — first-timers see the four
+           lens options upfront instead of having to discover a hidden pill. */}
+      <div class="lens-grid" id="lens-grid" data-lens="cosmos" role="group" aria-label="Cosmos view">
+        <span class="lens-grid__label">Views</span>
+        <div class="lens-grid__options">
+          <button class="lens-grid__option" type="button" data-lens="cosmos" aria-label="Cosmos lens — solar system" aria-pressed="true">
+            <span class="lens-grid__icon" aria-hidden="true">🪐</span>
+            <span class="lens-grid__name">Cosmos</span>
+            <span class="lens-grid__sub">solar system</span>
+          </button>
+          <button class="lens-grid__option" type="button" data-lens="constellation" aria-label="Constellation lens — relationship graph" aria-pressed="false">
+            <span class="lens-grid__icon" aria-hidden="true">🌟</span>
+            <span class="lens-grid__name">Constellation</span>
+            <span class="lens-grid__sub">relationships</span>
+          </button>
+          <button class="lens-grid__option" type="button" data-lens="timeline" aria-label="Timeline lens — by ship date" aria-pressed="false">
+            <span class="lens-grid__icon" aria-hidden="true">📅</span>
+            <span class="lens-grid__name">Timeline</span>
+            <span class="lens-grid__sub">ship date</span>
+          </button>
+          <button class="lens-grid__option" type="button" data-lens="audience" aria-label="Audience lens — by who it's for" aria-pressed="false">
+            <span class="lens-grid__icon" aria-hidden="true">👥</span>
+            <span class="lens-grid__name">Audience</span>
+            <span class="lens-grid__sub">who it's for</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Wave 5 — Bottom-right hud-aux now hosts ONLY the drift toggle.
+           Pomodoro and ambient have moved to inline cards in the left column. -->
       <div class="hud-aux" aria-label="Focus companion">
         <button
           type="button"
@@ -307,106 +326,62 @@ const clientData = {
           aria-pressed="false"
           title="Drift mode — slow screensaver (any input exits)"
         >🌙</button>
-        <button
-          type="button"
-          class="hud-aux__btn"
-          id="ambient-toggle"
-          aria-label="Ambient sound"
-          aria-pressed="false"
-          title="Ambient sound — opt-in, default off"
-        >🔊</button>
-        <button
-          type="button"
-          class="hud-aux__btn"
-          id="pomodoro-toggle"
-          aria-label="Pomodoro focus session"
-          aria-pressed="false"
-          title="Pomodoro — 25 min focus, 5 min break"
-        >⏱</button>
       </div>
 
-      {/* Wave 2 (V5) — small popover panels for ambient sound + pomodoro state.
-           Both default-hidden; the toggle buttons in hud-aux open them. */}
-      <div class="cosmos-popover" id="ambient-panel" data-open="false" role="dialog" aria-label="Ambient sound" aria-hidden="true">
-        <div class="cosmos-popover__head">
-          <span class="cosmos-popover__title">Ambient</span>
-          <button type="button" class="cosmos-popover__close" id="ambient-close" aria-label="Close ambient panel">×</button>
-        </div>
-        <div class="cosmos-popover__body">
-          <div class="ambient-modes" role="radiogroup" aria-label="Ambient mode">
-            <button type="button" class="ambient-mode" data-ambient-mode="off" role="radio" aria-checked="true">Off</button>
-            <button type="button" class="ambient-mode" data-ambient-mode="hum" role="radio" aria-checked="false">Cosmic hum</button>
-            <button type="button" class="ambient-mode" data-ambient-mode="aum" role="radio" aria-checked="false">Aum hum</button>
-            <button type="button" class="ambient-mode" data-ambient-mode="lofi" role="radio" aria-checked="false">Lo-fi pad</button>
+      {/* Wave 4 (V5) — Cosmos Sounds player. Real CC0 ambient tracks from
+           Pixabay (free for commercial use, no attribution required) loaded
+           on demand. Lives in the left column under the lens grid. */}
+      <aside class="ambient-player" id="ambient-player" data-state="collapsed" data-playing="false" aria-label="Cosmos sounds">
+        <button type="button" class="ambient-player__head" id="ambient-toggle-panel" aria-expanded="false" aria-controls="ambient-player-body">
+          <span class="ambient-player__icon" aria-hidden="true">🎵</span>
+          <span class="ambient-player__title">cosmos sounds</span>
+          <span class="ambient-player__state" id="ambient-state">off</span>
+          <span class="ambient-player__chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="ambient-player__body" id="ambient-player-body" hidden>
+          <p class="ambient-now" id="ambient-now-track" aria-live="polite">— pick a track to start</p>
+          <div class="ambient-transport" role="toolbar" aria-label="Player transport">
+            <button type="button" class="ambient-btn" id="ambient-prev" aria-label="Previous track" title="Previous">⏮</button>
+            <button type="button" class="ambient-btn ambient-btn--play" id="ambient-play" aria-label="Play" aria-pressed="false" title="Play / pause">▶</button>
+            <button type="button" class="ambient-btn" id="ambient-next" aria-label="Next track" title="Next">⏭</button>
+            <span class="ambient-transport__spacer" aria-hidden="true"></span>
+            <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-shuffle" aria-pressed="false" title="Shuffle">🔀</button>
+            <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-repeat" data-repeat="off" aria-pressed="false" title="Repeat: off">🔁</button>
           </div>
-          <label class="ambient-volume">
-            <span class="ambient-volume__label">Volume</span>
-            <input type="range" id="ambient-volume" min="0" max="100" value="60" aria-label="Ambient volume" />
+          <label class="ambient-volume-row">
+            <span class="ambient-volume-row__label" aria-hidden="true">vol</span>
+            <input type="range" id="ambient-volume" class="ambient-volume-input" min="0" max="100" value="60" aria-label="Volume" />
           </label>
-          <p class="cosmos-popover__hint">Web Audio · procedural · no licensing.</p>
+          <details class="ambient-list-toggle" id="ambient-list-toggle">
+            <summary class="ambient-list-toggle__summary"><span id="ambient-track-count">11</span> tracks</summary>
+            <ul class="ambient-list" id="ambient-list" role="list"></ul>
+          </details>
         </div>
-      </div>
+        <audio id="ambient-audio" preload="none" aria-hidden="true"></audio>
+      </aside>
 
-      <div class="cosmos-popover" id="pomodoro-panel" data-open="false" role="dialog" aria-label="Pomodoro" aria-hidden="true">
-        <div class="cosmos-popover__head">
-          <span class="cosmos-popover__title">Pomodoro</span>
-          <button type="button" class="cosmos-popover__close" id="pomodoro-close" aria-label="Close pomodoro panel">×</button>
-        </div>
-        <div class="cosmos-popover__body">
+      {/* Wave 5 — Pomodoro inline card (left column, below ambient player).
+           Replaces the bottom-right popover. Same UX, same JS hooks. */}
+      <aside class="pomodoro-card" id="pomodoro-card" data-state="collapsed" aria-label="Focus timer">
+        <button type="button" class="pomodoro-card__head" id="pomodoro-toggle-panel" aria-expanded="false" aria-controls="pomodoro-card-body">
+          <span class="pomodoro-card__icon" aria-hidden="true">⏱</span>
+          <span class="pomodoro-card__title">focus timer</span>
+          <span class="pomodoro-card__state" id="pomodoro-card-state">idle</span>
+          <span class="pomodoro-card__chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="pomodoro-card__body" id="pomodoro-card-body" hidden>
           <div class="pomodoro-display" id="pomodoro-display">
             <span class="pomodoro-time" id="pomodoro-time">25:00</span>
             <span class="pomodoro-phase" id="pomodoro-phase">focus</span>
           </div>
           <div class="pomodoro-actions">
-            <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min focus</button>
+            <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min</button>
             <button type="button" class="pomodoro-btn pomodoro-btn--ghost" id="pomodoro-stop" hidden>Stop</button>
           </div>
-          <p class="cosmos-popover__hint">Auto-engages drift mode while focusing.</p>
+          <p class="pomodoro-hint">auto-engages drift while focusing.</p>
           <p class="pomodoro-counter" id="pomodoro-counter" hidden></p>
         </div>
-      </div>
-
-      {/* Phase C — lens pill. Bottom-right corner. Default shows current
-           lens label as a small pill; click to expand and see all 4
-           lenses. Cosmos is the canonical default; the rest are
-           projections of the same data. */}
-      <div class="lens-pill" id="lens-pill" data-open="false" data-lens="cosmos" role="group" aria-label="Cosmos view">
-        <button
-          type="button"
-          class="lens-pill__current"
-          id="lens-pill-toggle"
-          aria-haspopup="menu"
-          aria-expanded="false"
-          aria-label="Switch view"
-          title="Switch view"
-        >
-          <span class="lens-pill__icon" aria-hidden="true">🪐</span>
-          <span class="lens-pill__label">Cosmos</span>
-          <span class="lens-pill__chevron" aria-hidden="true">▾</span>
-        </button>
-        <div class="lens-pill__menu" role="menu">
-          <button class="lens-pill__option" type="button" role="menuitem" data-lens="cosmos" aria-label="Cosmos lens — solar system">
-            <span class="lens-pill__icon" aria-hidden="true">🪐</span>
-            <span class="lens-pill__label">Cosmos</span>
-            <span class="lens-pill__sub">solar system</span>
-          </button>
-          <button class="lens-pill__option" type="button" role="menuitem" data-lens="constellation" aria-label="Constellation lens — relationship graph">
-            <span class="lens-pill__icon" aria-hidden="true">🌟</span>
-            <span class="lens-pill__label">Constellation</span>
-            <span class="lens-pill__sub">relationships</span>
-          </button>
-          <button class="lens-pill__option" type="button" role="menuitem" data-lens="timeline" aria-label="Timeline lens — by ship date">
-            <span class="lens-pill__icon" aria-hidden="true">📅</span>
-            <span class="lens-pill__label">Timeline</span>
-            <span class="lens-pill__sub">by ship date</span>
-          </button>
-          <button class="lens-pill__option" type="button" role="menuitem" data-lens="audience" aria-label="Audience lens — by who it's for">
-            <span class="lens-pill__icon" aria-hidden="true">👥</span>
-            <span class="lens-pill__label">Audience</span>
-            <span class="lens-pill__sub">by who it's for</span>
-          </button>
-        </div>
-      </div>
+      </aside>
 
       <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>
 

@@ -2843,7 +2843,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .hud-orientation, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts, .cosmos-popover')) {
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2856,7 +2856,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .hud-orientation, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts, .cosmos-popover')) return;
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -3461,253 +3461,296 @@ export function mountCosmos(data: CosmosData): void {
     }
   })();
 
-  // ─── Ambient sound (Web Audio API · procedural · 2 modes) ─────────
-  // Default OFF. Click 🔊 → opens panel. Pick a mode + volume. Audio
-  // generated entirely with oscillators/gains/biquad filters — no audio
-  // files, no licensing, ~3KB of code. Returns to OFF on page unload.
-  (function ambientSound(): void {
-    const ambBtn = document.getElementById('ambient-toggle') as HTMLButtonElement | null;
-    const panel = document.getElementById('ambient-panel') as HTMLElement | null;
-    const closeBtn = document.getElementById('ambient-close') as HTMLButtonElement | null;
-    const volSlider = document.getElementById('ambient-volume') as HTMLInputElement | null;
-    const modeBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.ambient-mode'));
-    if (!ambBtn || !panel || !volSlider || modeBtns.length === 0) return;
+  // ─── Ambient sound (Wave 4 — HTML5 audio playlist · 11 CC0 tracks) ────
+  // Real ambient tracks from Pixabay (free for commercial use, no attribution
+  // required). Tracks live at /audio/<slug>.mp3 with preload="none" so they
+  // download only when played. Replaces the previous synthesized engine.
+  // Features: prev / play-pause / next / shuffle / repeat (off / one / all)
+  // / volume / track list. Pomodoro auto-dims volume to 55% during focus.
+  (function ambientPlayer(): void {
+    interface Track { slug: string; label: string; file: string }
+    // Track manifest. Order = playback order when shuffle is OFF.
+    // File paths are vendored at /audio/ — see public/audio/README.md.
+    const TRACKS: Track[] = [
+      { slug: 'serenity', label: 'Cosmic Serenity — Celestial Soundscapes', file: '/audio/serenity-celestial-soundscapes.mp3' },
+      { slug: 'tranquility', label: 'Cosmic Tranquility', file: '/audio/tranquility.mp3' },
+      { slug: 'study', label: 'Cosmic Study', file: '/audio/study.mp3' },
+      { slug: 'voyage', label: 'Cosmic Voyage', file: '/audio/voyage.mp3' },
+      { slug: 'dream', label: 'Cosmic Dream', file: '/audio/dream.mp3' },
+      { slug: 'journey', label: 'Cosmic Journey', file: '/audio/journey.mp3' },
+      { slug: 'connection', label: 'Cosmic Connection', file: '/audio/connection.mp3' },
+      { slug: 'unity', label: 'Cosmic Unity', file: '/audio/unity.mp3' },
+      { slug: 'universe', label: 'Universe — Cosmic Planet Galaxy', file: '/audio/universe-cosmic-planet-galaxy-music.mp3' },
+      { slug: 'heart', label: 'Cosmic Heart Activation — Nebula Burst', file: '/audio/heart-activation-nebula-burst.mp3' },
+      { slug: 'om', label: 'Cosmic Chant · Om Chanting', file: '/audio/chant-om-chanting.mp3' },
+    ];
 
-    type Mode = 'off' | 'hum' | 'aum' | 'lofi';
-    let audioCtx: AudioContext | null = null;
-    let mainGain: GainNode | null = null;
-    let activeNodes: AudioNode[] = [];
-    let currentMode: Mode = 'off';
-    let savedMode: Mode = 'off';
+    const player = document.getElementById('ambient-player') as HTMLElement | null;
+    const audio = document.getElementById('ambient-audio') as HTMLAudioElement | null;
+    const headBtn = document.getElementById('ambient-toggle-panel') as HTMLButtonElement | null;
+    const body = document.getElementById('ambient-player-body') as HTMLElement | null;
+    const stateLabel = document.getElementById('ambient-state') as HTMLElement | null;
+    const nowEl = document.getElementById('ambient-now-track') as HTMLElement | null;
+    const prevBtn = document.getElementById('ambient-prev') as HTMLButtonElement | null;
+    const playBtn = document.getElementById('ambient-play') as HTMLButtonElement | null;
+    const nextBtn = document.getElementById('ambient-next') as HTMLButtonElement | null;
+    const shuffleBtn = document.getElementById('ambient-shuffle') as HTMLButtonElement | null;
+    const repeatBtn = document.getElementById('ambient-repeat') as HTMLButtonElement | null;
+    const volSlider = document.getElementById('ambient-volume') as HTMLInputElement | null;
+    const listEl = document.getElementById('ambient-list') as HTMLElement | null;
+    const trackCountEl = document.getElementById('ambient-track-count') as HTMLElement | null;
+    if (!player || !audio || !headBtn || !body || !prevBtn || !playBtn || !nextBtn ||
+        !shuffleBtn || !repeatBtn || !volSlider || !listEl) return;
+
+    type RepeatMode = 'off' | 'one' | 'all';
+    let currentIndex = -1;        // -1 = nothing loaded yet
+    let shuffle = false;
+    let repeatMode: RepeatMode = 'all';
     let savedVol = 0.6;
+    let pomoFactor = 1;           // pomodoro multiplier (1 = full, 0.55 during focus)
+
+    if (trackCountEl) trackCountEl.textContent = String(TRACKS.length);
+
+    // Restore preferences.
     try {
-      const m = window.localStorage.getItem('cosmosAmbientMode');
-      if (m === 'hum' || m === 'aum' || m === 'lofi' || m === 'off') savedMode = m;
       const v = window.localStorage.getItem('cosmosAmbientVolume');
       if (v) {
         const f = parseFloat(v);
         if (Number.isFinite(f) && f >= 0 && f <= 1) savedVol = f;
       }
+      const s = window.localStorage.getItem('cosmosAmbientShuffle');
+      shuffle = s === '1';
+      const r = window.localStorage.getItem('cosmosAmbientRepeat');
+      if (r === 'one' || r === 'all' || r === 'off') repeatMode = r;
+      const lastSlug = window.localStorage.getItem('cosmosAmbientTrack');
+      if (lastSlug) {
+        const idx = TRACKS.findIndex((t) => t.slug === lastSlug);
+        if (idx >= 0) currentIndex = idx;
+      }
     } catch { /* silent */ }
     volSlider.value = String(Math.round(savedVol * 100));
+    audio.volume = savedVol;
+    shuffleBtn.setAttribute('aria-pressed', shuffle ? 'true' : 'false');
+    shuffleBtn.classList.toggle('ambient-btn--mode-active', shuffle);
+    updateRepeatBtn();
 
-    function ensureCtx(): AudioContext {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-        mainGain = audioCtx.createGain();
-        mainGain.gain.value = savedVol;
-        mainGain.connect(audioCtx.destination);
-      }
-      return audioCtx;
-    }
-
-    function stopAll(): void {
-      for (const n of activeNodes) {
-        try { (n as OscillatorNode).stop?.(); } catch { /* ignore */ }
-        try { n.disconnect(); } catch { /* ignore */ }
-      }
-      activeNodes = [];
-    }
-
-    function startHum(): void {
-      const ctx = ensureCtx();
-      // Deep slow drone: 80 Hz + 120 Hz sines for warmth + slow LFO sweeping
-      // a low-pass filter for breathing texture. Frequencies tuned so the
-      // hum is audible on phone speakers (60 Hz often inaudible at low gain).
-      const droneA = ctx.createOscillator();
-      droneA.type = 'sine'; droneA.frequency.value = 80;
-      const droneB = ctx.createOscillator();
-      droneB.type = 'sine'; droneB.frequency.value = 120;
-      const lfo = ctx.createOscillator();
-      lfo.type = 'sine'; lfo.frequency.value = 0.07; // 1 cycle per ~14s
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 260;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 540;
-      filter.Q.value = 0.6;
-      lfo.connect(lfoGain);
-      lfoGain.connect(filter.frequency);
-      const sub = ctx.createGain();
-      // Fade-in over 2s so the start isn't a click.
-      sub.gain.setValueAtTime(0.0001, ctx.currentTime);
-      sub.gain.exponentialRampToValueAtTime(1.1, ctx.currentTime + 2.0);
-      droneA.connect(filter);
-      droneB.connect(filter);
-      filter.connect(sub);
-      sub.connect(mainGain!);
-      droneA.start();
-      droneB.start();
-      lfo.start();
-      activeNodes.push(droneA, droneB, lfo, lfoGain, filter, sub);
-    }
-
-    function startLofi(): void {
-      const ctx = ensureCtx();
-      // Lo-fi pad: 4-note voicing of a Cmaj7 chord (C E G B at low freqs),
-      // each a triangle oscillator with slow tremolo. Gains tuned so the
-      // pad is clearly audible on phone speakers without being intrusive.
-      const notes = [130.81, 164.81, 196.00, 246.94]; // C3 E3 G3 B3
-      const padGain = ctx.createGain();
-      padGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      padGain.gain.exponentialRampToValueAtTime(0.65, ctx.currentTime + 1.6);
-      padGain.connect(mainGain!);
-      const tremolo = ctx.createOscillator();
-      tremolo.type = 'sine';
-      tremolo.frequency.value = 0.5;
-      const tremGain = ctx.createGain();
-      tremGain.gain.value = 0.18;
-      tremolo.connect(tremGain);
-      tremGain.connect(padGain.gain);
-      tremolo.start();
-      activeNodes.push(tremolo, tremGain, padGain);
-      for (const f of notes) {
-        const osc = ctx.createOscillator();
-        osc.type = 'triangle';
-        osc.frequency.value = f;
-        const g = ctx.createGain();
-        g.gain.value = 0.28;
-        osc.connect(g);
-        g.connect(padGain);
-        osc.start();
-        activeNodes.push(osc, g);
-      }
-    }
-
-    function startAum(): void {
-      const ctx = ensureCtx();
-      // Aum / Om hum — meditative resonance built from a harmonic stack at
-      // A2 (110 Hz). Fundamental sine + 4 triangle harmonics with slight
-      // detuning for organic warmth. A peaking biquad at 700 Hz adds the
-      // open-vowel "ah/oh" formant character of a sustained chant. A slow
-      // breath LFO (~1 cycle per 8s) modulates amplitude — like the rhythm
-      // of long, slow breaths in meditation. 4-second fade-in.
-      const fundamental = 110;
-      const harmonics: Array<{ mult: number; gain: number }> = [
-        { mult: 1, gain: 1.00 },
-        { mult: 2, gain: 0.55 },
-        { mult: 3, gain: 0.35 },
-        { mult: 4, gain: 0.18 },
-        { mult: 5, gain: 0.10 },
-      ];
-      const aumGain = ctx.createGain();
-      aumGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      aumGain.gain.exponentialRampToValueAtTime(0.85, ctx.currentTime + 4.0);
-
-      // Vowel formant — peaking filter at "ah" formant frequency.
-      const formant = ctx.createBiquadFilter();
-      formant.type = 'peaking';
-      formant.frequency.value = 700;
-      formant.Q.value = 4;
-      formant.gain.value = 7;  // dB boost
-      aumGain.connect(formant);
-      formant.connect(mainGain!);
-
-      // Slow breath LFO — adds a subtle inhale/exhale modulation.
-      const breathLfo = ctx.createOscillator();
-      breathLfo.type = 'sine';
-      breathLfo.frequency.value = 1 / 8;  // ~7.5s per cycle
-      const breathGain = ctx.createGain();
-      breathGain.gain.value = 0.18;
-      breathLfo.connect(breathGain);
-      breathGain.connect(aumGain.gain);
-      breathLfo.start();
-      activeNodes.push(aumGain, formant, breathLfo, breathGain);
-
-      for (const h of harmonics) {
-        const osc = ctx.createOscillator();
-        osc.type = h.mult === 1 ? 'sine' : 'triangle';
-        osc.frequency.value = fundamental * h.mult;
-        // Slight detune (±4 cents) for organic warmth — pure harmonics
-        // sound synthetic; tiny detuning adds "human voice" feel.
-        osc.detune.value = (Math.random() - 0.5) * 8;
-        const g = ctx.createGain();
-        g.gain.value = h.gain * 0.30;
-        osc.connect(g);
-        g.connect(aumGain);
-        osc.start();
-        activeNodes.push(osc, g);
-      }
-    }
-
-    function applyMode(mode: Mode): void {
-      stopAll();
-      currentMode = mode;
-      modeBtns.forEach((btn) => {
-        const m = btn.dataset.ambientMode as Mode;
-        btn.setAttribute('aria-checked', m === mode ? 'true' : 'false');
-        btn.classList.toggle('ambient-mode--active', m === mode);
+    // ─── List rendering ─────────────────────────────────────────────
+    function renderList(): void {
+      listEl!.innerHTML = '';
+      TRACKS.forEach((t, i) => {
+        const li = document.createElement('li');
+        li.className = 'ambient-list__item';
+        if (i === currentIndex) li.classList.add('ambient-list__item--active');
+        li.innerHTML = `
+          <button type="button" class="ambient-list__btn" data-track-index="${i}" aria-label="Play ${escapeHtml(t.label)}">
+            <span class="ambient-list__num">${String(i + 1).padStart(2, '0')}</span>
+            <span class="ambient-list__title">${escapeHtml(t.label)}</span>
+            <span class="ambient-list__icon" aria-hidden="true">${i === currentIndex && !audio!.paused ? '◉' : '▸'}</span>
+          </button>`;
+        listEl!.appendChild(li);
       });
-      ambBtn!.setAttribute('aria-pressed', mode !== 'off' ? 'true' : 'false');
-      try { window.localStorage.setItem('cosmosAmbientMode', mode); } catch { /* silent */ }
-      if (mode === 'off') return;
-      // V5 polish — explicitly resume() before starting oscillators. Browsers
-      // create the AudioContext in 'suspended' state when triggered indirectly;
-      // the click handler on the mode button is the user gesture that must
-      // unlock playback. We await the resume() so oscillators start on a
-      // running context (otherwise they emit silence on Safari + some Chrome).
-      const ctx = ensureCtx();
-      const startOscillators = (): void => {
-        if (mode === 'hum') startHum();
-        else if (mode === 'aum') startAum();
-        else if (mode === 'lofi') startLofi();
-      };
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(startOscillators).catch(() => { /* user can retry */ });
-      } else {
-        startOscillators();
+    }
+
+    function updateNowDisplay(): void {
+      if (currentIndex < 0) {
+        nowEl!.textContent = '— pick a track to start';
+        if (stateLabel) stateLabel.textContent = 'off';
+        player!.dataset.playing = 'false';
+        playBtn!.textContent = '▶';
+        playBtn!.setAttribute('aria-pressed', 'false');
+        playBtn!.setAttribute('aria-label', 'Play');
+        return;
+      }
+      const t = TRACKS[currentIndex]!;
+      const playing = !audio!.paused && !audio!.ended;
+      nowEl!.textContent = (playing ? '▸ ' : '◇ ') + t.label;
+      if (stateLabel) stateLabel.textContent = playing ? 'playing' : 'paused';
+      player!.dataset.playing = playing ? 'true' : 'false';
+      playBtn!.textContent = playing ? '⏸' : '▶';
+      playBtn!.setAttribute('aria-pressed', playing ? 'true' : 'false');
+      playBtn!.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+      Array.from(listEl!.querySelectorAll<HTMLElement>('.ambient-list__item')).forEach((el, idx) => {
+        el.classList.toggle('ambient-list__item--active', idx === currentIndex);
+        const icon = el.querySelector<HTMLElement>('.ambient-list__icon');
+        if (icon) icon.textContent = idx === currentIndex && playing ? '◉' : '▸';
+      });
+    }
+
+    function updateRepeatBtn(): void {
+      const labels: Record<RepeatMode, string> = { off: '🔁', one: '🔂', all: '🔁' };
+      repeatBtn!.textContent = labels[repeatMode];
+      repeatBtn!.setAttribute('data-repeat', repeatMode);
+      repeatBtn!.setAttribute('aria-pressed', repeatMode !== 'off' ? 'true' : 'false');
+      repeatBtn!.setAttribute('title', `Repeat: ${repeatMode}`);
+      repeatBtn!.classList.toggle('ambient-btn--mode-active', repeatMode !== 'off');
+    }
+
+    // ─── Playback ───────────────────────────────────────────────────
+    function loadTrack(index: number): void {
+      if (index < 0 || index >= TRACKS.length) return;
+      currentIndex = index;
+      const t = TRACKS[index]!;
+      audio!.src = t.file;
+      try { window.localStorage.setItem('cosmosAmbientTrack', t.slug); } catch { /* silent */ }
+      updateNowDisplay();
+    }
+
+    function playCurrent(): void {
+      if (currentIndex < 0) loadTrack(0);
+      const playPromise = audio!.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.then(updateNowDisplay).catch((err: Error) => {
+          // eslint-disable-next-line no-console
+          console.warn('[ambient] play() failed:', err.message);
+          updateNowDisplay();
+        });
       }
     }
+
+    function pauseCurrent(): void {
+      audio!.pause();
+      updateNowDisplay();
+    }
+
+    function pickNextIndex(): number {
+      if (TRACKS.length === 0) return -1;
+      if (shuffle) {
+        // Random, avoid repeating same track when more than one option.
+        if (TRACKS.length === 1) return 0;
+        let n = Math.floor(Math.random() * TRACKS.length);
+        if (n === currentIndex) n = (n + 1) % TRACKS.length;
+        return n;
+      }
+      return (currentIndex + 1) % TRACKS.length;
+    }
+
+    function pickPrevIndex(): number {
+      if (TRACKS.length === 0) return -1;
+      if (shuffle) {
+        if (TRACKS.length === 1) return 0;
+        let n = Math.floor(Math.random() * TRACKS.length);
+        if (n === currentIndex) n = (n + 1) % TRACKS.length;
+        return n;
+      }
+      return (currentIndex - 1 + TRACKS.length) % TRACKS.length;
+    }
+
+    function next(autoPlay = true): void {
+      const n = pickNextIndex();
+      if (n < 0) return;
+      loadTrack(n);
+      if (autoPlay) playCurrent();
+    }
+
+    function prev(autoPlay = true): void {
+      const n = pickPrevIndex();
+      if (n < 0) return;
+      loadTrack(n);
+      if (autoPlay) playCurrent();
+    }
+
+    // ─── Events ────────────────────────────────────────────────────
+    headBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const expanded = headBtn.getAttribute('aria-expanded') === 'true';
+      const next = !expanded;
+      headBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+      player.dataset.state = next ? 'expanded' : 'collapsed';
+      if (next) body.removeAttribute('hidden');
+      else body.setAttribute('hidden', '');
+    });
+
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (audio.paused) playCurrent();
+      else pauseCurrent();
+    });
+
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      next(!audio.paused || currentIndex < 0);
+    });
+
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      prev(!audio.paused || currentIndex < 0);
+    });
+
+    shuffleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      shuffle = !shuffle;
+      shuffleBtn.setAttribute('aria-pressed', shuffle ? 'true' : 'false');
+      shuffleBtn.classList.toggle('ambient-btn--mode-active', shuffle);
+      try { window.localStorage.setItem('cosmosAmbientShuffle', shuffle ? '1' : '0'); } catch { /* silent */ }
+    });
+
+    repeatBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const order: RepeatMode[] = ['off', 'all', 'one'];
+      repeatMode = order[(order.indexOf(repeatMode) + 1) % order.length]!;
+      audio.loop = repeatMode === 'one';
+      updateRepeatBtn();
+      try { window.localStorage.setItem('cosmosAmbientRepeat', repeatMode); } catch { /* silent */ }
+    });
 
     volSlider.addEventListener('input', () => {
       const v = Math.max(0, Math.min(1, parseInt(volSlider.value, 10) / 100));
       savedVol = v;
-      if (mainGain) mainGain.gain.linearRampToValueAtTime(v, (audioCtx?.currentTime ?? 0) + 0.05);
+      audio.volume = v * pomoFactor;
       try { window.localStorage.setItem('cosmosAmbientVolume', String(v)); } catch { /* silent */ }
     });
 
-    function openPanel(): void {
-      panel!.dataset.open = 'true';
-      panel!.setAttribute('aria-hidden', 'false');
-    }
-    function closePanel(): void {
-      panel!.dataset.open = 'false';
-      panel!.setAttribute('aria-hidden', 'true');
-    }
-    ambBtn.addEventListener('click', (e) => {
+    listEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (panel.dataset.open === 'true') closePanel(); else openPanel();
-    });
-    closeBtn?.addEventListener('click', closePanel);
-    modeBtns.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const m = btn.dataset.ambientMode as Mode;
-        applyMode(m);
-      });
+      const target = e.target as HTMLElement;
+      const btn = target.closest<HTMLButtonElement>('[data-track-index]');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.trackIndex || '-1', 10);
+      if (idx < 0 || idx >= TRACKS.length) return;
+      // If the user clicks the currently playing track, toggle play/pause.
+      if (idx === currentIndex && !audio.paused) {
+        pauseCurrent();
+      } else {
+        loadTrack(idx);
+        playCurrent();
+      }
     });
 
-    // Reflect saved mode on first open. Don't auto-play (browser autoplay
-    // policy + user surprise) — user must click a mode button first.
-    if (savedMode !== 'off') {
-      ambBtn.setAttribute('aria-pressed', 'true');
-      modeBtns.forEach((btn) => {
-        const m = btn.dataset.ambientMode as Mode;
-        btn.setAttribute('aria-checked', m === savedMode ? 'true' : 'false');
-      });
-    }
+    audio.addEventListener('play', updateNowDisplay);
+    audio.addEventListener('pause', updateNowDisplay);
+    audio.addEventListener('ended', () => {
+      if (repeatMode === 'one') {
+        // <audio loop> handles this natively.
+        playCurrent();
+      } else if (repeatMode === 'all') {
+        next(true);
+      } else {
+        // Off — stop after the last track.
+        if (shuffle || currentIndex < TRACKS.length - 1) next(true);
+        else updateNowDisplay();
+      }
+    });
 
-    // Expose a tiny adjuster so Pomodoro can dim ambient during focus.
-    (window as unknown as { __cosmosAmbient?: { adjustVolume: (factor: number) => void; restoreVolume: () => void; getMode: () => Mode } }).__cosmosAmbient = {
+    // Apply initial loop attribute matching repeatMode.
+    audio.loop = repeatMode === 'one';
+
+    // Render the list. Highlight last-played track if any.
+    renderList();
+    updateNowDisplay();
+
+    // Expose to Pomodoro for volume dimming.
+    (window as unknown as { __cosmosAmbient?: { adjustVolume: (f: number) => void; restoreVolume: () => void; getMode: () => string } }).__cosmosAmbient = {
       adjustVolume(factor: number) {
-        if (!mainGain || !audioCtx) return;
-        mainGain.gain.linearRampToValueAtTime(savedVol * factor, audioCtx.currentTime + 0.6);
+        pomoFactor = factor;
+        audio!.volume = savedVol * pomoFactor;
       },
       restoreVolume() {
-        if (!mainGain || !audioCtx) return;
-        mainGain.gain.linearRampToValueAtTime(savedVol, audioCtx.currentTime + 0.6);
+        pomoFactor = 1;
+        audio!.volume = savedVol;
       },
-      getMode() { return currentMode; },
+      getMode() {
+        return audio!.paused ? 'off' : (TRACKS[currentIndex]?.slug ?? 'off');
+      },
     };
   })();
 
@@ -3716,15 +3759,19 @@ export function mountCosmos(data: CosmosData): void {
   // immersion. Quietly dims ambient sound during focus. Counter shown
   // (no streaks, no celebration animations — Plain AI commons philosophy).
   (function pomodoroMode(): void {
-    const pomoBtn = document.getElementById('pomodoro-toggle') as HTMLButtonElement | null;
-    const panel = document.getElementById('pomodoro-panel') as HTMLElement | null;
-    const closeBtn = document.getElementById('pomodoro-close') as HTMLButtonElement | null;
+    // Wave 5 — pomodoro is now an inline card in the left column. The toggle
+    // button is the card's head (clickable, expands/collapses); start/stop/
+    // counter live in the body. No popover overlay anymore.
+    const headBtn = document.getElementById('pomodoro-toggle-panel') as HTMLButtonElement | null;
+    const card = document.getElementById('pomodoro-card') as HTMLElement | null;
+    const body = document.getElementById('pomodoro-card-body') as HTMLElement | null;
+    const stateLabel = document.getElementById('pomodoro-card-state') as HTMLElement | null;
     const startBtn = document.getElementById('pomodoro-start') as HTMLButtonElement | null;
     const stopBtn = document.getElementById('pomodoro-stop') as HTMLButtonElement | null;
     const timeEl = document.getElementById('pomodoro-time') as HTMLElement | null;
     const phaseEl = document.getElementById('pomodoro-phase') as HTMLElement | null;
     const counterEl = document.getElementById('pomodoro-counter') as HTMLElement | null;
-    if (!pomoBtn || !panel || !startBtn || !stopBtn || !timeEl || !phaseEl) return;
+    if (!headBtn || !card || !body || !startBtn || !stopBtn || !timeEl || !phaseEl) return;
 
     const FOCUS_MIN = 25;
     const BREAK_MIN = 5;
@@ -3756,8 +3803,7 @@ export function mountCosmos(data: CosmosData): void {
     }
 
     function ringBell(): void {
-      const amb = (window as unknown as { __cosmosAmbient?: { getMode: () => string } }).__cosmosAmbient;
-      // Always use a fresh AudioContext for the bell — it's a one-shot sound.
+      // One-shot bell using a fresh AudioContext (no dependency on ambient state).
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const o1 = ctx.createOscillator();
       const o2 = ctx.createOscillator();
@@ -3772,7 +3818,6 @@ export function mountCosmos(data: CosmosData): void {
       o2.start();
       o1.stop(ctx.currentTime + 1.7);
       o2.stop(ctx.currentTime + 1.7);
-      void amb;
     }
 
     function setDriftFromPomo(active: boolean): void {
@@ -3791,13 +3836,17 @@ export function mountCosmos(data: CosmosData): void {
         phaseEl!.textContent = 'focus';
         startBtn!.setAttribute('hidden', '');
         stopBtn!.removeAttribute('hidden');
-        pomoBtn!.setAttribute('aria-pressed', 'true');
+        headBtn!.setAttribute('aria-pressed', 'true');
+        if (stateLabel) stateLabel.textContent = '25:00';
+        card!.dataset.active = 'true';
         document.body.dataset.pomodoro = 'focus';
         setDriftFromPomo(true);
         amb?.adjustVolume(0.55);
       } else if (next === 'break') {
         endsAt = Date.now() + BREAK_MIN * 60 * 1000;
         phaseEl!.textContent = 'break';
+        if (stateLabel) stateLabel.textContent = '05:00';
+        card!.dataset.active = 'true';
         document.body.dataset.pomodoro = 'break';
         amb?.restoreVolume();
         setDriftFromPomo(false);
@@ -3806,7 +3855,9 @@ export function mountCosmos(data: CosmosData): void {
         phaseEl!.textContent = 'focus';
         startBtn!.removeAttribute('hidden');
         stopBtn!.setAttribute('hidden', '');
-        pomoBtn!.setAttribute('aria-pressed', 'false');
+        headBtn!.setAttribute('aria-pressed', 'false');
+        delete card!.dataset.active;
+        if (stateLabel) stateLabel.textContent = 'idle';
         delete document.body.dataset.pomodoro;
         timeEl!.textContent = `${String(FOCUS_MIN).padStart(2, '0')}:00`;
         amb?.restoreVolume();
@@ -3817,7 +3868,9 @@ export function mountCosmos(data: CosmosData): void {
     function tick(): void {
       if (phase === 'idle') return;
       const left = endsAt - Date.now();
-      timeEl!.textContent = fmt(left);
+      const formatted = fmt(left);
+      timeEl!.textContent = formatted;
+      if (stateLabel) stateLabel.textContent = formatted;
       if (left <= 0) {
         ringBell();
         if (phase === 'focus') {
@@ -3833,20 +3886,15 @@ export function mountCosmos(data: CosmosData): void {
       }
     }
 
-    function openPanel(): void {
-      panel!.dataset.open = 'true';
-      panel!.setAttribute('aria-hidden', 'false');
-    }
-    function closePanel(): void {
-      panel!.dataset.open = 'false';
-      panel!.setAttribute('aria-hidden', 'true');
-    }
-    pomoBtn.addEventListener('click', (e) => {
+    headBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (panel.dataset.open === 'true') closePanel();
-      else openPanel();
+      const expanded = headBtn.getAttribute('aria-expanded') === 'true';
+      const next = !expanded;
+      headBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+      card.dataset.state = next ? 'expanded' : 'collapsed';
+      if (next) body.removeAttribute('hidden');
+      else body.setAttribute('hidden', '');
     });
-    closeBtn?.addEventListener('click', closePanel);
     startBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (phase === 'idle') {
@@ -3967,72 +4015,49 @@ export function mountCosmos(data: CosmosData): void {
     bindCoachInteractions(fresh);
   });
 
-  // Phase C — lens pill wiring. Toggle the menu open/closed; click an
-  // option to call setLens(). Mirror the persisted localStorage value into
-  // the UI so a refresh keeps the user's chosen lens.
-  const lensPill = document.getElementById('lens-pill') as HTMLElement | null;
-  const lensPillToggle = document.getElementById('lens-pill-toggle') as HTMLButtonElement | null;
-  if (lensPill && lensPillToggle) {
+  // Wave 5 — lens-grid wiring. Replaces the old expandable lens-pill.
+  // Always-visible 2x2 grid of lens options in the left column. Click any
+  // option to call setLens(). Persist state in localStorage; mirror back
+  // on init so a refresh restores the user's chosen lens.
+  const lensGrid = document.getElementById('lens-grid') as HTMLElement | null;
+  if (lensGrid) {
     document.body.dataset.lens = currentLens;
-    lensPill.dataset.lens = currentLens;
-    const lensIcon: Record<Lens, string> = {
-      cosmos: '🪐', constellation: '🌟', timeline: '📅', audience: '👥',
-    };
+    lensGrid.dataset.lens = currentLens;
     const lensLabel: Record<Lens, string> = {
       cosmos: 'Cosmos', constellation: 'Constellation', timeline: 'Timeline', audience: 'Audience',
     };
-    function syncLensPill(): void {
-      if (!lensPill || !lensPillToggle) return;
-      lensPill.dataset.lens = currentLens;
-      const iconEl = lensPillToggle.querySelector('.lens-pill__icon') as HTMLElement | null;
-      const labelEl = lensPillToggle.querySelector('.lens-pill__label') as HTMLElement | null;
-      if (iconEl) iconEl.textContent = lensIcon[currentLens];
-      if (labelEl) labelEl.textContent = lensLabel[currentLens];
-      // Mark the chosen option as current.
-      const options = lensPill.querySelectorAll<HTMLButtonElement>('.lens-pill__option');
+    function syncLensGrid(): void {
+      if (!lensGrid) return;
+      lensGrid.dataset.lens = currentLens;
+      const options = lensGrid.querySelectorAll<HTMLButtonElement>('.lens-grid__option');
       options.forEach((opt) => {
-        opt.dataset.current = opt.dataset.lens === currentLens ? 'true' : 'false';
+        const isCurrent = opt.dataset.lens === currentLens;
+        opt.setAttribute('aria-pressed', isCurrent ? 'true' : 'false');
+        opt.dataset.current = isCurrent ? 'true' : 'false';
       });
-        // Update the lens-legend caption to match.
-        const legendLabel = document.getElementById('lens-legend-label') as HTMLElement | null;
-        const legendSub = document.getElementById('lens-legend-sub') as HTMLElement | null;
-        const subText: Record<Lens, string> = {
-          cosmos: 'solar system',
-          constellation: 'relationships',
-          timeline: 'by ship date',
-          audience: 'by who it\'s for',
-        };
-        if (legendLabel) legendLabel.textContent = lensLabel[currentLens].toLowerCase();
-        if (legendSub) legendSub.textContent = subText[currentLens];
-      }
-    syncLensPill();
-    lensPillToggle.addEventListener('click', () => {
-      markInteraction();
-      const open = lensPill.dataset.open === 'true';
-      lensPill.dataset.open = open ? 'false' : 'true';
-      lensPillToggle.setAttribute('aria-expanded', String(!open));
-    });
-    const lensOptions = lensPill.querySelectorAll<HTMLButtonElement>('.lens-pill__option');
+      // Update the lens-legend caption to match.
+      const legendLabel = document.getElementById('lens-legend-label') as HTMLElement | null;
+      const legendSub = document.getElementById('lens-legend-sub') as HTMLElement | null;
+      const subText: Record<Lens, string> = {
+        cosmos: 'solar system',
+        constellation: 'relationships',
+        timeline: 'by ship date',
+        audience: 'by who it\'s for',
+      };
+      if (legendLabel) legendLabel.textContent = lensLabel[currentLens].toLowerCase();
+      if (legendSub) legendSub.textContent = subText[currentLens];
+    }
+    syncLensGrid();
+    const lensOptions = lensGrid.querySelectorAll<HTMLButtonElement>('.lens-grid__option');
     lensOptions.forEach((opt) => {
-      opt.addEventListener('click', () => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
         markInteraction();
         const name = opt.dataset.lens as Lens | undefined;
         if (!name) return;
         setLens(name);
-        syncLensPill();
-        lensPill.dataset.open = 'false';
-        lensPillToggle.setAttribute('aria-expanded', 'false');
+        syncLensGrid();
       });
-    });
-    // Click-outside to close the menu (uses pointerdown to align with
-    // existing root pointer-capture; .lens-pill is added to ignore lists).
-    document.addEventListener('click', (e: MouseEvent) => {
-      if (!lensPill || lensPill.dataset.open !== 'true') return;
-      const target = e.target as HTMLElement;
-      if (!target.closest('.lens-pill')) {
-        lensPill.dataset.open = 'false';
-        lensPillToggle.setAttribute('aria-expanded', 'false');
-      }
     });
     // If we restored a non-cosmos lens from localStorage, kick off a
     // transition to it on mount so the bodies fly into position.
@@ -4042,7 +4067,7 @@ export function mountCosmos(data: CosmosData): void {
         const restored = currentLens;
         currentLens = 'cosmos'; // reset so setLens() snapshots from cosmos
         setLens(restored);
-        syncLensPill();
+        syncLensGrid();
       }, introActive ? INTRO_DURATION_MS + 240 : 320);
     }
   }

@@ -1713,3 +1713,523 @@ body.list-view .hud-orientation { display: none; }
 .ambient-modes {
   grid-template-columns: 1fr 1fr;
 }
+/* ═══════════════ Wave 4 (V5) — ambient player (left column, real tracks) ═══════════════ */
+
+/* Hide the legacy popover styles entirely — replaced by .ambient-player. */
+.cosmos-popover#ambient-panel { display: none !important; }
+
+.ambient-player {
+  position: absolute;
+  top: 322px;
+  left: var(--space-5);
+  width: 240px;
+  max-height: calc(100vh - 360px);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--mono);
+  color: var(--hud);
+  background: color-mix(in srgb, var(--bg-edge) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 12px;
+  z-index: 215;
+  pointer-events: auto;
+  overflow: hidden;
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+.ambient-player[data-state="expanded"] {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.ambient-player[data-playing="true"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
+              0 6px 24px rgba(2, 3, 14, 0.4);
+}
+body.list-view .ambient-player { display: none; }
+
+/* Collapsed header — clickable strip showing icon + state. */
+.ambient-player__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--hud);
+  transition: background-color var(--duration-base) var(--ease-out);
+}
+.ambient-player__head:hover,
+.ambient-player__head:focus-visible {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.ambient-player__icon { font-size: 14px; line-height: 1; }
+.ambient-player__title {
+  flex: 1;
+  text-transform: lowercase;
+  letter-spacing: 0.06em;
+}
+.ambient-player__state {
+  font-size: 10px;
+  color: var(--hud-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ambient-player[data-playing="true"] .ambient-player__state {
+  color: var(--accent);
+}
+.ambient-player__chevron {
+  display: inline-block;
+  transition: transform var(--duration-base) var(--ease-out);
+  font-size: 11px;
+  color: var(--hud-faint);
+}
+.ambient-player[data-state="expanded"] .ambient-player__chevron {
+  transform: rotate(180deg);
+}
+
+/* Body — visible when expanded. */
+.ambient-player__body {
+  border-top: 1px solid var(--rule);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ambient-now {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--hud);
+  min-height: 18px;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Transport row — prev / play / next + spacer + shuffle / repeat */
+.ambient-transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ambient-transport__spacer {
+  flex: 1;
+}
+.ambient-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--hud);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out);
+}
+.ambient-btn:hover, .ambient-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ambient-btn--play {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ambient-btn--play:hover, .ambient-btn--play:focus-visible {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.ambient-btn--mode-active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Volume row */
+.ambient-volume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.ambient-volume-row__label {
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  color: var(--hud-faint);
+  text-transform: uppercase;
+  width: 26px;
+}
+.ambient-volume-input {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+/* Track-list disclosure */
+.ambient-list-toggle {
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+}
+.ambient-list-toggle__summary,
+.ambient-list-toggle summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  color: var(--hud-muted);
+  text-transform: uppercase;
+  padding: 2px 0;
+  transition: color var(--duration-base) var(--ease-out);
+}
+.ambient-list-toggle__summary::-webkit-details-marker { display: none; }
+.ambient-list-toggle__summary::before {
+  content: '▸ ';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.ambient-list-toggle[open] .ambient-list-toggle__summary::before {
+  transform: rotate(90deg);
+  margin-right: 4px;
+}
+.ambient-list-toggle__summary:hover {
+  color: var(--accent);
+}
+
+.ambient-list {
+  list-style: none;
+  padding: 6px 0 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 260px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ambient-list__item {
+  display: block;
+}
+.ambient-list__btn {
+  display: grid;
+  grid-template-columns: 22px 1fr 14px;
+  align-items: center;
+  width: 100%;
+  gap: 6px;
+  padding: 5px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--hud-muted);
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out);
+}
+.ambient-list__btn:hover, .ambient-list__btn:focus-visible {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--hud);
+}
+.ambient-list__num {
+  font-size: 10px;
+  color: var(--hud-faint);
+  letter-spacing: 0.08em;
+}
+.ambient-list__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ambient-list__icon {
+  text-align: right;
+  color: var(--hud-faint);
+  font-size: 11px;
+}
+.ambient-list__item--active .ambient-list__btn {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--hud);
+}
+.ambient-list__item--active .ambient-list__icon,
+.ambient-list__item--active .ambient-list__num {
+  color: var(--accent);
+}
+
+/* Compact on phones — narrower column, smaller fonts. */
+@media (max-width: 480px) {
+  .ambient-player {
+    top: 282px;
+    width: calc(100vw - 32px);
+    max-width: 280px;
+    max-height: 60svh;
+  }
+  .ambient-list { max-height: 200px; }
+}
+/* ═══════════════ Wave 5 (V5) — left-column control panel + mobile-hide ═══════════════ */
+
+/* This-week ribbon removed entirely — first-time visitors didn't know what it
+   was. Hide any leftover instances if the element survives in the DOM. */
+.this-week-ribbon { display: none !important; }
+
+/* Repositioning top-left meta column (this-week ribbon removed) */
+.bodies-count { top: 78px !important; }
+.hud-orientation { top: 110px !important; }
+
+/* Old lens-pill is replaced by .lens-grid below — hide if it leaks in. */
+.lens-pill { display: none !important; }
+
+/* Lens grid — always-visible 2x2 in left column. Replaces the old expandable
+   pill. Encourages exploration. Mobile: stays visible (compact pill row). */
+.lens-grid {
+  position: absolute;
+  top: 150px;
+  left: var(--space-5);
+  width: 240px;
+  z-index: 215;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lens-grid__label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-faint);
+  padding-left: 2px;
+}
+.lens-grid__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.lens-grid__option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  padding: 8px 10px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-edge) 70%, transparent);
+  color: var(--hud);
+  font-family: var(--mono);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-base) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+.lens-grid__option:hover,
+.lens-grid__option:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  transform: translateY(-1px);
+}
+.lens-grid__option[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-edge));
+}
+.lens-grid__icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.lens-grid__name {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.lens-grid__option[aria-pressed="true"] .lens-grid__name {
+  color: var(--accent);
+}
+.lens-grid__sub {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--hud-faint);
+  text-transform: lowercase;
+}
+body.list-view .lens-grid { display: none; }
+
+/* Reposition the ambient player to sit below the lens grid on desktop. */
+.ambient-player { top: 268px !important; }
+
+/* Pomodoro inline card — sits below the ambient player. Same collapsible
+   pattern. State label shows "idle" / "25:00" / "05:00" etc. */
+.pomodoro-card {
+  position: absolute;
+  top: 320px;
+  left: var(--space-5);
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--mono);
+  color: var(--hud);
+  background: color-mix(in srgb, var(--bg-edge) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 12px;
+  z-index: 215;
+  pointer-events: auto;
+  overflow: hidden;
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+.pomodoro-card[data-state="expanded"] {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.pomodoro-card[data-active="true"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
+              0 6px 24px rgba(2, 3, 14, 0.4);
+}
+.pomodoro-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--hud);
+  transition: background-color var(--duration-base) var(--ease-out);
+}
+.pomodoro-card__head:hover,
+.pomodoro-card__head:focus-visible {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.pomodoro-card__icon { font-size: 14px; line-height: 1; }
+.pomodoro-card__title {
+  flex: 1;
+  text-transform: lowercase;
+  letter-spacing: 0.06em;
+}
+.pomodoro-card__state {
+  font-size: 10px;
+  color: var(--hud-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pomodoro-card[data-active="true"] .pomodoro-card__state {
+  color: var(--accent);
+}
+.pomodoro-card__chevron {
+  display: inline-block;
+  transition: transform var(--duration-base) var(--ease-out);
+  font-size: 11px;
+  color: var(--hud-faint);
+}
+.pomodoro-card[data-state="expanded"] .pomodoro-card__chevron {
+  transform: rotate(180deg);
+}
+.pomodoro-card__body {
+  border-top: 1px solid var(--rule);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pomodoro-card .pomodoro-display {
+  margin: 0;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.pomodoro-card .pomodoro-time {
+  font-size: 28px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.pomodoro-card .pomodoro-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.pomodoro-card .pomodoro-btn {
+  flex: 1;
+}
+.pomodoro-hint {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--hud-faint);
+}
+body.list-view .pomodoro-card { display: none; }
+
+/* ─── Mobile (≤ 720px) — minimal interface ─────────────────────────
+   Per Sush's V5 directive: on mobile, hide the entire left-column
+   control panel except the lens grid (which becomes a compact row at
+   the top). Keep the canvas, mast, audience filter, list-view toggle,
+   drift toggle, and the lens grid — that's it. */
+@media (max-width: 720px) {
+  /* Hide the desktop-only chrome that crowds the canvas on mobile. */
+  .bodies-count,
+  .hud-orientation,
+  .ambient-player,
+  .pomodoro-card,
+  .cosmos-lede {
+    display: none !important;
+  }
+
+  /* Compact lens grid on mobile — single row of 4 small icon-only buttons,
+     anchored top-left under the mast. Stays visible (the only control
+     besides drift). */
+  .lens-grid {
+    top: 56px;
+    left: var(--space-4);
+    width: auto;
+    max-width: calc(100vw - var(--space-7));
+  }
+  .lens-grid__label { display: none; }
+  .lens-grid__options {
+    display: flex;
+    gap: 4px;
+  }
+  .lens-grid__option {
+    flex: 0 0 auto;
+    padding: 6px 8px;
+    flex-direction: row;
+    gap: 4px;
+  }
+  .lens-grid__name { display: none; }
+  .lens-grid__sub { display: none; }
+  .lens-grid__option[aria-pressed="true"] {
+    padding-right: 10px;
+  }
+  .lens-grid__option[aria-pressed="true"]::after {
+    content: attr(data-lens);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    text-transform: lowercase;
+  }
+}
+/* Wave 5 fix — make sure [hidden] body stays hidden. The user-agent rule
+   [hidden] { display: none } is overridden by my class-level display:flex
+   without this :not() guard. */
+.ambient-player__body[hidden],
+.pomodoro-card__body[hidden] {
+  display: none !important;
+}
