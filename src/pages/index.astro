@@ -207,7 +207,7 @@ const clientData = {
       <header class="hud-mast">
         <strong class="mast-mark">🌌 Cosmos Atlas</strong>
         <span class="mast-rule" aria-hidden="true"></span>
-        <span class="mast-tag">A Guide to Cloud</span>
+        <a class="mast-tag" href="https://www.aguidetocloud.com/" rel="noopener" title="Open A Guide to Cloud — the parent site">A Guide to Cloud</a>
       </header>
 
       {/* V3.5 — One-line lede above the canvas. Fades after ~6s once user
@@ -223,6 +223,39 @@ const clientData = {
            compete; once the lede fades, the ribbon becomes the calm top-of-
            page signal. */}
       <div class="this-week-ribbon" id="this-week-ribbon" data-visible="false" aria-live="polite"></div>
+
+      {/* V5 polish — bodies-count summary moved from canvas (was bottom-left
+           overlap with MCP star) to top-left under the this-week ribbon, where
+           the rest of the cosmos's quiet meta-text lives. Populated by JS. */}
+      <p class="bodies-count" id="bodies-count" aria-live="polite"></p>
+
+      {/* V5 polish — original tour / replay / shortcuts buttons moved here from
+           the bottom-right hud-aux row. They're orientation aids — natural
+           home is with the rest of the top-left meta UI. The new focus
+           companion buttons (drift / ambient / pomodoro) stay bottom-right. */}
+      <div class="hud-orientation" aria-label="Orientation">
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="start-tour"
+          aria-label="Start the cosmos tour"
+          title="Watch the cosmos (35s tour)"
+        >▶</button>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="replay-coach"
+          aria-label="Replay the cosmos intro"
+          title="Replay the intro"
+        >ⓘ</button>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="open-shortcuts"
+          aria-label="Show keyboard shortcuts"
+          title="Keyboard shortcuts (press ?)"
+        >?</button>
+      </div>
 
       <nav class="hud-tools" aria-label="View tools">
         <button
@@ -261,35 +294,11 @@ const clientData = {
         <button type="button" class="audience-filter__clear" id="audience-filter-clear" aria-label="Clear audience filter" hidden>×</button>
       </div>
 
-      <!-- Phase A — replay-coach + shortcuts trigger. Tiny corner buttons.
-           Replay coach (ⓘ) re-runs the 3-step intro. Shortcuts (?) opens the
-           keyboard-shortcuts modal. Both intentionally quiet so they don't
-           compete with the cosmos at rest.
-           Phase D — added tour button (▶) that runs a 35-second auto-flythrough
-           of all 7 main bodies. -->
-      <div class="hud-aux" aria-label="Help">
-        <button
-          type="button"
-          class="hud-aux__btn"
-          id="start-tour"
-          aria-label="Start the cosmos tour"
-          title="Watch the cosmos (35s tour)"
-        >▶</button>
-        <button
-          type="button"
-          class="hud-aux__btn"
-          id="replay-coach"
-          aria-label="Replay the cosmos intro"
-          title="Replay the intro"
-        >ⓘ</button>
-        <button
-          type="button"
-          class="hud-aux__btn"
-          id="open-shortcuts"
-          aria-label="Show keyboard shortcuts"
-          title="Keyboard shortcuts (press ?)"
-        >?</button>
-        <span class="hud-aux__divider" aria-hidden="true"></span>
+      <!-- V5 polish — original tour / replay / shortcuts buttons relocated
+           to .hud-orientation (top-left under this-week ribbon). The bottom-
+           right hud-aux row now hosts only the focus-companion toggles
+           (drift / ambient / pomodoro). -->
+      <div class="hud-aux" aria-label="Focus companion">
         <button
           type="button"
           class="hud-aux__btn"
@@ -331,7 +340,7 @@ const clientData = {
           </div>
           <label class="ambient-volume">
             <span class="ambient-volume__label">Volume</span>
-            <input type="range" id="ambient-volume" min="0" max="100" value="40" aria-label="Ambient volume" />
+            <input type="range" id="ambient-volume" min="0" max="100" value="60" aria-label="Ambient volume" />
           </label>
           <p class="cosmos-popover__hint">Web Audio · procedural · no licensing.</p>
         </div>

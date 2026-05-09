@@ -1647,3 +1647,62 @@ body.list-view .hud-aux__divider {
     max-width: 320px;
   }
 }
+/* ═══════════════ Wave 3 (V5) — top-left consolidation + Earth pink ═══════════════ */
+
+/* V5 polish — bodies-count summary moved from canvas (was bottom-left, sat
+   under the MCP star) to the top-left meta column where the rest of the
+   quiet meta-text lives. Sits below the this-week ribbon. */
+.bodies-count {
+  position: absolute;
+  top: 250px;
+  left: var(--space-5);
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--hud-faint);
+  opacity: 0;
+  transition: opacity 800ms var(--ease-out);
+  z-index: 210;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.bodies-count[data-visible="true"] { opacity: 1; }
+body.list-view .bodies-count { display: none; }
+
+/* V5 polish — orientation buttons (▶ tour, ⓘ replay, ? shortcuts) moved
+   from bottom-right hud-aux to top-left. They're orientation aids; their
+   home is the meta column. The bottom-right hud-aux row now hosts only
+   the focus-companion toggles (drift / ambient / pomodoro). */
+.hud-orientation {
+  position: absolute;
+  top: 282px;
+  left: var(--space-5);
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 220;
+}
+body.list-view .hud-orientation { display: none; }
+
+/* V5 polish — make the mast tag ("A Guide to Cloud") a real link to the
+   parent site so visitors have an honest way out of the cosmos. Visually
+   same as before — just gains hover feedback + cursor:pointer. */
+.hud-mast a.mast-tag {
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out);
+}
+.hud-mast a.mast-tag:hover,
+.hud-mast a.mast-tag:focus-visible {
+  color: var(--accent);
+}
+
+/* V5 polish — narrower top-left column on mobile so the bodies-count and
+   orientation buttons don't bump the canvas. Fall back to slightly tighter
+   spacing on phones. */
+@media (max-width: 480px) {
+  .bodies-count { top: 220px; font-size: 10px; }
+  .hud-orientation { top: 246px; gap: 6px; }
+}

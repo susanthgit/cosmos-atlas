@@ -1531,12 +1531,9 @@ export function mountCosmos(data: CosmosData): void {
 
   function drawHud(): void {
     if (ogMode) return;
-    ctx.fillStyle = withAlpha(data.atmosphere.hudFaint, 1);
-    ctx.font = `500 11px ${data.atmosphere.monoFont}`;
-    ctx.textBaseline = 'bottom';
-    const planetCount = data.planets.length;
-    const moonCount = data.planets.reduce((acc, p) => acc + (p.moons?.length ?? 0), 0);
-    ctx.fillText(`${planetCount} planets · ${moonCount} moons · 1 star`, 24, ch - 24);
+    // V5 polish — the bodies-count summary is now an HTML element at top-left
+    // under the this-week ribbon (see #bodies-count). Canvas drawing removed
+    // so the bottom-left no longer competes with the MCP star area.
   }
 
   function updateBodyPositions(): void {
@@ -2846,7 +2843,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) {
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .hud-orientation, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts, .cosmos-popover')) {
       markInteraction();
       closeCard();
       return;
@@ -2859,7 +2856,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .hud-orientation, .lens-pill, .audience-filter, .cosmos-coach, .cosmos-shortcuts, .cosmos-popover')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -3345,6 +3342,18 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
+  // V5 polish — populate the static bodies-count line at top-left, under
+  // the this-week ribbon. Replaces the previous canvas-drawn version that
+  // sat at bottom-left and crowded the MCP star area.
+  (function bodiesCountBadge(): void {
+    const el = document.getElementById('bodies-count') as HTMLElement | null;
+    if (!el) return;
+    const planetCount = data.planets.length;
+    const moonCount = data.planets.reduce((acc, p) => acc + (p.moons?.length ?? 0), 0);
+    el.textContent = `${planetCount} planets · ${moonCount} moons · 1 star`;
+    window.setTimeout(() => { el.dataset.visible = 'true'; }, 1700);
+  })();
+
   // Wave 1 (V5) — welcome-back bloom. Returning visitors gently notice what's
   // shipped since their last visit. localStorage.cosmosLastVisit holds the
   // ISO timestamp of the previous visit. Bodies with lastShippedAt strictly
@@ -3470,7 +3479,7 @@ export function mountCosmos(data: CosmosData): void {
     let activeNodes: AudioNode[] = [];
     let currentMode: Mode = 'off';
     let savedMode: Mode = 'off';
-    let savedVol = 0.4;
+    let savedVol = 0.6;
     try {
       const m = window.localStorage.getItem('cosmosAmbientMode');
       if (m === 'hum' || m === 'lofi' || m === 'off') savedMode = m;
@@ -3502,24 +3511,27 @@ export function mountCosmos(data: CosmosData): void {
 
     function startHum(): void {
       const ctx = ensureCtx();
-      // Deep slow drone: 60 Hz sine + 90 Hz sine for warmth + slow LFO
-      // through a low-pass filter for breathing texture.
+      // Deep slow drone: 80 Hz + 120 Hz sines for warmth + slow LFO sweeping
+      // a low-pass filter for breathing texture. Frequencies tuned so the
+      // hum is audible on phone speakers (60 Hz often inaudible at low gain).
       const droneA = ctx.createOscillator();
-      droneA.type = 'sine'; droneA.frequency.value = 60;
+      droneA.type = 'sine'; droneA.frequency.value = 80;
       const droneB = ctx.createOscillator();
-      droneB.type = 'sine'; droneB.frequency.value = 90;
+      droneB.type = 'sine'; droneB.frequency.value = 120;
       const lfo = ctx.createOscillator();
       lfo.type = 'sine'; lfo.frequency.value = 0.07; // 1 cycle per ~14s
       const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 220; // sweep range Hz
+      lfoGain.gain.value = 260;
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 480;
-      filter.Q.value = 0.4;
+      filter.frequency.value = 540;
+      filter.Q.value = 0.6;
       lfo.connect(lfoGain);
       lfoGain.connect(filter.frequency);
       const sub = ctx.createGain();
-      sub.gain.value = 0.55;
+      // Fade-in over 2s so the start isn't a click.
+      sub.gain.setValueAtTime(0.0001, ctx.currentTime);
+      sub.gain.exponentialRampToValueAtTime(1.1, ctx.currentTime + 2.0);
       droneA.connect(filter);
       droneB.connect(filter);
       filter.connect(sub);
@@ -3532,17 +3544,19 @@ export function mountCosmos(data: CosmosData): void {
 
     function startLofi(): void {
       const ctx = ensureCtx();
-      // Lo-fi pad: 4-note loop of a Cmaj7 chord (C E G B at low freqs),
-      // each note an oscillator with slow attack/release via a gain envelope.
+      // Lo-fi pad: 4-note voicing of a Cmaj7 chord (C E G B at low freqs),
+      // each a triangle oscillator with slow tremolo. Gains tuned so the
+      // pad is clearly audible on phone speakers without being intrusive.
       const notes = [130.81, 164.81, 196.00, 246.94]; // C3 E3 G3 B3
       const padGain = ctx.createGain();
-      padGain.gain.value = 0.32;
+      padGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      padGain.gain.exponentialRampToValueAtTime(0.65, ctx.currentTime + 1.6);
       padGain.connect(mainGain!);
       const tremolo = ctx.createOscillator();
       tremolo.type = 'sine';
       tremolo.frequency.value = 0.5;
       const tremGain = ctx.createGain();
-      tremGain.gain.value = 0.15;
+      tremGain.gain.value = 0.18;
       tremolo.connect(tremGain);
       tremGain.connect(padGain.gain);
       tremolo.start();
@@ -3552,7 +3566,7 @@ export function mountCosmos(data: CosmosData): void {
         osc.type = 'triangle';
         osc.frequency.value = f;
         const g = ctx.createGain();
-        g.gain.value = 0.18;
+        g.gain.value = 0.28;
         osc.connect(g);
         g.connect(padGain);
         osc.start();
@@ -3563,7 +3577,6 @@ export function mountCosmos(data: CosmosData): void {
     function applyMode(mode: Mode): void {
       stopAll();
       currentMode = mode;
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       modeBtns.forEach((btn) => {
         const m = btn.dataset.ambientMode as Mode;
         btn.setAttribute('aria-checked', m === mode ? 'true' : 'false');
@@ -3571,8 +3584,22 @@ export function mountCosmos(data: CosmosData): void {
       });
       ambBtn!.setAttribute('aria-pressed', mode !== 'off' ? 'true' : 'false');
       try { window.localStorage.setItem('cosmosAmbientMode', mode); } catch { /* silent */ }
-      if (mode === 'hum') startHum();
-      else if (mode === 'lofi') startLofi();
+      if (mode === 'off') return;
+      // V5 polish — explicitly resume() before starting oscillators. Browsers
+      // create the AudioContext in 'suspended' state when triggered indirectly;
+      // the click handler on the mode button is the user gesture that must
+      // unlock playback. We await the resume() so oscillators start on a
+      // running context (otherwise they emit silence on Safari + some Chrome).
+      const ctx = ensureCtx();
+      const startOscillators = (): void => {
+        if (mode === 'hum') startHum();
+        else if (mode === 'lofi') startLofi();
+      };
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(startOscillators).catch(() => { /* user can retry */ });
+      } else {
+        startOscillators();
+      }
     }
 
     volSlider.addEventListener('input', () => {

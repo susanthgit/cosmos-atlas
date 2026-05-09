@@ -60,7 +60,7 @@
         { "icon": "🎓", "label": "9 cert paths", "url": "https://www.aguidetocloud.com/certifications/" }
       ],
       "orbit": { "radius": 420, "ecc": 0.04, "tilt": 6, "speedSec": 89, "phase": 0 },
-      "body": { "size": 36, "glowCore": "#A5B4FC", "glowOuter": "#6366F1" },
+      "body": { "size": 36, "glowCore": "#FBCFE8", "glowOuter": "#EC4899" },
       "moons": [
         {
           "slug": "guided",
