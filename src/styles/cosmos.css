@@ -884,62 +884,77 @@ body.list-view .hud-aux { display: none; }
 }
 
 /* ═══════════════ Phase B — this-week ribbon ═══════════════ */
+/* Phase D polish (9 May 2026): moved from top-center horizontal pill to
+   top-left vertical stack so it sits OUTSIDE the orbital area. The
+   horizontal version crossed Earth's orbit on most viewports — Sush call. */
 .this-week-ribbon {
   position: absolute;
-  top: 78px;
-  left: 50%;
-  transform: translate(-50%, -6px);
+  top: 78px; /* clear the mast (mast is ~24-62px) */
+  left: var(--space-5);
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: color-mix(in srgb, var(--hud) 78%, transparent);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--hud) 80%, transparent);
   background: color-mix(in srgb, var(--bg-edge) 86%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
-  border-radius: 999px;
-  padding: 6px 14px 6px 12px;
+  border-radius: 12px;
+  padding: 8px 14px 10px;
   opacity: 0;
   pointer-events: none;
   z-index: 210;
-  white-space: nowrap;
-  max-width: calc(100% - 320px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 240px;
+  transform: translate(0, -6px);
   transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
 }
 .this-week-ribbon[data-visible="true"] {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translate(0, 0);
 }
 .this-week-ribbon__label {
   text-transform: uppercase;
   font-weight: 500;
+  font-size: 10px;
   color: var(--accent);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
 }
 .this-week-ribbon__divider {
-  display: inline-block;
-  width: 1px;
-  height: 11px;
-  background: color-mix(in srgb, var(--hud) 28%, transparent);
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  margin: 0 0 4px;
 }
-.this-week-ribbon__name { color: var(--hud); }
-.this-week-ribbon__sep {
-  color: color-mix(in srgb, var(--hud) 30%, transparent);
-  margin: 0 2px;
+.this-week-ribbon__name {
+  display: block;
+  color: var(--hud);
+  white-space: nowrap;
 }
+/* Vertical layout: hide the horizontal "·" separators between names. */
+.this-week-ribbon__sep { display: none; }
 .this-week-ribbon__overflow {
   color: color-mix(in srgb, var(--hud) 50%, transparent);
-  margin-left: 4px;
+  font-size: 10px;
+  margin-top: 2px;
 }
 @media (max-width: 720px) {
-  .this-week-ribbon { font-size: 10px; padding: 5px 10px; max-width: calc(100% - 40px); }
+  .this-week-ribbon { font-size: 10.5px; padding: 6px 10px 8px; max-width: 200px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .this-week-ribbon { transition: opacity 240ms linear; transform: translate(-50%, 0); }
+  .this-week-ribbon { transition: opacity 240ms linear; transform: translate(0, 0); }
 }
+/* Hide this-week ribbon in non-cosmos lenses — the lens legend occupies the
+   same top-left spot, and "what shipped this week" is redundant in timeline
+   (which shows ship dates spatially) or constellation (relationships, not
+   time) or audience (who-it's-for, not time) views. */
+body[data-lens="constellation"] .this-week-ribbon,
+body[data-lens="timeline"] .this-week-ribbon,
+body[data-lens="audience"] .this-week-ribbon { display: none; }
+body.list-view .this-week-ribbon { display: none; }
 
 /* ═══════════════ Phase B — sun reveal tooltip ═══════════════ */
 .sun-reveal {
