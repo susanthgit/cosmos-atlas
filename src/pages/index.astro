@@ -262,7 +262,66 @@ const clientData = {
         >?</button>
       </div>
 
+      {/* Phase C — lens pill. Bottom-right corner. Default shows current
+           lens label as a small pill; click to expand and see all 4
+           lenses. Cosmos is the canonical default; the rest are
+           projections of the same data. */}
+      <div class="lens-pill" id="lens-pill" data-open="false" data-lens="cosmos" role="group" aria-label="Cosmos view">
+        <button
+          type="button"
+          class="lens-pill__current"
+          id="lens-pill-toggle"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-label="Switch view"
+          title="Switch view"
+        >
+          <span class="lens-pill__icon" aria-hidden="true">🪐</span>
+          <span class="lens-pill__label">Cosmos</span>
+          <span class="lens-pill__chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="lens-pill__menu" role="menu">
+          <button class="lens-pill__option" type="button" role="menuitem" data-lens="cosmos" aria-label="Cosmos lens — solar system">
+            <span class="lens-pill__icon" aria-hidden="true">🪐</span>
+            <span class="lens-pill__label">Cosmos</span>
+            <span class="lens-pill__sub">solar system</span>
+          </button>
+          <button class="lens-pill__option" type="button" role="menuitem" data-lens="constellation" aria-label="Constellation lens — relationship graph">
+            <span class="lens-pill__icon" aria-hidden="true">🌟</span>
+            <span class="lens-pill__label">Constellation</span>
+            <span class="lens-pill__sub">relationships</span>
+          </button>
+          <button class="lens-pill__option" type="button" role="menuitem" data-lens="timeline" aria-label="Timeline lens — by ship date">
+            <span class="lens-pill__icon" aria-hidden="true">📅</span>
+            <span class="lens-pill__label">Timeline</span>
+            <span class="lens-pill__sub">by ship date</span>
+          </button>
+          <button class="lens-pill__option" type="button" role="menuitem" data-lens="audience" aria-label="Audience lens — by who it's for">
+            <span class="lens-pill__icon" aria-hidden="true">👥</span>
+            <span class="lens-pill__label">Audience</span>
+            <span class="lens-pill__sub">by who it's for</span>
+          </button>
+        </div>
+      </div>
+
       <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>
+
+      {/* Phase C — lens legend. Tiny pill at top-left of non-cosmos
+           lens views explaining what the user is looking at. CSS shows
+           it via body[data-lens="..."] selectors. */}
+      <div class="lens-legend" id="lens-legend" aria-hidden="true">
+        <span class="lens-legend__label" id="lens-legend-label">cosmos</span>
+        <span class="lens-legend__sub" id="lens-legend-sub">solar system</span>
+      </div>
+
+      {/* Phase C — audience-lens column titles. Drawn as HTML so the
+           categories read cleanly. CSS hides until body[data-lens="audience"]. */}
+      <div class="lens-audience-cols" aria-hidden="true">
+        <div class="lens-audience-cols__col"><span class="lens-audience-cols__title">curious</span></div>
+        <div class="lens-audience-cols__col"><span class="lens-audience-cols__title">cert prep</span></div>
+        <div class="lens-audience-cols__col"><span class="lens-audience-cols__title">techie</span></div>
+        <div class="lens-audience-cols__col"><span class="lens-audience-cols__title">job watcher</span></div>
+      </div>
 
       <!-- V3 #7 — first-mobile-visit gesture hint. Hidden by default; cosmos.ts shows it once. -->
       <div class="gesture-hint" id="gesture-hint" data-visible="false" aria-hidden="true">

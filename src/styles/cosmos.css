@@ -1021,3 +1021,167 @@ body.list-view .blog-asteroid { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .blog-asteroid__dot { transition: none; }
 }
+
+/* ═══════════════ Phase C — lens pill ═══════════════ */
+.lens-pill {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 230;
+  pointer-events: auto;
+  font-family: var(--mono);
+}
+.lens-pill__current {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-edge) 86%, transparent);
+  color: var(--hud);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+}
+.lens-pill__current:hover,
+.lens-pill__current:focus-visible {
+  outline: 0;
+  border-color: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-edge));
+}
+.lens-pill__icon { font-size: 14px; }
+.lens-pill__label { font-weight: 500; }
+.lens-pill__chevron {
+  font-size: 9px;
+  margin-left: 2px;
+  opacity: 0.7;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.lens-pill[data-open="true"] .lens-pill__chevron { transform: rotate(180deg); }
+
+.lens-pill__menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: none;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-edge) 96%, transparent);
+  box-shadow: 0 12px 36px rgba(2, 3, 14, 0.55);
+}
+.lens-pill[data-open="true"] .lens-pill__menu { display: flex; }
+.lens-pill__option {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hud);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out);
+}
+.lens-pill__option:hover,
+.lens-pill__option:focus-visible {
+  outline: 0;
+  background: color-mix(in srgb, var(--hud) 8%, transparent);
+}
+.lens-pill__option[data-current="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.lens-pill__option[data-current="true"] .lens-pill__label { color: var(--accent-soft); }
+.lens-pill__option .lens-pill__sub {
+  color: color-mix(in srgb, var(--hud) 55%, transparent);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+body.list-view .lens-pill { display: none; }
+
+/* When the cosmos is in a non-cosmos lens, hide the orbital chrome (orbit
+   rings + cosmos-only ambience) so the new layout reads cleanly. The
+   bodies themselves stay visible — they're the constant across all
+   four projections. */
+body[data-lens="constellation"] .blog-asteroid,
+body[data-lens="timeline"] .blog-asteroid,
+body[data-lens="audience"] .blog-asteroid {
+  display: none;
+}
+
+/* Lens layout legend — small caption rendered at the top-left of the
+   non-cosmos lens views so the user understands what they're looking at.
+   This is a hint, not chrome. JS toggles `data-visible="true"` on lens
+   change and `false` on the way back to cosmos. */
+.lens-legend {
+  position: absolute;
+  top: 78px;
+  left: 24px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-edge) 88%, transparent);
+  color: color-mix(in srgb, var(--hud) 80%, transparent);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  z-index: 210;
+  pointer-events: none;
+}
+body[data-lens="constellation"] .lens-legend,
+body[data-lens="timeline"] .lens-legend,
+body[data-lens="audience"] .lens-legend { display: inline-flex; }
+.lens-legend__label {
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--accent);
+}
+.lens-legend__sub { color: color-mix(in srgb, var(--hud) 70%, transparent); }
+
+/* Audience lens — column titles. Drawn as overlay text on top of the
+   canvas at the top of each column. */
+.lens-audience-cols {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  display: none;
+  pointer-events: none;
+  z-index: 205;
+  padding: 0 8px;
+}
+body[data-lens="audience"] .lens-audience-cols { display: grid; }
+.lens-audience-cols { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.lens-audience-cols__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-family: var(--mono);
+}
+.lens-audience-cols__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 500;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-edge) 80%, transparent);
+}

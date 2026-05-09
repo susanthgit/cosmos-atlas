@@ -640,6 +640,79 @@ for (const vp of VIEWPORTS) {
     } else {
       console.log(`  blog belt: ✓ ${beltState.count} asteroids, ${beltState.visibleCount} visible — first: "${beltState.firstTitle?.slice(0, 40)}"`);
     }
+
+    // ── Phase C — lens framework checks ──
+    console.log(`\n=== ${vp.name} / Phase C ===`);
+
+    // 10. Lens pill exists + can toggle open
+    const pillState = await page.evaluate(() => {
+      const pill = document.getElementById('lens-pill');
+      const toggle = document.getElementById('lens-pill-toggle');
+      const options = pill ? pill.querySelectorAll('.lens-pill__option').length : 0;
+      return { hasPill: !!pill, hasToggle: !!toggle, optionCount: options };
+    });
+    if (pillState.hasPill && pillState.hasToggle && pillState.optionCount === 4) {
+      console.log(`  lens pill: ✓ rendered with 4 options`);
+    } else {
+      console.log(`  lens pill: 🔴 ${JSON.stringify(pillState)}`);
+      totalFails++;
+    }
+
+    // 11. Each lens transitions cleanly — verify body[data-lens] attribute
+    //     changes and bodies are still clickable after the transition.
+    for (const lens of ['constellation', 'timeline', 'audience', 'cosmos']) {
+      await page.evaluate((l) => {
+        const opt = document.querySelector(`.lens-pill__option[data-lens="${l}"]`);
+        if (opt) opt.click();
+      }, lens);
+      await page.waitForTimeout(900); // wait past LENS_TRANSITION_MS (700ms)
+      const lensApplied = await page.evaluate(() => document.body.dataset.lens);
+      if (lensApplied === lens) {
+        console.log(`  lens "${lens}": ✓ applied (body.dataset.lens="${lens}")`);
+      } else {
+        console.log(`  lens "${lens}": 🔴 not applied (got="${lensApplied}")`);
+        totalFails++;
+      }
+      // Verify earth body is still clickable after the lens change
+      const clickWorks = await page.evaluate(() => {
+        const earth = document.querySelector('.planet-body[data-slug="earth"]');
+        if (!earth) return 'no-earth';
+        earth.click();
+        const open = !!document.querySelector('.card-panel[data-open="true"]');
+        if (open) document.getElementById('card-close')?.click();
+        return open ? 'ok' : 'no-card';
+      });
+      if (clickWorks === 'ok') {
+        console.log(`    bodies clickable in "${lens}": ✓`);
+      } else {
+        console.log(`    bodies clickable in "${lens}": 🔴 (${clickWorks})`);
+        totalFails++;
+      }
+      await page.waitForTimeout(500);
+    }
+
+    // 12. Lens choice persists across reload (localStorage)
+    await page.evaluate(() => {
+      const opt = document.querySelector('.lens-pill__option[data-lens="constellation"]');
+      if (opt) opt.click();
+    });
+    await page.waitForTimeout(900);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(2000); // wait for intro + lens restore
+    const restoredLens = await page.evaluate(() => document.body.dataset.lens);
+    if (restoredLens === 'constellation') {
+      console.log(`  lens persistence: ✓ constellation restored after reload`);
+    } else {
+      console.log(`  lens persistence: 🔴 expected constellation, got "${restoredLens}"`);
+      totalFails++;
+    }
+    // Reset to cosmos for downstream tests
+    await page.evaluate(() => {
+      try { localStorage.setItem('cosmosLens', 'cosmos'); } catch (_) { /* */ }
+      const opt = document.querySelector('.lens-pill__option[data-lens="cosmos"]');
+      if (opt) opt.click();
+    });
+    await page.waitForTimeout(900);
   }
 
   // Drag-pan limits (desktop only — touch drag on mobile is different)

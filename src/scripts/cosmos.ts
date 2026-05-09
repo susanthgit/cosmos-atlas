@@ -279,6 +279,27 @@ export function mountCosmos(data: CosmosData): void {
   let lastFocusBeforeOpen: HTMLElement | null = null;
   let listViewActive = false;
 
+  // Phase C — lens framework. Single canvas, four projections.
+  // Cosmos is the canonical default; the other three are lenses summoned
+  // via the corner pill. Each lens has a `computeLensPosition(body)` that
+  // returns target {x, y} in canvas-space. applyLensProjection() runs
+  // AFTER updateBodyPositions() — it lerps from the snapshot taken at
+  // lens-change to the lens target over LENS_TRANSITION_MS, then locks.
+  // Cosmos lens is special: when lens is 'cosmos' AND not transitioning,
+  // applyLensProjection returns early so orbital motion + magnetism stay.
+  type Lens = 'cosmos' | 'constellation' | 'timeline' | 'audience';
+  let currentLens: Lens = 'cosmos';
+  let lensTransitionMs = -1; // -1 = not transitioning
+  const LENS_TRANSITION_MS = 700;
+  const lensSnapshotPositions = new Map<string, { x: number; y: number }>();
+  // Persist last-chosen lens so a refresh keeps the user's view.
+  try {
+    const stored = window.localStorage.getItem('cosmosLens');
+    if (stored === 'cosmos' || stored === 'constellation' || stored === 'timeline' || stored === 'audience') {
+      currentLens = stored;
+    }
+  } catch (_) { /* */ }
+
   let cameraTargetX = 0;
   let cameraTargetY = 0;
   let cameraTargetZoom = 1;
@@ -1346,12 +1367,20 @@ export function mountCosmos(data: CosmosData): void {
   // traveling pulses per line to make the relationship feel alive. Pulses
   // flow outward from the focused body toward each sibling, telegraphing
   // "this is what this planet connects to."
+  // Phase C — when the constellation LENS is active, every connectsTo[]
+  // edge is drawn at all times (not just on focus). The traveling pulses
+  // are skipped in that mode to avoid visual overload.
   let constellationFade = 0; // 0..1, eased toward target each frame
   function drawConstellationLines(introBodies: number, deltaSec: number): void {
-    const target = focusedSlug ? 1 : 0;
+    const inConstellationLens = currentLens === 'constellation';
+    const target = inConstellationLens || focusedSlug ? 1 : 0;
     const lerp = reducedMotion ? 1 : Math.min(1, deltaSec * 3.2);
     constellationFade += (target - constellationFade) * lerp;
     if (constellationFade < 0.02 || introBodies <= 0) return;
+    if (inConstellationLens) {
+      drawAllConstellationEdges(introBodies);
+      return;
+    }
     const focused = focusedSlug ? bodies.find((b) => b.slug === focusedSlug) : null;
     if (!focused) return;
     const refSlug = focused.slug;
@@ -1409,6 +1438,45 @@ export function mountCosmos(data: CosmosData): void {
         ctx.beginPath();
         ctx.arc(px, py, 2.4, 0, TWO_PI);
         ctx.fill();
+      }
+    }
+  }
+
+  // Phase C — constellation-lens edge renderer. Walks every body, draws
+  // each unique connectsTo[] edge once, faintly. No traveling pulses
+  // (would be too busy with all edges visible at once).
+  function drawAllConstellationEdges(introBodies: number): void {
+    const drawn = new Set<string>();
+    const t = getRealT();
+    for (const a of bodies) {
+      let connects: string[] = [];
+      if (a.slug === data.mcp.slug) connects = (data.mcp as unknown as Card).connectsTo ?? [];
+      else {
+        const p = planetBySlug.get(a.slug);
+        const moonRec = moonBySlug.get(a.slug);
+        connects = p?.connectsTo ?? moonRec?.moon.connectsTo ?? [];
+      }
+      if (connects.length === 0) continue;
+      for (const slug of connects) {
+        const key = a.slug < slug ? `${a.slug}-${slug}` : `${slug}-${a.slug}`;
+        if (drawn.has(key)) continue;
+        drawn.add(key);
+        const other = bodies.find((b) => b.slug === slug);
+        if (!other) continue;
+        const baseAlpha = 0.34 * constellationFade * introBodies;
+        const grad = ctx.createLinearGradient(a.screenX, a.screenY, other.screenX, other.screenY);
+        grad.addColorStop(0, withAlpha(a.glowOuter, baseAlpha));
+        grad.addColorStop(0.5, withAlpha(data.atmosphere.accentSoft, baseAlpha * 1.0));
+        grad.addColorStop(1, withAlpha(other.glowOuter, baseAlpha));
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.3;
+        ctx.setLineDash([2, 6]);
+        ctx.lineDashOffset = -t * 10;
+        ctx.beginPath();
+        ctx.moveTo(a.screenX, a.screenY);
+        ctx.lineTo(other.screenX, other.screenY);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
     }
   }
@@ -1609,6 +1677,201 @@ export function mountCosmos(data: CosmosData): void {
     return Math.max(0.5, cw / 720);
   }
 
+  // ─────────── Phase C — lens projection layer ───────────
+  // Each lens function returns canvas-space {x, y} for a body. The lens
+  // dispatcher runs after updateBodyPositions(); for non-cosmos lenses we
+  // override baseScreenX/Y and screenX/Y, disabling magnetism. Transitions
+  // are smoothstep-eased over LENS_TRANSITION_MS.
+  function setLens(name: Lens): void {
+    if (name === currentLens) return;
+    // Snapshot CURRENT screen positions so the transition starts where the
+    // user is looking, not where the math says it should be.
+    for (const b of bodies) {
+      lensSnapshotPositions.set(b.slug, { x: b.baseScreenX, y: b.baseScreenY });
+    }
+    currentLens = name;
+    lensTransitionMs = 0;
+    try { window.localStorage.setItem('cosmosLens', name); } catch (_) { /* */ }
+    document.body.dataset.lens = name;
+    // Closing the card makes the lens transition feel cleaner — a card
+    // anchored to a planet's old orbital position would slide oddly.
+    if (focusedSlug && name !== 'cosmos') closeCard();
+    if (name !== 'cosmos') {
+      // Reset user pan/zoom — lens layouts are calibrated to cw/ch directly.
+      userPanX = 0;
+      userPanY = 0;
+      userZoomMul = 1;
+    }
+  }
+
+  // Constellation: manually-placed, relationship-driven star map. Earth as
+  // the social hub (3 connections), Agentic↔Claw as the technical pair,
+  // moons clustered with parents, MCP at top, voyagers at the corners.
+  function computeConstellationPosition(b: BodyState): { x: number; y: number } | null {
+    const cx2 = cw / 2;
+    const cy2 = ch / 2;
+    const r = Math.min(cw, ch) * 0.30;
+    switch (b.slug) {
+      case 'earth':       return { x: cx2,                  y: cy2                   };
+      case 'brainbar':    return { x: cx2 - r,              y: cy2 - r * 0.55        };
+      case 'plainai':     return { x: cx2 - r * 1.15,       y: cy2 + r * 0.5         };
+      case 'shift':       return { x: cx2 + r * 1.05,       y: cy2 - r * 0.65        };
+      case 'agentic':     return { x: cx2 + r * 0.85,       y: cy2 + r * 0.55        };
+      case 'claw':        return { x: cx2 + r * 1.4,        y: cy2 + r * 0.85        };
+      case 'guided':      return { x: cx2 + 70,             y: cy2 + 60              };
+      case 'curriculum':  return { x: cx2 - r * 1.15 - 60,  y: cy2 + r * 0.5 + 60    };
+      case 'mcp':         return { x: cx2,                  y: Math.max(80, ch * 0.13) };
+      case 'youtube':     return { x: cw - 90,              y: 110                   };
+      case 'linkedin':    return { x: 110,                  y: 110                   };
+      case 'kofi-shop':   return { x: cw - 90,              y: ch - 110              };
+      case 'kofi-tip':    return { x: 110,                  y: ch - 110              };
+      default:            return null;
+    }
+  }
+
+  // Timeline: horizontal axis = time (oldest left, newest right). Bodies
+  // staggered vertically so dates within a few days don't pile up.
+  function getBodyShipDate(slug: string): number | null {
+    const p = planetBySlug.get(slug);
+    if (p) return p.lastShippedAt ? Date.parse(p.lastShippedAt) : null;
+    const moonRec = moonBySlug.get(slug);
+    if (moonRec) return moonRec.moon.lastShippedAt ? Date.parse(moonRec.moon.lastShippedAt) : null;
+    if (slug === data.mcp.slug) {
+      const iso = (data.mcp as unknown as Card).lastShippedAt;
+      return iso ? Date.parse(iso) : null;
+    }
+    return null;
+  }
+  let _timelineRange: { minT: number; maxT: number } | null = null;
+  function getTimelineRange(): { minT: number; maxT: number } {
+    if (_timelineRange) return _timelineRange;
+    const dates: number[] = [];
+    for (const b of bodies) {
+      const t = getBodyShipDate(b.slug);
+      if (t !== null && Number.isFinite(t)) dates.push(t);
+    }
+    if (dates.length === 0) {
+      _timelineRange = { minT: Date.now() - 30 * 86_400_000, maxT: Date.now() };
+    } else {
+      const minT = Math.min(...dates);
+      const maxT = Math.max(Date.now(), Math.max(...dates));
+      _timelineRange = { minT, maxT };
+    }
+    return _timelineRange;
+  }
+  function computeTimelinePosition(b: BodyState): { x: number; y: number } | null {
+    const t = getBodyShipDate(b.slug);
+    if (t === null || !Number.isFinite(t)) {
+      // No ship date — park off-screen left at faded position.
+      return { x: -120, y: -120 };
+    }
+    const { minT, maxT } = getTimelineRange();
+    const padX = 140;
+    const usableW = cw - padX * 2;
+    const range = Math.max(1, maxT - minT);
+    const xPos = padX + ((t - minT) / range) * usableW;
+    // Vertical jitter — stable per body, prevents pileups.
+    const idx = bodies.findIndex((bb) => bb.slug === b.slug);
+    const yBase = ch * 0.5;
+    const stack = (idx % 5) - 2; // -2..2
+    const yJitter = stack * 80;
+    return { x: xPos, y: yBase + yJitter };
+  }
+
+  // Audience: 4 columns. Each body has ONE primary audience (the one it
+  // most cleanly serves). Earth + MCP + YouTube serve multiple but are
+  // placed in their PRIMARY column to keep the layout legible.
+  type Audience = 'curious' | 'cert-prep' | 'techie' | 'job-watcher';
+  const AUDIENCE_MAP: Record<string, Audience> = {
+    earth: 'curious',
+    guided: 'cert-prep',
+    brainbar: 'curious',
+    shift: 'job-watcher',
+    plainai: 'curious',
+    curriculum: 'curious',
+    agentic: 'techie',
+    claw: 'techie',
+    mcp: 'techie',
+    youtube: 'curious',
+    linkedin: 'job-watcher',
+    'kofi-shop': 'curious',
+    'kofi-tip': 'curious',
+  };
+  const AUDIENCE_COL: Record<Audience, number> = {
+    'curious': 0,
+    'cert-prep': 1,
+    'techie': 2,
+    'job-watcher': 3,
+  };
+  function computeAudiencePosition(b: BodyState): { x: number; y: number } | null {
+    const audience = AUDIENCE_MAP[b.slug];
+    if (!audience) return null;
+    const colIdx = AUDIENCE_COL[audience];
+    const colWidth = cw / 4;
+    const x = colIdx * colWidth + colWidth / 2;
+    const sameCol = bodies.filter((bb) => AUDIENCE_MAP[bb.slug] === audience).map((bb) => bb.slug);
+    const myIndex = sameCol.indexOf(b.slug);
+    const totalInCol = sameCol.length;
+    const yStart = ch * 0.22;
+    const yEnd = ch * 0.84;
+    const ySpan = yEnd - yStart;
+    const ySpacing = ySpan / Math.max(1, totalInCol);
+    const y = yStart + myIndex * ySpacing + ySpacing / 2;
+    return { x, y };
+  }
+
+  function computeLensTarget(b: BodyState): { x: number; y: number } | null {
+    if (currentLens === 'cosmos') return null; // no override
+    if (currentLens === 'constellation') return computeConstellationPosition(b);
+    if (currentLens === 'timeline') return computeTimelinePosition(b);
+    if (currentLens === 'audience') return computeAudiencePosition(b);
+    return null;
+  }
+
+  function applyLensProjection(deltaMs: number): void {
+    // Tick transition timer
+    if (lensTransitionMs >= 0) {
+      lensTransitionMs += deltaMs;
+      if (lensTransitionMs >= LENS_TRANSITION_MS) lensTransitionMs = -1;
+    }
+    const inTransition = lensTransitionMs >= 0;
+    // Cosmos lens at rest — orbital positions stand. No override.
+    if (currentLens === 'cosmos' && !inTransition) return;
+    const transitionProgress = inTransition ? Math.min(1, lensTransitionMs / LENS_TRANSITION_MS) : 1;
+    const eased = transitionProgress * transitionProgress * (3 - 2 * transitionProgress);
+    for (const b of bodies) {
+      const target = computeLensTarget(b);
+      if (!target) {
+        // No target (e.g. cosmos lens during transition out) — let the
+        // existing baseScreenX/Y stand; we lerp from snapshot to that.
+        if (inTransition) {
+          const snap = lensSnapshotPositions.get(b.slug);
+          if (snap) {
+            const tx = b.baseScreenX;
+            const ty = b.baseScreenY;
+            b.baseScreenX = snap.x + (tx - snap.x) * eased;
+            b.baseScreenY = snap.y + (ty - snap.y) * eased;
+            b.screenX = b.baseScreenX;
+            b.screenY = b.baseScreenY;
+          }
+        }
+        continue;
+      }
+      if (inTransition) {
+        const snap = lensSnapshotPositions.get(b.slug) ?? { x: b.baseScreenX, y: b.baseScreenY };
+        b.baseScreenX = snap.x + (target.x - snap.x) * eased;
+        b.baseScreenY = snap.y + (target.y - snap.y) * eased;
+      } else {
+        b.baseScreenX = target.x;
+        b.baseScreenY = target.y;
+      }
+      // Magnetism is disabled in non-cosmos lenses — bodies are placed,
+      // not orbiting, so the cursor pull would feel unnatural.
+      b.screenX = b.baseScreenX;
+      b.screenY = b.baseScreenY;
+    }
+  }
+
   function applyBodyTransforms(introBodies: number): void {
     const vp = bodyVpScale();
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
@@ -1768,32 +2031,43 @@ export function mountCosmos(data: CosmosData): void {
     updateSimTime();
     updateCamera(deltaSec);
     updateBodyPositions();
+    applyLensProjection(deltaSec * 1000);
     const intro = introProgress(now);
     if (intro.done) introActive = false;
     applyBodyTransforms(intro.bodies);
     clear();
+    // Phase C — non-cosmos lenses suppress the orbital chrome (orbit
+    // ellipses, MCP rays, sun god-rays). Bodies + halos + freshness
+    // ripples + constellation lines remain across lenses.
+    const isCosmosLens = currentLens === 'cosmos';
     drawGalacticHorizon();
     drawTopdownGalacticRing();
     drawNebulae();
     drawParallaxStars();
     drawMcpStarfield();
-    drawOrbits(intro.orbits);
-    drawOrbitSweep(intro.orbits);
+    if (isCosmosLens) {
+      drawOrbits(intro.orbits);
+      drawOrbitSweep(intro.orbits);
+    }
     drawSun(intro.sun);
-    drawSunGodRays(intro.sun);
-    drawMcpRays(intro.bodies);
+    if (isCosmosLens) {
+      drawSunGodRays(intro.sun);
+      drawMcpRays(intro.bodies);
+    }
     drawConstellationLines(intro.bodies, deltaSec);
-    drawMcpStream(intro.bodies);
-    drawMcpOutwardPulse(intro.bodies);
+    if (isCosmosLens) {
+      drawMcpStream(intro.bodies);
+      drawMcpOutwardPulse(intro.bodies);
+    }
     drawBodyShadows(intro.bodies);
-    drawExternalDecorations(intro.bodies);
+    if (isCosmosLens) drawExternalDecorations(intro.bodies);
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
     for (const b of sorted) drawBodyHalo(b, intro.bodies);
     drawFreshnessPulses(now, intro.bodies);
     drawCardTether(deltaSec);
     drawCardParticles(now);
     drawPings(now);
-    drawAtmosphereBlur();
+    if (isCosmosLens) drawAtmosphereBlur();
     drawHud();
     if (hoveredSlug) updateHoverLabel();
     requestAnimationFrame(frame);
@@ -2521,7 +2795,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .cosmos-coach, .cosmos-shortcuts')) {
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .lens-pill, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2534,7 +2808,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .lens-pill, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -3021,6 +3295,86 @@ export function mountCosmos(data: CosmosData): void {
     }
     bindCoachInteractions(fresh);
   });
+
+  // Phase C — lens pill wiring. Toggle the menu open/closed; click an
+  // option to call setLens(). Mirror the persisted localStorage value into
+  // the UI so a refresh keeps the user's chosen lens.
+  const lensPill = document.getElementById('lens-pill') as HTMLElement | null;
+  const lensPillToggle = document.getElementById('lens-pill-toggle') as HTMLButtonElement | null;
+  if (lensPill && lensPillToggle) {
+    document.body.dataset.lens = currentLens;
+    lensPill.dataset.lens = currentLens;
+    const lensIcon: Record<Lens, string> = {
+      cosmos: '🪐', constellation: '🌟', timeline: '📅', audience: '👥',
+    };
+    const lensLabel: Record<Lens, string> = {
+      cosmos: 'Cosmos', constellation: 'Constellation', timeline: 'Timeline', audience: 'Audience',
+    };
+    function syncLensPill(): void {
+      if (!lensPill || !lensPillToggle) return;
+      lensPill.dataset.lens = currentLens;
+      const iconEl = lensPillToggle.querySelector('.lens-pill__icon') as HTMLElement | null;
+      const labelEl = lensPillToggle.querySelector('.lens-pill__label') as HTMLElement | null;
+      if (iconEl) iconEl.textContent = lensIcon[currentLens];
+      if (labelEl) labelEl.textContent = lensLabel[currentLens];
+      // Mark the chosen option as current.
+      const options = lensPill.querySelectorAll<HTMLButtonElement>('.lens-pill__option');
+      options.forEach((opt) => {
+        opt.dataset.current = opt.dataset.lens === currentLens ? 'true' : 'false';
+      });
+        // Update the lens-legend caption to match.
+        const legendLabel = document.getElementById('lens-legend-label') as HTMLElement | null;
+        const legendSub = document.getElementById('lens-legend-sub') as HTMLElement | null;
+        const subText: Record<Lens, string> = {
+          cosmos: 'solar system',
+          constellation: 'relationships',
+          timeline: 'by ship date',
+          audience: 'by who it\'s for',
+        };
+        if (legendLabel) legendLabel.textContent = lensLabel[currentLens].toLowerCase();
+        if (legendSub) legendSub.textContent = subText[currentLens];
+      }
+    syncLensPill();
+    lensPillToggle.addEventListener('click', () => {
+      markInteraction();
+      const open = lensPill.dataset.open === 'true';
+      lensPill.dataset.open = open ? 'false' : 'true';
+      lensPillToggle.setAttribute('aria-expanded', String(!open));
+    });
+    const lensOptions = lensPill.querySelectorAll<HTMLButtonElement>('.lens-pill__option');
+    lensOptions.forEach((opt) => {
+      opt.addEventListener('click', () => {
+        markInteraction();
+        const name = opt.dataset.lens as Lens | undefined;
+        if (!name) return;
+        setLens(name);
+        syncLensPill();
+        lensPill.dataset.open = 'false';
+        lensPillToggle.setAttribute('aria-expanded', 'false');
+      });
+    });
+    // Click-outside to close the menu (uses pointerdown to align with
+    // existing root pointer-capture; .lens-pill is added to ignore lists).
+    document.addEventListener('click', (e: MouseEvent) => {
+      if (!lensPill || lensPill.dataset.open !== 'true') return;
+      const target = e.target as HTMLElement;
+      if (!target.closest('.lens-pill')) {
+        lensPill.dataset.open = 'false';
+        lensPillToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    // If we restored a non-cosmos lens from localStorage, kick off a
+    // transition to it on mount so the bodies fly into position.
+    if (currentLens !== 'cosmos') {
+      // Use a slight delay so the intro can settle first.
+      window.setTimeout(() => {
+        const restored = currentLens;
+        currentLens = 'cosmos'; // reset so setLens() snapshots from cosmos
+        setLens(restored);
+        syncLensPill();
+      }, introActive ? INTRO_DURATION_MS + 240 : 320);
+    }
+  }
 
   requestAnimationFrame((now) => {
     lastFrame = now;
