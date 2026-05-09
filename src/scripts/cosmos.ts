@@ -532,13 +532,23 @@ export function mountCosmos(data: CosmosData): void {
   // every capture is bit-identical. Tuned to spread the bodies nicely.
   const OG_SIM_T = 12.6;
 
+  // Wave 2 (V5) — drift mode (slow screensaver). When active, simT advances
+  // at 1/8 normal speed so the cosmos feels like a calm, drifting field for
+  // a second-screen ambient display. Toggled via the 🌙 hud-aux button, the
+  // ?drift=1 URL param, or auto-engaged after 5 minutes of no input.
+  let driftActive = false;
+  const DRIFT_TIME_SCALE = 0.125; // 1/8 — eight times slower
+
   function getRealT(): number { return (performance.now() - startTime) / 1000; }
 
   function updateSimTime(): void {
     if (ogMode) { simT = OG_SIM_T; return; }
     const realT = getRealT();
     const shouldPause = !reducedMotion && (hoveredSlug !== null || focusedSlug !== null);
-    if (!shouldPause) simT += realT - lastSimSampleRealT;
+    if (!shouldPause) {
+      const delta = realT - lastSimSampleRealT;
+      simT += delta * (driftActive ? DRIFT_TIME_SCALE : 1);
+    }
     lastSimSampleRealT = realT;
   }
 
@@ -3381,6 +3391,390 @@ export function mountCosmos(data: CosmosData): void {
       }, 1600 + i * 220);
     });
     window.setTimeout(writeNow, 8200);
+  })();
+
+  // ─── Wave 2 (V5) — focus companion ─────────────────────────────────
+  // 🌙 Drift mode (slow screensaver) · 🔊 Ambient sound (procedural) ·
+  // ⏱ Pomodoro (25/5 cycle, ties drift + ambient).
+  // All opt-in. Default OFF. localStorage-persisted preferences.
+  // Honour Plain AI commons philosophy on Pomodoro: no streaks, no badges,
+  // no celebration animations.
+
+  // ─── Drift mode ──────────────────────────────────────────────────
+  (function driftMode(): void {
+    const driftBtn = document.getElementById('drift-toggle') as HTMLButtonElement | null;
+    if (!driftBtn) return;
+    const IDLE_MS = 5 * 60 * 1000;  // 5 minutes
+    const url = new URL(window.location.href);
+    const startInDrift = url.searchParams.get('drift') === '1';
+
+    function setDrift(active: boolean, suppressIdleReset?: boolean): void {
+      driftActive = active;
+      document.body.dataset.drift = active ? 'active' : '';
+      if (!document.body.dataset.drift) delete document.body.dataset.drift;
+      driftBtn!.setAttribute('aria-pressed', active ? 'true' : 'false');
+      try { window.localStorage.setItem('cosmosDriftPref', active ? 'on' : 'off'); }
+      catch { /* private mode silent */ }
+      if (active && !suppressIdleReset) {
+        // Clear card so the cosmos itself drifts cleanly.
+        const cardCloseEl = document.getElementById('card-close') as HTMLButtonElement | null;
+        cardCloseEl?.click();
+      }
+    }
+    driftBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setDrift(!driftActive);
+    });
+
+    // Auto-engage after IDLE_MS of no input (mouse, touch, keyboard).
+    let idleTimer = window.setTimeout(() => setDrift(true, true), IDLE_MS);
+    function resetIdle(e?: Event): void {
+      // Don't auto-exit drift on hud-aux clicks (drift toggle, ambient, pomodoro
+      // buttons + popovers) — those are intentional UI interactions, not "user
+      // is back at the keyboard". Without this, clicking the drift toggle a
+      // second time would race: window pointerdown clears drift, then click
+      // handler re-enables it. Net effect: stuck on.
+      const target = e?.target as HTMLElement | null;
+      if (target?.closest && target.closest('.hud-aux, .cosmos-popover')) return;
+      window.clearTimeout(idleTimer);
+      // Any input in drift exits drift (except clicks on the toggle itself —
+      // the click handler on driftBtn fires first via stopPropagation above).
+      if (driftActive) setDrift(false, true);
+      idleTimer = window.setTimeout(() => setDrift(true, true), IDLE_MS);
+    }
+    ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) => {
+      window.addEventListener(ev, resetIdle, { passive: true });
+    });
+
+    if (startInDrift) {
+      // Defer slightly so initial intro animation lands first.
+      window.setTimeout(() => setDrift(true, true), 1200);
+    }
+  })();
+
+  // ─── Ambient sound (Web Audio API · procedural · 2 modes) ─────────
+  // Default OFF. Click 🔊 → opens panel. Pick a mode + volume. Audio
+  // generated entirely with oscillators/gains/biquad filters — no audio
+  // files, no licensing, ~3KB of code. Returns to OFF on page unload.
+  (function ambientSound(): void {
+    const ambBtn = document.getElementById('ambient-toggle') as HTMLButtonElement | null;
+    const panel = document.getElementById('ambient-panel') as HTMLElement | null;
+    const closeBtn = document.getElementById('ambient-close') as HTMLButtonElement | null;
+    const volSlider = document.getElementById('ambient-volume') as HTMLInputElement | null;
+    const modeBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.ambient-mode'));
+    if (!ambBtn || !panel || !volSlider || modeBtns.length === 0) return;
+
+    type Mode = 'off' | 'hum' | 'lofi';
+    let audioCtx: AudioContext | null = null;
+    let mainGain: GainNode | null = null;
+    let activeNodes: AudioNode[] = [];
+    let currentMode: Mode = 'off';
+    let savedMode: Mode = 'off';
+    let savedVol = 0.4;
+    try {
+      const m = window.localStorage.getItem('cosmosAmbientMode');
+      if (m === 'hum' || m === 'lofi' || m === 'off') savedMode = m;
+      const v = window.localStorage.getItem('cosmosAmbientVolume');
+      if (v) {
+        const f = parseFloat(v);
+        if (Number.isFinite(f) && f >= 0 && f <= 1) savedVol = f;
+      }
+    } catch { /* silent */ }
+    volSlider.value = String(Math.round(savedVol * 100));
+
+    function ensureCtx(): AudioContext {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        mainGain = audioCtx.createGain();
+        mainGain.gain.value = savedVol;
+        mainGain.connect(audioCtx.destination);
+      }
+      return audioCtx;
+    }
+
+    function stopAll(): void {
+      for (const n of activeNodes) {
+        try { (n as OscillatorNode).stop?.(); } catch { /* ignore */ }
+        try { n.disconnect(); } catch { /* ignore */ }
+      }
+      activeNodes = [];
+    }
+
+    function startHum(): void {
+      const ctx = ensureCtx();
+      // Deep slow drone: 60 Hz sine + 90 Hz sine for warmth + slow LFO
+      // through a low-pass filter for breathing texture.
+      const droneA = ctx.createOscillator();
+      droneA.type = 'sine'; droneA.frequency.value = 60;
+      const droneB = ctx.createOscillator();
+      droneB.type = 'sine'; droneB.frequency.value = 90;
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine'; lfo.frequency.value = 0.07; // 1 cycle per ~14s
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 220; // sweep range Hz
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 480;
+      filter.Q.value = 0.4;
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      const sub = ctx.createGain();
+      sub.gain.value = 0.55;
+      droneA.connect(filter);
+      droneB.connect(filter);
+      filter.connect(sub);
+      sub.connect(mainGain!);
+      droneA.start();
+      droneB.start();
+      lfo.start();
+      activeNodes.push(droneA, droneB, lfo, lfoGain, filter, sub);
+    }
+
+    function startLofi(): void {
+      const ctx = ensureCtx();
+      // Lo-fi pad: 4-note loop of a Cmaj7 chord (C E G B at low freqs),
+      // each note an oscillator with slow attack/release via a gain envelope.
+      const notes = [130.81, 164.81, 196.00, 246.94]; // C3 E3 G3 B3
+      const padGain = ctx.createGain();
+      padGain.gain.value = 0.32;
+      padGain.connect(mainGain!);
+      const tremolo = ctx.createOscillator();
+      tremolo.type = 'sine';
+      tremolo.frequency.value = 0.5;
+      const tremGain = ctx.createGain();
+      tremGain.gain.value = 0.15;
+      tremolo.connect(tremGain);
+      tremGain.connect(padGain.gain);
+      tremolo.start();
+      activeNodes.push(tremolo, tremGain, padGain);
+      for (const f of notes) {
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.value = 0.18;
+        osc.connect(g);
+        g.connect(padGain);
+        osc.start();
+        activeNodes.push(osc, g);
+      }
+    }
+
+    function applyMode(mode: Mode): void {
+      stopAll();
+      currentMode = mode;
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      modeBtns.forEach((btn) => {
+        const m = btn.dataset.ambientMode as Mode;
+        btn.setAttribute('aria-checked', m === mode ? 'true' : 'false');
+        btn.classList.toggle('ambient-mode--active', m === mode);
+      });
+      ambBtn!.setAttribute('aria-pressed', mode !== 'off' ? 'true' : 'false');
+      try { window.localStorage.setItem('cosmosAmbientMode', mode); } catch { /* silent */ }
+      if (mode === 'hum') startHum();
+      else if (mode === 'lofi') startLofi();
+    }
+
+    volSlider.addEventListener('input', () => {
+      const v = Math.max(0, Math.min(1, parseInt(volSlider.value, 10) / 100));
+      savedVol = v;
+      if (mainGain) mainGain.gain.linearRampToValueAtTime(v, (audioCtx?.currentTime ?? 0) + 0.05);
+      try { window.localStorage.setItem('cosmosAmbientVolume', String(v)); } catch { /* silent */ }
+    });
+
+    function openPanel(): void {
+      panel!.dataset.open = 'true';
+      panel!.setAttribute('aria-hidden', 'false');
+    }
+    function closePanel(): void {
+      panel!.dataset.open = 'false';
+      panel!.setAttribute('aria-hidden', 'true');
+    }
+    ambBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (panel.dataset.open === 'true') closePanel(); else openPanel();
+    });
+    closeBtn?.addEventListener('click', closePanel);
+    modeBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const m = btn.dataset.ambientMode as Mode;
+        applyMode(m);
+      });
+    });
+
+    // Reflect saved mode on first open. Don't auto-play (browser autoplay
+    // policy + user surprise) — user must click a mode button first.
+    if (savedMode !== 'off') {
+      ambBtn.setAttribute('aria-pressed', 'true');
+      modeBtns.forEach((btn) => {
+        const m = btn.dataset.ambientMode as Mode;
+        btn.setAttribute('aria-checked', m === savedMode ? 'true' : 'false');
+      });
+    }
+
+    // Expose a tiny adjuster so Pomodoro can dim ambient during focus.
+    (window as unknown as { __cosmosAmbient?: { adjustVolume: (factor: number) => void; restoreVolume: () => void; getMode: () => Mode } }).__cosmosAmbient = {
+      adjustVolume(factor: number) {
+        if (!mainGain || !audioCtx) return;
+        mainGain.gain.linearRampToValueAtTime(savedVol * factor, audioCtx.currentTime + 0.6);
+      },
+      restoreVolume() {
+        if (!mainGain || !audioCtx) return;
+        mainGain.gain.linearRampToValueAtTime(savedVol, audioCtx.currentTime + 0.6);
+      },
+      getMode() { return currentMode; },
+    };
+  })();
+
+  // ─── Pomodoro mode ─────────────────────────────────────────────────
+  // 25-min focus → 5-min break, repeats. Auto-engages drift mode for
+  // immersion. Quietly dims ambient sound during focus. Counter shown
+  // (no streaks, no celebration animations — Plain AI commons philosophy).
+  (function pomodoroMode(): void {
+    const pomoBtn = document.getElementById('pomodoro-toggle') as HTMLButtonElement | null;
+    const panel = document.getElementById('pomodoro-panel') as HTMLElement | null;
+    const closeBtn = document.getElementById('pomodoro-close') as HTMLButtonElement | null;
+    const startBtn = document.getElementById('pomodoro-start') as HTMLButtonElement | null;
+    const stopBtn = document.getElementById('pomodoro-stop') as HTMLButtonElement | null;
+    const timeEl = document.getElementById('pomodoro-time') as HTMLElement | null;
+    const phaseEl = document.getElementById('pomodoro-phase') as HTMLElement | null;
+    const counterEl = document.getElementById('pomodoro-counter') as HTMLElement | null;
+    if (!pomoBtn || !panel || !startBtn || !stopBtn || !timeEl || !phaseEl) return;
+
+    const FOCUS_MIN = 25;
+    const BREAK_MIN = 5;
+    let phase: 'idle' | 'focus' | 'break' = 'idle';
+    let endsAt = 0;
+    let tickInterval = 0;
+    let completed = 0;
+    try {
+      const c = window.localStorage.getItem('cosmosPomodoroCount');
+      if (c) completed = parseInt(c, 10) || 0;
+    } catch { /* silent */ }
+
+    function updateCounter(): void {
+      if (!counterEl) return;
+      if (completed > 0) {
+        counterEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} this session.`;
+        counterEl.removeAttribute('hidden');
+      } else {
+        counterEl.setAttribute('hidden', '');
+      }
+    }
+    updateCounter();
+
+    function fmt(ms: number): string {
+      const total = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function ringBell(): void {
+      const amb = (window as unknown as { __cosmosAmbient?: { getMode: () => string } }).__cosmosAmbient;
+      // Always use a fresh AudioContext for the bell — it's a one-shot sound.
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const o1 = ctx.createOscillator();
+      const o2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      o1.type = 'sine'; o1.frequency.value = 880;
+      o2.type = 'sine'; o2.frequency.value = 1320;
+      g.gain.setValueAtTime(0.001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.6);
+      o1.connect(g); o2.connect(g); g.connect(ctx.destination);
+      o1.start();
+      o2.start();
+      o1.stop(ctx.currentTime + 1.7);
+      o2.stop(ctx.currentTime + 1.7);
+      void amb;
+    }
+
+    function setDriftFromPomo(active: boolean): void {
+      const driftBtn = document.getElementById('drift-toggle') as HTMLButtonElement | null;
+      if (!driftBtn) return;
+      const isOn = driftBtn.getAttribute('aria-pressed') === 'true';
+      if (active && !isOn) driftBtn.click();
+      else if (!active && isOn) driftBtn.click();
+    }
+
+    function setPhase(next: 'idle' | 'focus' | 'break'): void {
+      phase = next;
+      const amb = (window as unknown as { __cosmosAmbient?: { adjustVolume: (f: number) => void; restoreVolume: () => void } }).__cosmosAmbient;
+      if (next === 'focus') {
+        endsAt = Date.now() + FOCUS_MIN * 60 * 1000;
+        phaseEl!.textContent = 'focus';
+        startBtn!.setAttribute('hidden', '');
+        stopBtn!.removeAttribute('hidden');
+        pomoBtn!.setAttribute('aria-pressed', 'true');
+        document.body.dataset.pomodoro = 'focus';
+        setDriftFromPomo(true);
+        amb?.adjustVolume(0.55);
+      } else if (next === 'break') {
+        endsAt = Date.now() + BREAK_MIN * 60 * 1000;
+        phaseEl!.textContent = 'break';
+        document.body.dataset.pomodoro = 'break';
+        amb?.restoreVolume();
+        setDriftFromPomo(false);
+      } else {
+        endsAt = 0;
+        phaseEl!.textContent = 'focus';
+        startBtn!.removeAttribute('hidden');
+        stopBtn!.setAttribute('hidden', '');
+        pomoBtn!.setAttribute('aria-pressed', 'false');
+        delete document.body.dataset.pomodoro;
+        timeEl!.textContent = `${String(FOCUS_MIN).padStart(2, '0')}:00`;
+        amb?.restoreVolume();
+        setDriftFromPomo(false);
+      }
+    }
+
+    function tick(): void {
+      if (phase === 'idle') return;
+      const left = endsAt - Date.now();
+      timeEl!.textContent = fmt(left);
+      if (left <= 0) {
+        ringBell();
+        if (phase === 'focus') {
+          completed += 1;
+          try { window.localStorage.setItem('cosmosPomodoroCount', String(completed)); }
+          catch { /* silent */ }
+          updateCounter();
+          setPhase('break');
+        } else {
+          // Break ended — auto-start the next focus block.
+          setPhase('focus');
+        }
+      }
+    }
+
+    function openPanel(): void {
+      panel!.dataset.open = 'true';
+      panel!.setAttribute('aria-hidden', 'false');
+    }
+    function closePanel(): void {
+      panel!.dataset.open = 'false';
+      panel!.setAttribute('aria-hidden', 'true');
+    }
+    pomoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (panel.dataset.open === 'true') closePanel();
+      else openPanel();
+    });
+    closeBtn?.addEventListener('click', closePanel);
+    startBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (phase === 'idle') {
+        setPhase('focus');
+        if (!tickInterval) tickInterval = window.setInterval(tick, 500);
+      }
+    });
+    stopBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tickInterval) { window.clearInterval(tickInterval); tickInterval = 0; }
+      setPhase('idle');
+    });
   })();
 
   function bindCoachInteractions(el: HTMLElement): void {

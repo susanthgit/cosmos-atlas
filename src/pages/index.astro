@@ -289,6 +289,71 @@ const clientData = {
           aria-label="Show keyboard shortcuts"
           title="Keyboard shortcuts (press ?)"
         >?</button>
+        <span class="hud-aux__divider" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="drift-toggle"
+          aria-label="Drift mode (slow screensaver)"
+          aria-pressed="false"
+          title="Drift mode — slow screensaver (any input exits)"
+        >🌙</button>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="ambient-toggle"
+          aria-label="Ambient sound"
+          aria-pressed="false"
+          title="Ambient sound — opt-in, default off"
+        >🔊</button>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="pomodoro-toggle"
+          aria-label="Pomodoro focus session"
+          aria-pressed="false"
+          title="Pomodoro — 25 min focus, 5 min break"
+        >⏱</button>
+      </div>
+
+      {/* Wave 2 (V5) — small popover panels for ambient sound + pomodoro state.
+           Both default-hidden; the toggle buttons in hud-aux open them. */}
+      <div class="cosmos-popover" id="ambient-panel" data-open="false" role="dialog" aria-label="Ambient sound" aria-hidden="true">
+        <div class="cosmos-popover__head">
+          <span class="cosmos-popover__title">Ambient</span>
+          <button type="button" class="cosmos-popover__close" id="ambient-close" aria-label="Close ambient panel">×</button>
+        </div>
+        <div class="cosmos-popover__body">
+          <div class="ambient-modes" role="radiogroup" aria-label="Ambient mode">
+            <button type="button" class="ambient-mode" data-ambient-mode="off" role="radio" aria-checked="true">Off</button>
+            <button type="button" class="ambient-mode" data-ambient-mode="hum" role="radio" aria-checked="false">Cosmic hum</button>
+            <button type="button" class="ambient-mode" data-ambient-mode="lofi" role="radio" aria-checked="false">Lo-fi pad</button>
+          </div>
+          <label class="ambient-volume">
+            <span class="ambient-volume__label">Volume</span>
+            <input type="range" id="ambient-volume" min="0" max="100" value="40" aria-label="Ambient volume" />
+          </label>
+          <p class="cosmos-popover__hint">Web Audio · procedural · no licensing.</p>
+        </div>
+      </div>
+
+      <div class="cosmos-popover" id="pomodoro-panel" data-open="false" role="dialog" aria-label="Pomodoro" aria-hidden="true">
+        <div class="cosmos-popover__head">
+          <span class="cosmos-popover__title">Pomodoro</span>
+          <button type="button" class="cosmos-popover__close" id="pomodoro-close" aria-label="Close pomodoro panel">×</button>
+        </div>
+        <div class="cosmos-popover__body">
+          <div class="pomodoro-display" id="pomodoro-display">
+            <span class="pomodoro-time" id="pomodoro-time">25:00</span>
+            <span class="pomodoro-phase" id="pomodoro-phase">focus</span>
+          </div>
+          <div class="pomodoro-actions">
+            <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min focus</button>
+            <button type="button" class="pomodoro-btn pomodoro-btn--ghost" id="pomodoro-stop" hidden>Stop</button>
+          </div>
+          <p class="cosmos-popover__hint">Auto-engages drift mode while focusing.</p>
+          <p class="pomodoro-counter" id="pomodoro-counter" hidden></p>
+        </div>
       </div>
 
       {/* Phase C — lens pill. Bottom-right corner. Default shows current

@@ -900,6 +900,106 @@ for (const vp of VIEWPORTS) {
 
     // ─── End Wave 1 (V5) ───
 
+    // ─── Wave 2 (V5) — drift / ambient / pomodoro ───
+    console.log(`\n=== ${vp.name} / Wave 2 (V5) ===`);
+
+    // 1) Drift toggle — click 🌙 → body.dataset.drift="active"; click again → cleared.
+    const driftBtn = await page.$('#drift-toggle');
+    if (!driftBtn) {
+      console.log(`  drift toggle: 🔴 #drift-toggle not found`);
+      totalFails++;
+    } else {
+      await driftBtn.click();
+      await page.waitForTimeout(300);
+      const driftOn = await page.evaluate(() => document.body.getAttribute('data-drift'));
+      if (driftOn === 'active') {
+        console.log(`  drift toggle: ✓ activated (body.dataset.drift="active")`);
+      } else {
+        console.log(`  drift toggle: 🔴 expected active, got "${driftOn}"`);
+        totalFails++;
+      }
+      await driftBtn.click();
+      await page.waitForTimeout(300);
+      const driftOff = await page.evaluate(() => document.body.getAttribute('data-drift'));
+      if (!driftOff) {
+        console.log(`  drift toggle off: ✓ cleared on second click`);
+      } else {
+        console.log(`  drift toggle off: 🔴 still "${driftOff}" after second click`);
+        totalFails++;
+      }
+    }
+
+    // 2) Ambient panel — click 🔊 → panel opens, has 3 modes + volume slider.
+    const ambBtn = await page.$('#ambient-toggle');
+    if (!ambBtn) {
+      console.log(`  ambient toggle: 🔴 #ambient-toggle not found`);
+      totalFails++;
+    } else {
+      await ambBtn.click();
+      await page.waitForTimeout(300);
+      const ambReport = await page.evaluate(() => {
+        const panel = document.getElementById('ambient-panel');
+        const modes = Array.from(document.querySelectorAll('.ambient-mode'));
+        const vol = document.getElementById('ambient-volume');
+        return {
+          panelOpen: panel?.getAttribute('data-open') === 'true',
+          modeCount: modes.length,
+          modes: modes.map((b) => b.getAttribute('data-ambient-mode')),
+          volPresent: !!vol,
+        };
+      });
+      if (ambReport.panelOpen && ambReport.modeCount >= 3 && ambReport.volPresent) {
+        console.log(`  ambient panel: ✓ opened, ${ambReport.modeCount} modes (${ambReport.modes.join('/')}) + volume slider`);
+      } else {
+        console.log(`  ambient panel: 🔴 panelOpen=${ambReport.panelOpen}, modes=${ambReport.modeCount}, vol=${ambReport.volPresent}`);
+        totalFails++;
+      }
+      await page.click('#ambient-close');
+      await page.waitForTimeout(200);
+    }
+
+    // 3) Pomodoro panel — click ⏱ → panel opens, start → timer ticks down.
+    const pomoBtn = await page.$('#pomodoro-toggle');
+    if (!pomoBtn) {
+      console.log(`  pomodoro toggle: 🔴 #pomodoro-toggle not found`);
+      totalFails++;
+    } else {
+      await pomoBtn.click();
+      await page.waitForTimeout(400);
+      const panelOpenBefore = await page.evaluate(() => {
+        const panel = document.getElementById('pomodoro-panel');
+        return {
+          dataOpen: panel?.getAttribute('data-open'),
+          startVisible: !document.getElementById('pomodoro-start')?.hasAttribute('hidden'),
+          startEnabled: !document.getElementById('pomodoro-start')?.hasAttribute('disabled'),
+        };
+      });
+      const initialTime = await page.evaluate(() => document.getElementById('pomodoro-time')?.textContent || '');
+      // Direct click via DOM to avoid Playwright's actionability checks (popover
+      // animation could race). The button has stopPropagation so this is safe.
+      await page.evaluate(() => (document.getElementById('pomodoro-start'))?.click());
+      await page.waitForTimeout(150);   // give setPhase a moment
+      const phaseImmediate = await page.evaluate(() => document.body.getAttribute('data-pomodoro'));
+      await page.waitForTimeout(1300);  // wait for tick to update time at +1.5s
+      const tickedTime = await page.evaluate(() => document.getElementById('pomodoro-time')?.textContent || '');
+      const phaseFocus = await page.evaluate(() => document.body.getAttribute('data-pomodoro'));
+      const ok = initialTime === '25:00' && phaseFocus === 'focus' && tickedTime !== initialTime;
+      if (ok) {
+        console.log(`  pomodoro: ✓ started focus phase (${initialTime} → ${tickedTime}, body.pomodoro="${phaseFocus}")`);
+      } else {
+        console.log(`  pomodoro: 🔴 panel=${panelOpenBefore.dataOpen}, startVisible=${panelOpenBefore.startVisible}, initial="${initialTime}", phase-immediate="${phaseImmediate}", phase-after="${phaseFocus}", time-after="${tickedTime}"`);
+        totalFails++;
+      }
+      // Stop and close to leave clean state for downstream tests.
+      const stopVisible = await page.evaluate(() => !document.getElementById('pomodoro-stop')?.hasAttribute('hidden'));
+      if (stopVisible) await page.evaluate(() => (document.getElementById('pomodoro-stop'))?.click());
+      await page.waitForTimeout(200);
+      await page.evaluate(() => (document.getElementById('pomodoro-close'))?.click());
+      await page.waitForTimeout(200);
+    }
+
+    // ─── End Wave 2 (V5) ───
+
     const visibleBefore = await page.evaluate(() => Array.from(document.querySelectorAll('.planet-body'))
       .filter((el) => {
         const r = el.getBoundingClientRect();

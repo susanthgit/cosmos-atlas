@@ -1388,3 +1388,262 @@ body[data-tour="active"] #start-tour {
 @media (prefers-reduced-motion: reduce) {
   .planet-body[data-bloom="1"] { animation: none; }
 }
+/* ═══════════════ Wave 2 (V5) — drift / ambient / pomodoro ═══════════════ */
+
+/* Visual divider between the original 3 hud-aux buttons and the new 3
+   focus-companion buttons. Subtle dot, not a strong rule. */
+.hud-aux__divider {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rule-strong);
+  margin: 0 4px;
+  align-self: center;
+  opacity: 0.5;
+}
+
+/* Active state for hud-aux buttons (drift / ambient / pomodoro toggles).
+   Mirror lens-pill active state — accent border + soft background. */
+.hud-aux__btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, rgba(2, 3, 14, 0.6));
+}
+
+/* Drift-mode global affordance — quiet HUD, slow CSS animations. The orbit
+   slowdown is applied via JS to simT (1/8 speed). Here we soften the chrome
+   so the cosmos feels like a screensaver. */
+body[data-drift="active"] .hud-mast,
+body[data-drift="active"] .hud-tools,
+body[data-drift="active"] .hud-aux,
+body[data-drift="active"] .lens-pill,
+body[data-drift="active"] .audience-filter,
+body[data-drift="active"] .this-week-ribbon,
+body[data-drift="active"] #cosmos-lede,
+body[data-drift="active"] #cosmos-coach,
+body[data-drift="active"] .blog-asteroid,
+body[data-drift="active"] .planet-label {
+  opacity: 0.25;
+  transition: opacity 1200ms var(--ease-out);
+}
+body[data-drift="active"] .hud-aux__btn#drift-toggle,
+body[data-drift="active"] .planet-body {
+  opacity: 1;
+}
+body[data-drift="active"] .hud-aux {
+  opacity: 1;     /* keep the aux row dim but readable */
+  filter: opacity(0.7);
+}
+body[data-drift="active"] .canvas-stage {
+  filter: brightness(0.92) saturate(0.94);
+  transition: filter 1200ms var(--ease-out);
+}
+
+/* Tiny popover panels for ambient + pomodoro. Positioned above the
+   hud-aux row, not full-screen overlays. Click-outside closes. */
+.cosmos-popover {
+  position: absolute;
+  bottom: 56px;
+  right: 16px;
+  width: 248px;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  background: rgba(2, 3, 14, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 32px rgba(2, 3, 14, 0.6);
+  z-index: 240;
+  pointer-events: auto;
+  display: none;
+  font-family: var(--display);
+  color: var(--hud);
+}
+.cosmos-popover[data-open="true"] {
+  display: block;
+  animation: popover-in 220ms var(--ease-out);
+}
+@keyframes popover-in {
+  from { transform: translateY(6px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+.cosmos-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--rule);
+}
+.cosmos-popover__title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--hud-muted);
+}
+.cosmos-popover__close {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--hud-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.cosmos-popover__close:hover, .cosmos-popover__close:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cosmos-popover__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.cosmos-popover__hint {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--hud-faint);
+}
+
+/* Ambient panel — mode buttons + volume slider */
+.ambient-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+.ambient-mode {
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--hud-muted);
+  cursor: pointer;
+  transition: border-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out);
+}
+.ambient-mode:hover, .ambient-mode:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ambient-mode--active,
+.ambient-mode[aria-checked="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, rgba(2, 3, 14, 0.5));
+}
+.ambient-volume {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ambient-volume__label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--hud-faint);
+  text-transform: uppercase;
+  min-width: 48px;
+}
+.ambient-volume input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+/* Pomodoro panel — minimalist clock + start/stop. NO celebration UI. */
+.pomodoro-display {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.pomodoro-time {
+  font-family: var(--mono);
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--hud);
+  font-variant-numeric: tabular-nums;
+}
+.pomodoro-phase {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.pomodoro-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.pomodoro-btn {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--bg);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+.pomodoro-btn:hover, .pomodoro-btn:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(255, 179, 71, 0.35);
+}
+.pomodoro-btn--ghost {
+  background: transparent;
+  color: var(--hud);
+  border-color: var(--rule-strong);
+}
+.pomodoro-btn--ghost:hover, .pomodoro-btn--ghost:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+.pomodoro-counter {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--hud-faint);
+}
+
+/* Hide the popovers / toggles in list view (consistent with other HUD elements) */
+body.list-view .cosmos-popover,
+body.list-view #drift-toggle,
+body.list-view #ambient-toggle,
+body.list-view #pomodoro-toggle,
+body.list-view .hud-aux__divider {
+  display: none;
+}
+
+/* On narrow phones, allow hud-aux to wrap to a second row so all 6 buttons fit */
+@media (max-width: 480px) {
+  .hud-aux {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100% - 32px);
+  }
+  .cosmos-popover {
+    width: calc(100vw - 32px);
+    max-width: 320px;
+  }
+}
