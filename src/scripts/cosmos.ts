@@ -16,9 +16,12 @@ interface Card {
   badge?: string; tagline: string;
   audience: string; content: string; founder: string;
   stats?: string[];
+  library?: LibraryLink[];   // small "browse the deeper content" link-pills (Wave 1, V5)
   lastShippedAt?: string;   // ISO date — used for freshness pulse
   connectsTo?: string[];    // slugs of related bodies — drawn as constellation lines on focus
 }
+
+interface LibraryLink { icon: string; label: string; url: string }
 
 interface Moon extends Card { orbit: OrbitMoon; body: BodyVisuals }
 interface Planet extends Card { orbit: OrbitPlanet; body: BodyVisuals; moons?: Moon[] }
@@ -2123,6 +2126,30 @@ export function mountCosmos(data: CosmosData): void {
     return `<ul class="card-stats" role="list">${stats.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`;
   }
 
+  // Wave 1 (V5) — small "browse the deeper content" pills inside a planet card.
+  // Surfaces breadth (e.g. Earth's 56 tools, 66 mind maps, 9 cert paths) without
+  // adding visual noise to the cosmos. Each pill is a real <a> linking to the
+  // existing planet's section page; opens in a new tab so the cosmos stays open.
+  function renderLibraryHtml(library: LibraryLink[] | undefined): string {
+    if (!library || library.length === 0) return '';
+    const pills = library.map((l) => `
+      <a class="card-library-pill"
+         href="${escapeHtml(l.url)}"
+         target="_blank"
+         rel="noopener"
+         data-library-pill="1">
+        <span class="card-library-pill__icon" aria-hidden="true">${escapeHtml(l.icon)}</span>
+        <span class="card-library-pill__label">${escapeHtml(l.label)}</span>
+        <span class="card-library-pill__arrow" aria-hidden="true">↗</span>
+      </a>`).join('');
+    return `
+      <div class="card-section card-library" data-library="1">
+        <span class="card-section-label">Browse the library</span>
+        <div class="card-library__pills" role="list">${pills}</div>
+      </div>
+    `;
+  }
+
   function getGlowForSlug(slug: string): string {
     if (slug === data.mcp.slug) return data.mcp.anchor?.glowCore ?? '#FFD89A';
     const p = planetBySlug.get(slug);
@@ -2203,6 +2230,7 @@ export function mountCosmos(data: CosmosData): void {
         <span class="card-section-label">Founder note</span>
         <p class="card-section-text card-founder">"${escapeHtml(card.founder)}"</p>
       </div>
+      ${renderLibraryHtml(card.library)}
       <div class="card-cta-row">
         <a class="card-cta" href="${escapeHtml(card.url)}" rel="noopener">Visit ${escapeHtml(card.name)}</a>
       </div>
@@ -3306,6 +3334,54 @@ export function mountCosmos(data: CosmosData): void {
       window.setTimeout(() => { thisWeekRibbon.dataset.visible = 'true'; }, 1400);
     }
   }
+
+  // Wave 1 (V5) — welcome-back bloom. Returning visitors gently notice what's
+  // shipped since their last visit. localStorage.cosmosLastVisit holds the
+  // ISO timestamp of the previous visit. Bodies with lastShippedAt strictly
+  // after that timestamp get data-bloom="1" for ~6s on a small stagger.
+  // First-time visitors see nothing (no localStorage value) — we just record
+  // "now" so future visits can compare. URL ?lastVisit=<isoDate> overrides
+  // the stored value (used by the QA suite to verify the bloom works).
+  (function welcomeBackBloom(): void {
+    if (reducedMotion) return;
+    const url = new URL(window.location.href);
+    const urlOverride = url.searchParams.get('lastVisit');
+    let lastVisitIso: string | null = urlOverride ?? null;
+    if (!lastVisitIso) {
+      try { lastVisitIso = window.localStorage.getItem('cosmosLastVisit'); }
+      catch { lastVisitIso = null; }
+    }
+    const writeNow = (): void => {
+      try { window.localStorage.setItem('cosmosLastVisit', new Date().toISOString()); }
+      catch { /* private mode etc. — silent */ }
+    };
+    if (!lastVisitIso) { writeNow(); return; }
+    const lastVisitMs = Date.parse(lastVisitIso);
+    if (!Number.isFinite(lastVisitMs)) { writeNow(); return; }
+    const fresh: Array<{ slug: string; ageMs: number }> = [];
+    const consider = (slug: string | undefined, iso: string | undefined): void => {
+      if (!slug || !iso) return;
+      const t = Date.parse(iso);
+      if (!Number.isFinite(t)) return;
+      if (t <= lastVisitMs) return;
+      fresh.push({ slug, ageMs: Date.now() - t });
+    };
+    for (const p of data.planets) {
+      consider(p.slug, p.lastShippedAt);
+      for (const m of (p.moons ?? [])) consider(m.slug, m.lastShippedAt);
+    }
+    if (fresh.length === 0) { writeNow(); return; }
+    fresh.sort((a, b) => a.ageMs - b.ageMs);
+    fresh.forEach((f, i) => {
+      const el = bodiesRoot!.querySelector<HTMLElement>(`.planet-body[data-slug="${f.slug}"]`);
+      if (!el) return;
+      window.setTimeout(() => {
+        el.dataset.bloom = '1';
+        window.setTimeout(() => { delete el.dataset.bloom; }, 6000);
+      }, 1600 + i * 220);
+    });
+    window.setTimeout(writeNow, 8200);
+  })();
 
   function bindCoachInteractions(el: HTMLElement): void {
     const skipBtn = el.querySelector('#coach-skip') as HTMLButtonElement | null;

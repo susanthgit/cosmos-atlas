@@ -829,6 +829,77 @@ for (const vp of VIEWPORTS) {
 
   // Drag-pan limits (desktop only — touch drag on mobile is different)
   if (vp.name === 'desktop') {
+    // ─── Wave 1 (V5) — card library pills on Earth + welcome-back bloom ───
+    // Growing-guardrail rule: every new shipped feature gets an automated check.
+    console.log(`\n=== ${vp.name} / Wave 1 (V5) ===`);
+
+    // 1) Open Earth's card and verify the library pills.
+    await page.evaluate(() => {
+      const earth = document.querySelector('.planet-body[data-slug="earth"]');
+      if (earth) earth.click();
+    });
+    await page.waitForTimeout(500);
+    // Some cosmos lenses use a second click flow — fall back to a direct focus call:
+    const earthCardOpen = await page.evaluate(() => document.getElementById('card-panel')?.getAttribute('data-open') === 'true');
+    if (!earthCardOpen) {
+      // Force-open via the listing link as a fallback (always works in any view).
+      await page.evaluate(() => {
+        const link = document.querySelector('[data-list-anchor="earth"], a[href="#earth"]');
+        if (link) link.click();
+      });
+      await page.waitForTimeout(400);
+    }
+    const libraryReport = await page.evaluate(() => {
+      const pills = Array.from(document.querySelectorAll('.card-library-pill'));
+      return {
+        count: pills.length,
+        targets: pills.map((a) => a.getAttribute('target') || ''),
+        hrefs: pills.map((a) => a.getAttribute('href') || ''),
+        labels: pills.map((a) => (a.querySelector('.card-library-pill__label')?.textContent || '').trim()),
+      };
+    });
+    if (libraryReport.count >= 2) {
+      console.log(`  card library pills (Earth): ✓ ${libraryReport.count} pills — ${libraryReport.labels.slice(0, 3).join(' · ')}`);
+    } else {
+      console.log(`  card library pills (Earth): 🔴 only ${libraryReport.count} found, expected ≥2`);
+      totalFails++;
+    }
+    const allBlank = libraryReport.targets.length > 0 && libraryReport.targets.every((t) => t === '_blank');
+    const allHttp = libraryReport.hrefs.length > 0 && libraryReport.hrefs.every((h) => /^https?:\/\//.test(h));
+    if (libraryReport.count > 0) {
+      if (allBlank && allHttp) {
+        console.log(`  card library pills: ✓ all ${libraryReport.count} are real <a target=_blank> with http(s) hrefs`);
+      } else {
+        console.log(`  card library pills: 🔴 target/href integrity failed (allBlank=${allBlank}, allHttp=${allHttp})`);
+        totalFails++;
+      }
+    }
+    await page.evaluate(() => document.getElementById('card-close')?.click());
+    await page.waitForTimeout(300);
+
+    // 2) Welcome-back bloom — reload with ?lastVisit=<old date> and verify
+    //    that at least one body gets data-bloom="1" within ~3s.
+    const wbUrl = URL.replace(/\/$/, '') + '/?lastVisit=2020-01-01T00:00:00Z';
+    await page.goto(wbUrl, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(2200);   // bloom kicks in 1.6s after init
+    const bloomedCount = await page.evaluate(() => document.querySelectorAll('.planet-body[data-bloom="1"]').length);
+    if (bloomedCount >= 1) {
+      console.log(`  welcome-back bloom: ✓ ${bloomedCount} body/bodies showed data-bloom="1" with old ?lastVisit`);
+    } else {
+      console.log(`  welcome-back bloom: 🔴 expected ≥1 body to bloom for very-old lastVisit (got ${bloomedCount})`);
+      totalFails++;
+    }
+    // Reset to baseline URL for any subsequent tests.
+    await page.goto(URL, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    await page.evaluate(() => {
+      const skip = document.getElementById('coach-skip');
+      if (skip) skip.click();
+    });
+    await page.waitForTimeout(300);
+
+    // ─── End Wave 1 (V5) ───
+
     const visibleBefore = await page.evaluate(() => Array.from(document.querySelectorAll('.planet-body'))
       .filter((el) => {
         const r = el.getBoundingClientRect();

@@ -54,6 +54,11 @@
       "content": "Tools, mind maps, certification paths, and a long-running blog. Each one started because Sush needed it himself.",
       "founder": "In my head, I'm still the curious intern. What overflows lands here.",
       "stats": ["56 tools", "66 mind maps", "9 cert paths"],
+      "library": [
+        { "icon": "🛠", "label": "Browse 56 tools", "url": "https://www.aguidetocloud.com/free-tools/" },
+        { "icon": "🧠", "label": "66 mind maps", "url": "https://www.aguidetocloud.com/mind-maps/" },
+        { "icon": "🎓", "label": "9 cert paths", "url": "https://www.aguidetocloud.com/certifications/" }
+      ],
       "orbit": { "radius": 420, "ecc": 0.04, "tilt": 6, "speedSec": 89, "phase": 0 },
       "body": { "size": 36, "glowCore": "#A5B4FC", "glowOuter": "#6366F1" },
       "moons": [
@@ -103,6 +108,9 @@
       "content": "Honest news on jobs that grew, jobs that shrank, and jobs no one saw coming. New issue every Sunday.",
       "founder": "I started reading job postings every weekend because the pace scared me. Now you can read them with me.",
       "stats": ["weekly wire", "Sunday issue", "Vol. 1 · No. 19"],
+      "library": [
+        { "icon": "📰", "label": "Past issues", "url": "https://shift.aguidetocloud.com/issues/" }
+      ],
       "orbit": { "radius": 950, "ecc": 0.04, "tilt": 10, "speedSec": 167, "phase": 120 },
       "body": { "size": 32, "glowCore": "#FDBA74", "glowOuter": "#E25822" }
     },
@@ -119,6 +127,10 @@
       "content": "Topics, weekly halts of what changed, and short paths through ideas. Plain words only. No hype, no doom.",
       "founder": "If I can't explain it to my mum at the dinner table, I haven't understood it yet.",
       "stats": ["topics + halts", "plain English", "no jargon"],
+      "library": [
+        { "icon": "📚", "label": "Browse topics", "url": "https://plainai.aguidetocloud.com/topics/" },
+        { "icon": "🌀", "label": "Weekly halts", "url": "https://plainai.aguidetocloud.com/halts/" }
+      ],
       "orbit": { "radius": 1150, "ecc": 0.06, "tilt": -8, "speedSec": 211, "phase": 180 },
       "body": { "size": 34, "glowCore": "#A5F3FC", "glowOuter": "#67E8F9" },
       "moons": [
