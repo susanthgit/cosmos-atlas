@@ -741,10 +741,67 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   // P0 #2 — Bigger sun with multi-stop corona, optional rays during pulse, ignition fade-in.
+  // Phase B — added idle heartbeat (1Hz layer that ramps in after 8s of no
+  // interaction) AND a one-shot reveal flare on long-press at the centre.
+  // The invisible-sun philosophy is preserved: nothing renders that wasn't
+  // there before; both signals only fire when the cosmos is at-rest or
+  // explicitly summoned.
+  let sunRevealStart: number | null = null;
+  let sunRevealedThisSession = false;
+  let sunHoldTimer: number | null = null;
+  let sunHoldStartXY: { x: number; y: number } | null = null;
+  const SUN_HOLD_MS = 1000;
+  const sunRevealEl = document.getElementById('sun-reveal') as HTMLElement | null;
+  function fireSunRevealFlare(): void {
+    sunRevealStart = performance.now();
+  }
+  function trySunReveal(): void {
+    if (sunRevealedThisSession) return;
+    sunRevealedThisSession = true;
+    fireSunRevealFlare();
+    if (sunRevealEl) {
+      sunRevealEl.dataset.visible = 'true';
+      window.setTimeout(() => {
+        if (sunRevealEl) sunRevealEl.dataset.visible = 'false';
+      }, 4500);
+    }
+  }
+  function cancelSunHold(): void {
+    if (sunHoldTimer !== null) {
+      window.clearTimeout(sunHoldTimer);
+      sunHoldTimer = null;
+    }
+    sunHoldStartXY = null;
+  }
+  function maybeStartSunHold(clientX: number, clientY: number): void {
+    if (sunRevealedThisSession || focusedSlug) return;
+    const sunX = cx + cameraX * cameraZoom;
+    const sunY = cy + cameraY * cameraZoom;
+    const sunR = data.sun.size * cameraZoom * 1.8;
+    if (Math.hypot(clientX - sunX, clientY - sunY) > sunR) return;
+    cancelSunHold();
+    sunHoldStartXY = { x: clientX, y: clientY };
+    sunHoldTimer = window.setTimeout(() => {
+      sunHoldTimer = null;
+      if (sunHoldStartXY !== null) {
+        trySunReveal();
+        sunHoldStartXY = null;
+      }
+    }, SUN_HOLD_MS);
+  }
   function drawSun(introSun: number): void {
     if (introSun <= 0) return;
     const t = getRealT();
-    const pulse = reducedMotion ? 0.85 : 0.78 + 0.22 * Math.abs(Math.sin(t * (TWO_PI / data.sun.pulseSec)));
+    const idleMs = performance.now() - lastInteractionMs;
+    const idleRamp = !reducedMotion && !focusedSlug && idleMs > 8000
+      ? Math.min(1, (idleMs - 8000) / 4000)
+      : 0;
+    // 1Hz heartbeat layered on top of the slow corona pulse. Subtle: ramps
+    // up over 4s once the cosmos has been still for 8s. Disappears the
+    // moment the user interacts (markInteraction resets lastInteractionMs).
+    const heartbeat = idleRamp * 0.16 * Math.abs(Math.sin(t * TWO_PI));
+    const pulseBase = reducedMotion ? 0.85 : 0.78 + 0.22 * Math.abs(Math.sin(t * (TWO_PI / data.sun.pulseSec)));
+    const pulse = Math.min(1.05, pulseBase + heartbeat);
     const igniteEase = introSun * introSun * (3 - 2 * introSun); // smoothstep
     const x = cx + cameraX * cameraZoom;
     const y = cy + cameraY * cameraZoom;
@@ -794,6 +851,36 @@ export function mountCosmos(data: CosmosData): void {
     ctx.beginPath();
     ctx.arc(x, y, r * 1.8, 0, TWO_PI);
     ctx.fill();
+
+    // Phase B — earned-reveal flare. One-shot expanding amber corona drawn
+    // on top of the regular sun once `sunRevealStart` is set. Lasts 1.8s
+    // then auto-clears. Triggered by long-press (1s hold) near the centre.
+    if (sunRevealStart !== null) {
+      const revealMs = performance.now() - sunRevealStart;
+      if (revealMs >= 1800) {
+        sunRevealStart = null;
+      } else {
+        const tt = revealMs / 1800;
+        const eased = 1 - Math.pow(1 - tt, 3);
+        const flareAlpha = (1 - tt) * 0.7;
+        const flareR = haloR * (1 + eased * 0.85);
+        const flareGrad = ctx.createRadialGradient(x, y, 0, x, y, flareR);
+        flareGrad.addColorStop(0, withAlpha(data.sun.glowCore, flareAlpha * 0.85));
+        flareGrad.addColorStop(0.35, withAlpha(data.sun.glowMid ?? data.sun.glowCore, flareAlpha * 0.55));
+        flareGrad.addColorStop(0.7, withAlpha(data.sun.glowOuter, flareAlpha * 0.2));
+        flareGrad.addColorStop(1, withAlpha(data.sun.glowOuter, 0));
+        ctx.fillStyle = flareGrad;
+        ctx.beginPath();
+        ctx.arc(x, y, flareR, 0, TWO_PI);
+        ctx.fill();
+        // Bright thin ring at leading edge of the expansion
+        ctx.strokeStyle = withAlpha(data.sun.glowCore, flareAlpha * 0.6);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, flareR * 0.95, 0, TWO_PI);
+        ctx.stroke();
+      }
+    }
   }
 
   // V2.2 — sun god rays. Long soft radial light shafts emanating from sun, additive.
@@ -1213,15 +1300,51 @@ export function mountCosmos(data: CosmosData): void {
   // 2026 PM: this was the "outer pulsating ring" still visible after V3.3.1
   // around earth/moon/plainai/shift etc. The metadata still lives in the
   // card meta block (lastShippedAt date), no need for an always-on ring.
-  // Function kept as a no-op so the call site at frame() doesn't break and
-  // future polish can replace this with a quieter "recent ✦" sparkle marker
-  // if we ever want a freshness signal back.
-  function drawFreshnessPulses(_now: number, _introBodies: number): void {
-    return;
+  // Phase B (9 May 2026 PM) — REPLACED with eventful ripples instead of an
+  // always-on ring. Each fresh body emits a single outward ripple every
+  // 6-24s (newer = more frequent), each ripple lasts ~2.4s. Skipped while
+  // any card is open so it never competes with focus state. Bodies are
+  // phase-offset by slug hash so the cosmos never pulses in unison.
+  function drawFreshnessPulses(_now: number, introBodies: number): void {
+    if (reducedMotion) return;
+    if (focusedSlug) return;
+    if (introBodies <= 0.4) return;
+    const t = getRealT();
+    const RIPPLE_DURATION = 2.4;
+    for (const b of bodies) {
+      if (b.kind === 'star') continue; // sun has its own corona
+      const fresh = freshnessFor(b.slug);
+      if (fresh <= 0) continue;
+      const period = 6 + (1 - fresh) * 18; // 6s newest → 24s edge of 14-day window
+      const phase = slugToPhase(b.slug, period);
+      const cycleT = (((t + phase) % period) + period) % period;
+      if (cycleT >= RIPPLE_DURATION) continue;
+      const tt = cycleT / RIPPLE_DURATION;
+      const eased = 1 - Math.pow(1 - tt, 2.4); // ease-out
+      const baseR = Math.max(b.intrinsicSize * b.scale * 0.5, 14);
+      const radius = baseR * (1 + eased * 4.2);
+      const alpha = (1 - tt) * 0.42 * fresh * introBodies;
+      if (alpha < 0.01) continue;
+      ctx.strokeStyle = withAlpha(data.atmosphere.accent, alpha);
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.arc(b.screenX, b.screenY, radius, 0, TWO_PI);
+      ctx.stroke();
+    }
+  }
+
+  function slugToPhase(slug: string, period: number): number {
+    let h = 0;
+    for (let i = 0; i < slug.length; i++) h = (Math.imul(h, 31) + slug.charCodeAt(i)) | 0;
+    return ((Math.abs(h) % 1000) / 1000) * period;
   }
 
   // V2.1 #6 — constellation lines from focused body to its connectsTo[] siblings.
   // Faint dashed lines that fade in/out with focus.
+  // Phase B — bumped visibility (alpha 0.30→0.55, width 1→1.5) AND added 3
+  // traveling pulses per line to make the relationship feel alive. Pulses
+  // flow outward from the focused body toward each sibling, telegraphing
+  // "this is what this planet connects to."
   let constellationFade = 0; // 0..1, eased toward target each frame
   function drawConstellationLines(introBodies: number, deltaSec: number): void {
     const target = focusedSlug ? 1 : 0;
@@ -1244,13 +1367,17 @@ export function mountCosmos(data: CosmosData): void {
     for (const slug of connects) {
       const other = bodies.find((b) => b.slug === slug);
       if (!other) continue;
-      const baseAlpha = 0.30 * constellationFade * introBodies;
+      const dx = other.screenX - focused.screenX;
+      const dy = other.screenY - focused.screenY;
+
+      // 1. Dashed gradient line (the static relationship trace).
+      const baseAlpha = 0.55 * constellationFade * introBodies;
       const grad = ctx.createLinearGradient(focused.screenX, focused.screenY, other.screenX, other.screenY);
       grad.addColorStop(0, withAlpha(focused.glowOuter, baseAlpha));
-      grad.addColorStop(0.5, withAlpha(data.atmosphere.accentSoft, baseAlpha * 1.1));
+      grad.addColorStop(0.5, withAlpha(data.atmosphere.accentSoft, baseAlpha * 1.05));
       grad.addColorStop(1, withAlpha(other.glowOuter, baseAlpha));
       ctx.strokeStyle = grad;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([2, 7]);
       ctx.lineDashOffset = -t * 14;
       ctx.beginPath();
@@ -1258,6 +1385,30 @@ export function mountCosmos(data: CosmosData): void {
       ctx.lineTo(other.screenX, other.screenY);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // 2. Traveling pulses (3 dots, staggered, flowing outward). reduced-motion
+      //    keeps the line but skips the pulse animation.
+      if (reducedMotion) continue;
+      const pulseSpeed = 0.32; // ~3.1s per full traverse
+      for (let i = 0; i < 3; i++) {
+        const phase = ((t * pulseSpeed + i / 3) % 1 + 1) % 1; // 0..1
+        const px = focused.screenX + dx * phase;
+        const py = focused.screenY + dy * phase;
+        // Fade in at start, fade out at end so pulses don't pop on/off the bodies.
+        const boundaryFade = Math.min(phase * 5, (1 - phase) * 5, 1);
+        const pulseAlpha = constellationFade * introBodies * 0.95 * boundaryFade;
+        if (pulseAlpha < 0.04) continue;
+        // Soft halo
+        ctx.fillStyle = withAlpha(data.atmosphere.accentSoft, pulseAlpha * 0.35);
+        ctx.beginPath();
+        ctx.arc(px, py, 5.5, 0, TWO_PI);
+        ctx.fill();
+        // Bright core
+        ctx.fillStyle = withAlpha(data.atmosphere.accentSoft, pulseAlpha);
+        ctx.beginPath();
+        ctx.arc(px, py, 2.4, 0, TWO_PI);
+        ctx.fill();
+      }
     }
   }
 
@@ -2315,6 +2466,11 @@ export function mountCosmos(data: CosmosData): void {
       dragStartTilt = currentTilt;
       dragMoved = false;
       root.setPointerCapture(e.pointerId);
+      // Phase B — sun reveal: if the user lands their pointer near the
+      // invisible Sun and stays still for 1s, we trigger the one-shot
+      // reveal flare + tooltip. Drag still works in parallel — any
+      // movement >6px cancels the pending hold.
+      maybeStartSunHold(e.clientX, e.clientY);
     } else if (activePointers.size === 2) {
       const pts = Array.from(activePointers.values());
       pinchStartDist = Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
@@ -2338,6 +2494,12 @@ export function mountCosmos(data: CosmosData): void {
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
     if (Math.abs(dx) + Math.abs(dy) > 4) dragMoved = true;
+    // Phase B — cancel pending sun-reveal hold the moment the pointer moves
+    // >6px from where it started. Keeps drag and reveal mutually exclusive.
+    if (sunHoldStartXY !== null) {
+      const moved = Math.hypot(e.clientX - sunHoldStartXY.x, e.clientY - sunHoldStartXY.y);
+      if (moved > 6) cancelSunHold();
+    }
     // Shift+drag rotates orbital tilt; plain drag pans.
     if (e.shiftKey) {
       const tiltDelta = -dy * 0.004;
@@ -2357,6 +2519,9 @@ export function mountCosmos(data: CosmosData): void {
       dragging = false;
       try { root.releasePointerCapture(e.pointerId); } catch (_) { /* */ }
     }
+    // Phase B — any pointer up cancels a pending sun hold (must hold the
+    // pointer for the full 1s without releasing).
+    cancelSunHold();
     // Persist final pan/zoom into the URL after the gesture settles.
     scheduleUrlWrite();
   }
@@ -2635,6 +2800,41 @@ export function mountCosmos(data: CosmosData): void {
   const coachBackBtn = document.getElementById('coach-back') as HTMLButtonElement | null;
   const coachNextBtn = document.getElementById('coach-next') as HTMLButtonElement | null;
   const replayCoachBtn = document.getElementById('replay-coach') as HTMLButtonElement | null;
+
+  // Phase B — this-week ribbon. Auto-derived from atlas data: every body
+  // whose lastShippedAt is within the last 7 days appears in the ribbon,
+  // newest first, capped at 4 with "+N more" overflow. If nothing's fresh,
+  // remove the element entirely (no apologetic "nothing this week"). Fades
+  // in shortly after mount; sits below the lede slot.
+  const thisWeekRibbon = document.getElementById('this-week-ribbon') as HTMLElement | null;
+  if (thisWeekRibbon) {
+    const SEVEN_DAYS_MS = 7 * 86_400_000;
+    const recent: Array<{ name: string; ageMs: number }> = [];
+    const nowMs = Date.now();
+    const tryAdd = (name: string | undefined, iso: string | undefined): void => {
+      if (!name || !iso) return;
+      const t = Date.parse(iso);
+      if (!Number.isFinite(t)) return;
+      const ageMs = nowMs - t;
+      if (ageMs < 0 || ageMs > SEVEN_DAYS_MS) return;
+      recent.push({ name, ageMs });
+    };
+    for (const p of data.planets) {
+      tryAdd(p.name, p.lastShippedAt);
+      for (const m of (p.moons ?? [])) tryAdd(m.name, m.lastShippedAt);
+    }
+    tryAdd(data.mcp.name ?? 'MCP Relay', (data.mcp as unknown as Card).lastShippedAt);
+    if (recent.length === 0) {
+      thisWeekRibbon.remove();
+    } else {
+      recent.sort((a, b) => a.ageMs - b.ageMs);
+      const named = recent.slice(0, 4).map((r) => r.name);
+      const overflow = recent.length > 4 ? ` +${recent.length - 4} more` : '';
+      const namesHtml = named.map((n) => `<span class="this-week-ribbon__name">${escapeHtml(n)}</span>`).join('<span class="this-week-ribbon__sep" aria-hidden="true">·</span>');
+      thisWeekRibbon.innerHTML = `<span class="this-week-ribbon__label">this week</span><span class="this-week-ribbon__divider" aria-hidden="true"></span>${namesHtml}${overflow ? `<span class="this-week-ribbon__overflow">${escapeHtml(overflow)}</span>` : ''}`;
+      window.setTimeout(() => { thisWeekRibbon.dataset.visible = 'true'; }, 1400);
+    }
+  }
 
   function bindCoachInteractions(el: HTMLElement): void {
     const skipBtn = el.querySelector('#coach-skip') as HTMLButtonElement | null;

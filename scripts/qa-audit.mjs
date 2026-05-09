@@ -567,6 +567,52 @@ for (const vp of VIEWPORTS) {
       console.log(`  replay-coach: 🔴 coach not re-mounted (${JSON.stringify(coachState)})`);
       totalFails++;
     }
+
+    // ── Phase B checks ──
+    console.log(`\n=== ${vp.name} / Phase B ===`);
+
+    // 7. This-week ribbon — auto-derived from atlas + freshness data.
+    //    With earth/guided/plainai/curriculum all shipped 2026-05-08, the
+    //    ribbon should fade in within 2s and contain at least one body name.
+    await page.waitForTimeout(1800); // ribbon fades in at 1400ms
+    const ribbonState = await page.evaluate(() => {
+      const r = document.getElementById('this-week-ribbon');
+      if (!r) return { present: false };
+      const names = Array.from(r.querySelectorAll('.this-week-ribbon__name')).map((n) => n.textContent);
+      return { present: true, visible: r.dataset.visible, names };
+    });
+    if (ribbonState.present && ribbonState.visible === 'true' && ribbonState.names && ribbonState.names.length >= 1) {
+      console.log(`  this-week ribbon: ✓ visible with ${ribbonState.names.length} name(s) — ${ribbonState.names.slice(0, 3).join(', ')}`);
+    } else if (ribbonState.present === false) {
+      console.log(`  this-week ribbon: 🟡 element absent (no fresh bodies — atlas data may have aged out)`);
+    } else {
+      console.log(`  this-week ribbon: 🔴 ${JSON.stringify(ribbonState)}`);
+      totalFails++;
+    }
+
+    // 8. Sun reveal — long-press (1.2s pointerdown) at viewport centre
+    //    triggers the reveal tooltip + sets sunRevealedThisSession.
+    //    Using mouse.move + delay-via-down-up because Playwright's mouse.down
+    //    doesn't accept a duration; we hold by interleaving waitForTimeout.
+    const revealBefore = await page.evaluate(() => document.getElementById('sun-reveal')?.dataset.visible);
+    if (revealBefore !== 'true') {
+      const cx = vp.width / 2;
+      const cy = vp.height / 2;
+      await page.mouse.move(cx, cy);
+      await page.mouse.down();
+      await page.waitForTimeout(1200); // hold past SUN_HOLD_MS (1000ms)
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+      const revealAfter = await page.evaluate(() => document.getElementById('sun-reveal')?.dataset.visible);
+      if (revealAfter === 'true') {
+        console.log(`  sun reveal: ✓ tooltip shown after 1.2s long-press at centre`);
+      } else {
+        console.log(`  sun reveal: 🔴 tooltip not shown (data-visible="${revealAfter}")`);
+        totalFails++;
+      }
+    } else {
+      console.log(`  sun reveal: 🟡 already visible at test start — skipping trigger`);
+    }
   }
 
   // Drag-pan limits (desktop only — touch drag on mobile is different)

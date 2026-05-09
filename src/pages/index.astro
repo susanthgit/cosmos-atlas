@@ -188,6 +188,13 @@ const clientData = {
         a living map of everything in the A Guide to Cloud cosmos. tap a planet to start.
       </p>
 
+      {/* Phase B — this-week ribbon. Auto-derived from atlas + freshness.json.
+           Single line listing bodies shipped in last 7 days. Hidden entirely
+           when nothing is fresh. Sits below the lede slot so they don't
+           compete; once the lede fades, the ribbon becomes the calm top-of-
+           page signal. */}
+      <div class="this-week-ribbon" id="this-week-ribbon" data-visible="false" aria-live="polite"></div>
+
       <nav class="hud-tools" aria-label="View tools">
         <button
           type="button"
@@ -234,6 +241,13 @@ const clientData = {
         <span class="gesture-hint__line">⊕ pinch to zoom</span>
         <span class="gesture-hint__line">tap a planet to open</span>
       </div>
+
+      {/* Phase B — sun reveal tooltip. Shown ONCE per session when the user
+           long-presses (1s hold) at the cosmos centre. Reveals the philosophy
+           line that explains the invisible Sun. Auto-fades after 4.5s. */}
+      <p class="sun-reveal" id="sun-reveal" data-visible="false" role="status" aria-live="polite">
+        the source — every planet exists because something is feeding it.
+      </p>
 
       {/* V3.5 — First-visit coach. 3 cards, dismissable. Sets
            localStorage.cosmosCoachSeen so it never repeats for the same
