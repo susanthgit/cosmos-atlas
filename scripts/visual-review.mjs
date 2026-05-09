@@ -23,9 +23,9 @@ async function shoot(label, vp, fn) {
 // 1) Desktop topdown — default
 await shoot('01-desktop-topdown', { width: 1440, height: 900 });
 
-// 2) Desktop cosmos (tilted)
-await shoot('02-desktop-cosmos', { width: 1440, height: 900 }, async (p) => {
-  await p.click('#view-cosmos');
+// 2) Desktop side view
+await shoot('02-desktop-side', { width: 1440, height: 900 }, async (p) => {
+  await p.click('#view-side');
   await p.waitForTimeout(2000);
 });
 
@@ -38,9 +38,9 @@ await shoot('03-desktop-earth-focus', { width: 1440, height: 900 }, async (p) =>
 // 4) Mobile topdown
 await shoot('04-mobile-topdown', { width: 390, height: 844 });
 
-// 5) Mobile cosmos
-await shoot('05-mobile-cosmos', { width: 390, height: 844 }, async (p) => {
-  await p.click('#view-cosmos');
+// 5) Mobile side
+await shoot('05-mobile-side', { width: 390, height: 844 }, async (p) => {
+  await p.click('#view-side');
   await p.waitForTimeout(2000);
 });
 

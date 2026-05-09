@@ -159,23 +159,27 @@ export function mountCosmos(data: CosmosData): void {
     sinTilt = Math.sin(currentTilt);
   }
   const TILT_MIN = 0;
-  const TILT_MAX = 58 * DEG;
-  const COSMOS_TILT_RAD = (data.atmosphere.tilt ?? 30) * DEG;
+  const TILT_MAX = 80 * DEG;
+  // V3.4 — Cosmos perspective view replaced with SIDE view per Sush. Side
+  // view shows the system edge-on (orbital plane nearly horizontal), reading
+  // as a horizontal slice of the system instead of a tilted bird's-eye view.
+  const SIDE_TILT_RAD = (data.atmosphere.sideTilt ?? 78) * DEG;
 
-  // V2.2 — view mode: 'cosmos' (tilted) ↔ 'topdown' (overhead). Tilt lerps to target.
+  // V2.2 — view mode: 'side' (edge-on) ↔ 'topdown' (overhead). Tilt lerps to target.
   // V3.x — topdown is now the default per Sush. Existing visitors who
   // explicitly toggled to either mode keep their stored preference.
-  // Key bumped to v2 so anyone with stale 'cosmos' preference from the
-  // pre-default-flip era gets the new topdown default. They can re-pick
-  // cosmos and it'll persist under v2 from then on.
-  const viewModeKey = 'cosmosViewMode.v2';
-  const storedMode = window.localStorage.getItem(viewModeKey);
-  let viewMode: 'cosmos' | 'topdown' = storedMode === 'cosmos' ? 'cosmos' : 'topdown';
-  let targetTiltRad = viewMode === 'topdown' ? 0 : COSMOS_TILT_RAD;
+  // V3.4 — key bumped v2→v3 because the 'cosmos' tilted mode was replaced
+  // with 'side' (edge-on). Anyone with stored 'cosmos' migrates to 'side'.
+  const viewModeKey = 'cosmosViewMode.v3';
+  const legacyStored = window.localStorage.getItem('cosmosViewMode.v2');
+  const storedMode = window.localStorage.getItem(viewModeKey)
+    ?? (legacyStored === 'cosmos' ? 'side' : legacyStored);
+  let viewMode: 'side' | 'topdown' = storedMode === 'side' ? 'side' : 'topdown';
+  let targetTiltRad = viewMode === 'topdown' ? 0 : SIDE_TILT_RAD;
   if (viewMode === 'topdown') setTilt(0);
-  function applyViewMode(mode: 'cosmos' | 'topdown', persist = true): void {
+  function applyViewMode(mode: 'side' | 'topdown', persist = true): void {
     viewMode = mode;
-    targetTiltRad = mode === 'topdown' ? 0 : COSMOS_TILT_RAD;
+    targetTiltRad = mode === 'topdown' ? 0 : SIDE_TILT_RAD;
     if (persist) {
       try { window.localStorage.setItem(viewModeKey, mode); } catch (_) { /* */ }
     }
@@ -315,7 +319,7 @@ export function mountCosmos(data: CosmosData): void {
   const ZOOM_MAX = 2.4;
 
   // V3 #6 — Shareable URL state. Parse known params on init; write back on changes (debounced).
-  // ?planet=earth · ?zoom=1.6 · ?pan=120,40 · ?view=cosmos|topdown
+  // ?planet=earth · ?zoom=1.6 · ?pan=120,40 · ?view=side|topdown (legacy 'cosmos' = 'side')
   const initialQS = new URLSearchParams(window.location.search);
   const initialPlanetParam = initialQS.get('planet');
   const initialZoomParam = parseFloat(initialQS.get('zoom') ?? '');
@@ -329,10 +333,13 @@ export function mountCosmos(data: CosmosData): void {
     userPanY = clamp(initialPanParam[1]!, -2000, 2000);
     clampUserPan();
   }
-  if (initialViewParam === 'cosmos' || initialViewParam === 'topdown') {
+  if (initialViewParam === 'side' || initialViewParam === 'cosmos' || initialViewParam === 'topdown') {
+    // V3.4 — accept legacy 'cosmos' query param as alias for 'side' so existing
+    // shared URLs still work.
+    const resolved: 'side' | 'topdown' = initialViewParam === 'topdown' ? 'topdown' : 'side';
     // override stored mode without persisting (URL wins per visit)
-    viewMode = initialViewParam;
-    targetTiltRad = viewMode === 'topdown' ? 0 : COSMOS_TILT_RAD;
+    viewMode = resolved;
+    targetTiltRad = viewMode === 'topdown' ? 0 : SIDE_TILT_RAD;
     if (viewMode === 'topdown') setTilt(0);
     document.body.dataset.viewMode = viewMode;
   }
@@ -353,8 +360,8 @@ export function mountCosmos(data: CosmosData): void {
           qs.delete('pan');
         }
         // URL convention: default mode is omitted, non-default is set.
-        // Default flipped to topdown in V3.x, so cosmos is now the explicit one.
-        if (viewMode === 'cosmos') qs.set('view', 'cosmos'); else qs.delete('view');
+        // V3.4 — non-default is now 'side' (edge-on), replacing 'cosmos'.
+        if (viewMode === 'side') qs.set('view', 'side'); else qs.delete('view');
         const next = qs.toString();
         const url = next ? `${window.location.pathname}?${next}` : window.location.pathname;
         window.history.replaceState(null, '', url);
@@ -395,6 +402,23 @@ export function mountCosmos(data: CosmosData): void {
     const ageDays = (NOW_MS - t) / 86_400_000;
     if (ageDays < 0 || ageDays > FRESHNESS_DAYS) return 0;
     return 1 - ageDays / FRESHNESS_DAYS;
+  }
+
+  // V3.4 — Sparkle marker for recently-shipped bodies. Replaces the deleted
+  // freshness pulse with a quiet, static ✦ glyph in the top-right corner.
+  for (const b of bodies) {
+    if (b.kind === 'star') continue;
+    const fresh = freshnessFor(b.slug);
+    if (fresh <= 0) continue;
+    b.el.dataset.fresh = 'true';
+    if (!b.el.querySelector('.planet-body__fresh')) {
+      const span = document.createElement('span');
+      span.className = 'planet-body__fresh';
+      span.setAttribute('aria-hidden', 'true');
+      span.textContent = '✦';
+      span.title = 'Recently shipped';
+      b.el.appendChild(span);
+    }
   }
 
   // Sonar pings (P1 #12)
@@ -722,7 +746,9 @@ export function mountCosmos(data: CosmosData): void {
     const x = cx + cameraX * cameraZoom;
     const y = cy + cameraY * cameraZoom;
     const r = data.sun.size * cameraZoom * (0.7 + 0.3 * igniteEase);
-    const haloR = r * 5.4;
+    // V3.4 — halo multiplier 5.4 → 3.8. Previous extent engulfed Earth's orbit
+    // at common scaleFactors; tighter halo lets the inner planet breathe.
+    const haloR = r * 3.8;
     // Faint rays — 8 long soft amber spokes when pulse peaks. Adds "star" feel.
     if (!reducedMotion && data.sun.rays && pulse > 0.85) {
       const rayCount = data.sun.rays;
@@ -959,6 +985,48 @@ export function mountCosmos(data: CosmosData): void {
         prevX = xs; prevY = ys; prevDepth = depthN;
       }
       void prevDepth;
+    }
+  }
+
+  // V3.4 — slow comet-style sweep along each orbit. A single tapered head
+  // sweeps once every ~14s per orbit (offset per planet so they don't sync).
+  // Subtle enough to ignore, alive enough to suggest a living system.
+  function drawOrbitSweep(introOrbits: number): void {
+    if (introOrbits <= 0 || reducedMotion) return;
+    const t = getRealT();
+    const SEG = 9;
+    for (const p of data.planets) {
+      const periodSec = 14 + (p.slug.charCodeAt(0) % 7) * 0.6;
+      const phase = (t / periodSec) % 1;
+      const a0 = phase * TWO_PI;
+      const segArc = TWO_PI * 0.07;
+      const r = p.orbit.radius * scaleFactor;
+      const tilt2d = p.orbit.tilt * DEG;
+      const cosT2 = Math.cos(tilt2d);
+      const sinT2 = Math.sin(tilt2d);
+      let prevX = 0, prevY = 0;
+      for (let i = 0; i <= SEG; i++) {
+        const a = a0 + (i / SEG) * segArc;
+        const xp0 = r * Math.cos(a);
+        const yp0 = r * Math.sin(a) * (1 - p.orbit.ecc);
+        const xp = xp0 * cosT2 - yp0 * sinT2;
+        const yp = xp0 * sinT2 + yp0 * cosT2;
+        const proj = project(xp, yp);
+        const xs = cx + (proj.x + cameraX) * cameraZoom;
+        const ys = cy + (proj.y + cameraY) * cameraZoom;
+        if (i > 0) {
+          // Fade head→tail (peak in middle, fade at both ends)
+          const fade = Math.sin((i / SEG) * Math.PI);
+          const alpha = fade * 0.42 * introOrbits;
+          ctx.strokeStyle = withAlpha(data.atmosphere.accentSoft, alpha);
+          ctx.lineWidth = 0.6 + fade * 1.2;
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(xs, ys);
+          ctx.stroke();
+        }
+        prevX = xs; prevY = ys;
+      }
     }
   }
 
@@ -1406,10 +1474,31 @@ export function mountCosmos(data: CosmosData): void {
       const opacity = (dim ? 0.4 : 1) * depthFade * introBodies;
       // Cool tint on far bodies via filter — suggests atmospheric perspective.
       const cool = b.kind === 'star' ? 0 : clamp((b.depth + 200) / 1400, 0, 0.4);
+      // V3.4 — fade body when its screen position lands inside the sun's
+      // bright glow. Stops Earth + Brainbar AI from rendering as a smudge on
+      // the sun's disc when their orbit phase puts them behind the sun in
+      // side view. Applies to non-star bodies only.
+      let sunOcclusionFade = 1;
+      if (b.kind === 'planet' || b.kind === 'moon') {
+        const sunDist = Math.hypot(b.screenX - cx, b.screenY - cy);
+        // Match drawSun's haloR: data.sun.size * cameraZoom * (0.85 avg) * 3.8
+        const sunHaloR = data.sun.size * cameraZoom * 3.2;
+        if (sunDist < sunHaloR && sunHaloR > 0) {
+          const ratio = sunDist / sunHaloR;
+          sunOcclusionFade = clamp(0.15 + 0.85 * Math.pow(ratio, 1.5), 0.15, 1);
+        }
+      }
+      const finalOpacity = opacity * sunOcclusionFade;
       b.el.style.transform = `translate3d(${b.screenX}px, ${b.screenY}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
-      b.el.style.opacity = String(opacity);
+      b.el.style.opacity = String(finalOpacity);
       b.el.style.zIndex = String(100 + i);
       b.el.style.filter = cool > 0 ? `saturate(${(1 - cool * 0.4).toFixed(2)}) brightness(${(1 - cool * 0.25).toFixed(2)})` : '';
+      // V3.4 — expose body's identity hue as a CSS custom property so the
+      // ::after sphere-shading pseudo-element can pick it up. Each planet/moon
+      // gets its own coloured aura matching the body data, helping the body
+      // read as a 3D sphere with directional light from the sun (top-left).
+      b.el.style.setProperty('--body-hue', b.glowOuter);
+      b.el.style.setProperty('--body-hue-core', b.glowCore);
       b.el.dataset.hovered = isHovered ? 'true' : 'false';
       b.el.dataset.focused = isFocused ? 'true' : 'false';
       b.el.dataset.dim = dim ? 'true' : 'false';
@@ -1484,7 +1573,10 @@ export function mountCosmos(data: CosmosData): void {
     lastFrame = now;
     // V2.2 — tilt lerps toward target whenever they differ (cosmos ↔ topdown toggle).
     if (Math.abs(currentTilt - targetTiltRad) > 0.0005) {
-      const tiltLerp = reducedMotion ? 1 : Math.min(1, deltaSec * 3.6);
+      // V3.4 — slower, more cinematic tilt lerp (was 3.6, now 1.6) for the
+      // smooth view-switch animation between topdown and side. Sush wants the
+      // transition to feel like a camera tilt, not a snap.
+      const tiltLerp = reducedMotion ? 1 : Math.min(1, deltaSec * 1.6);
       setTilt(currentTilt + (targetTiltRad - currentTilt) * tiltLerp);
     } else if (currentTilt !== targetTiltRad) {
       setTilt(targetTiltRad);
@@ -1502,15 +1594,18 @@ export function mountCosmos(data: CosmosData): void {
     drawParallaxStars();
     drawMcpStarfield();
     drawOrbits(intro.orbits);
+    drawOrbitSweep(intro.orbits);
     drawSun(intro.sun);
     drawSunGodRays(intro.sun);
     drawMcpRays(intro.bodies);
     drawConstellationLines(intro.bodies, deltaSec);
+    drawMcpStream(intro.bodies);
     drawBodyShadows(intro.bodies);
     drawExternalDecorations(intro.bodies);
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
     for (const b of sorted) drawBodyHalo(b, intro.bodies);
     drawFreshnessPulses(now, intro.bodies);
+    drawCardParticles(now);
     drawPings(now);
     drawAtmosphereBlur();
     drawHud();
@@ -1778,6 +1873,104 @@ export function mountCosmos(data: CosmosData): void {
     heading?.focus();
   }
 
+  // V3.4 — MCP data stream lines. Faint dashed quadratic curves from MCP star
+  // to the planets that consume MCP data (Brainbar, Plain AI, Agentic). Makes
+  // MCP feel purposeful instead of orphaned at the edge of the cosmos.
+  // Drawn before body shadows so bodies render on top.
+  function drawMcpStream(introBodies: number): void {
+    if (introBodies <= 0 || reducedMotion) return;
+    const star = bodies.find((b) => b.kind === 'star');
+    if (!star) return;
+    // Pull consumer slugs from the data.mcp.connections array — only those with
+    // status === 'live' get a stream line (planned ones are quiet for now).
+    const liveConsumers = (data.mcp.connections ?? [])
+      .filter((c: { slug: string; status?: string }) => c.status === 'live')
+      .map((c: { slug: string }) => c.slug.replace('-mcp', ''))
+      .filter((s: string) => s !== 'mcp-collective');
+    const seen = new Set<string>();
+    const t = getRealT();
+    ctx.save();
+    ctx.lineWidth = 0.9;
+    ctx.setLineDash([3, 7]);
+    ctx.lineDashOffset = -t * 12; // slow flow toward planets
+    for (const slug of liveConsumers) {
+      if (seen.has(slug)) continue;
+      seen.add(slug);
+      const target = bodies.find((b) => b.slug === slug);
+      if (!target) continue;
+      const dx = target.screenX - star.screenX;
+      const dy = target.screenY - star.screenY;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 50) continue;
+      // Curved arc using midpoint offset perpendicular for organic feel
+      const mx = (star.screenX + target.screenX) / 2;
+      const my = (star.screenY + target.screenY) / 2;
+      const px = -dy / dist * Math.min(60, dist * 0.18);
+      const py = dx / dist * Math.min(60, dist * 0.18);
+      ctx.strokeStyle = withAlpha(data.atmosphere.accentSoft, 0.20);
+      ctx.beginPath();
+      ctx.moveTo(star.screenX, star.screenY);
+      ctx.quadraticCurveTo(mx + px, my + py, target.screenX, target.screenY);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // V3.4 — Card-open particle trail. Visual reinforcement that the card came
+  // from THIS body. On click, emit a small cluster of particles from the body's
+  // screen position toward the card panel's centre, fading as they arrive.
+  interface CardParticle {
+    fromX: number; fromY: number;
+    toX: number; toY: number;
+    startMs: number;
+    color: string;
+    size: number;
+  }
+  const cardParticles: CardParticle[] = [];
+  function emitCardParticles(slug: string): void {
+    if (reducedMotion) return;
+    const body = bodies.find((b) => b.slug === slug);
+    if (!body) return;
+    const cardEl = document.querySelector('.card-panel') as HTMLElement | null;
+    if (!cardEl) return;
+    const cardRect = cardEl.getBoundingClientRect();
+    if (cardRect.width === 0) return;
+    const toX = cardRect.left + cardRect.width / 2;
+    const toY = cardRect.top + cardRect.height * 0.35;
+    const now = performance.now();
+    const color = body.glowOuter ?? '#FFFFFF';
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      cardParticles.push({
+        fromX: body.screenX + (Math.random() - 0.5) * 12,
+        fromY: body.screenY + (Math.random() - 0.5) * 12,
+        toX: toX + (Math.random() - 0.5) * 16,
+        toY: toY + (Math.random() - 0.5) * 16,
+        startMs: now + i * 28,
+        color,
+        size: 1.6 + Math.random() * 1.4,
+      });
+    }
+  }
+  function drawCardParticles(now: number): void {
+    if (cardParticles.length === 0) return;
+    const dur = 720;
+    for (let i = cardParticles.length - 1; i >= 0; i--) {
+      const p = cardParticles[i]!;
+      const tt = (now - p.startMs) / dur;
+      if (tt >= 1) { cardParticles.splice(i, 1); continue; }
+      if (tt < 0) continue;
+      const eased = tt * tt * (3 - 2 * tt); // smoothstep
+      const x = p.fromX + (p.toX - p.fromX) * eased;
+      const y = p.fromY + (p.toY - p.fromY) * eased;
+      const alpha = (1 - tt) * 0.95;
+      ctx.fillStyle = withAlpha(p.color, alpha);
+      ctx.beginPath();
+      ctx.arc(x, y, p.size, 0, TWO_PI);
+      ctx.fill();
+    }
+  }
+
   function openSlug(slug: string): void {
     if (focusedSlug === slug) return;
     lastFocusBeforeOpen = (document.activeElement as HTMLElement) ?? null;
@@ -1791,6 +1984,12 @@ export function mountCosmos(data: CosmosData): void {
       }, WARP_DURATION_MS);
     }
     renderCard(slug);
+    // V3.4 — Card-open particle trail flies from the clicked body to the card
+    // panel, reinforcing "this card came from THAT thing". Wait one frame for
+    // card panel layout so we have its actual rect.
+    if (!reducedMotion) {
+      window.requestAnimationFrame(() => emitCardParticles(slug));
+    }
     scheduleUrlWrite();
   }
 
@@ -1842,12 +2041,36 @@ export function mountCosmos(data: CosmosData): void {
     b.el.addEventListener('click', (e) => {
       e.preventDefault();
       markInteraction();
+      // V3.4 — Click priority: planets win over moons when both overlap the
+      // click point. Without this, a moon (e.g. Curriculum) visually in front
+      // of a non-parent planet (e.g. Shift) eats the click. Hit-test ourselves
+      // and re-route to the planet if the click lands on one.
+      let routedSlug = b.slug;
+      if (b.kind === 'moon') {
+        const rect = b.el.getBoundingClientRect();
+        const ccx = rect.left + rect.width / 2;
+        const ccy = rect.top + rect.height / 2;
+        for (const other of bodies) {
+          if (other.kind !== 'planet' || other.slug === b.parentSlug) continue;
+          const r2 = other.el.getBoundingClientRect();
+          if (r2.width === 0) continue;
+          const ocx = r2.left + r2.width / 2;
+          const ocy = r2.top + r2.height / 2;
+          const dist = Math.hypot(ccx - ocx, ccy - ocy);
+          // Generous radius — about 0.6 of the average body radius
+          const maxDist = (rect.width + r2.width) * 0.42;
+          if (dist < maxDist) {
+            routedSlug = other.slug;
+            break;
+          }
+        }
+      }
       // V3.3 — external channels (long-form, bites, kofi) now open a card panel
       // just like planets do. The card has a single "Visit" CTA, or for Ko-fi
       // two CTAs (browse downloads + drop a tip). Previously they navigated
       // straight to a new tab — that pulled visitors out of the cosmos before
       // they understood what each one is.
-      openSlug(b.slug);
+      openSlug(routedSlug);
     });
   }
 
@@ -1903,18 +2126,18 @@ export function mountCosmos(data: CosmosData): void {
     }
   });
 
-  // V2.2 — view-mode toggle (cosmos ↔ topdown).
-  const viewCosmosBtn = document.getElementById('view-cosmos') as HTMLButtonElement | null;
+  // V3.4 — view-mode toggle (side ↔ topdown).
+  const viewSideBtn = (document.getElementById('view-side') ?? document.getElementById('view-cosmos')) as HTMLButtonElement | null;
   const viewTopdownBtn = document.getElementById('view-topdown') as HTMLButtonElement | null;
   function syncViewToggle(): void {
-    if (viewCosmosBtn) viewCosmosBtn.setAttribute('aria-pressed', String(viewMode === 'cosmos'));
+    if (viewSideBtn) viewSideBtn.setAttribute('aria-pressed', String(viewMode === 'side'));
     if (viewTopdownBtn) viewTopdownBtn.setAttribute('aria-pressed', String(viewMode === 'topdown'));
   }
   syncViewToggle();
-  if (viewCosmosBtn) {
-    viewCosmosBtn.addEventListener('click', () => {
+  if (viewSideBtn) {
+    viewSideBtn.addEventListener('click', () => {
       markInteraction();
-      applyViewMode('cosmos');
+      applyViewMode('side');
       syncViewToggle();
     });
   }
@@ -2034,6 +2257,104 @@ export function mountCosmos(data: CosmosData): void {
   root.addEventListener('pointerup', endPointer);
   root.addEventListener('pointercancel', endPointer);
 
+  // V3.4 — Search overlay opened with '/'. Type to filter all bodies (planets,
+  // moons, externals, MCP). Enter or click selects → opens that body's card.
+  // Esc closes. Keyboard arrow nav for power users.
+  const searchOverlay = document.createElement('div');
+  searchOverlay.className = 'cosmos-search';
+  searchOverlay.setAttribute('role', 'dialog');
+  searchOverlay.setAttribute('aria-label', 'Search bodies');
+  searchOverlay.dataset.open = 'false';
+  searchOverlay.innerHTML = `
+    <div class="cosmos-search__panel">
+      <input type="text" class="cosmos-search__input" placeholder="Search planets, moons, channels…" aria-label="Search" />
+      <ul class="cosmos-search__list" role="listbox"></ul>
+      <div class="cosmos-search__hint">Esc · close · ↑↓ · navigate · ⏎ · open</div>
+    </div>
+  `;
+  document.body.appendChild(searchOverlay);
+  const searchInput = searchOverlay.querySelector('.cosmos-search__input') as HTMLInputElement;
+  const searchList = searchOverlay.querySelector('.cosmos-search__list') as HTMLUListElement;
+  type SearchEntry = { slug: string; name: string; kind: string };
+  const searchEntries: SearchEntry[] = [];
+  for (const p of data.planets) {
+    searchEntries.push({ slug: p.slug, name: p.tagline ? `${p.slug} — ${p.tagline}` : p.slug, kind: 'planet' });
+    for (const m of p.moons ?? []) {
+      searchEntries.push({ slug: m.slug, name: m.name ?? m.slug, kind: 'moon' });
+    }
+  }
+  searchEntries.push({ slug: data.mcp.slug, name: data.mcp.name ?? 'MCP', kind: 'star' });
+  for (const c of externalChannels) {
+    searchEntries.push({ slug: c.slug, name: c.name, kind: 'external' });
+  }
+  let searchSelection = 0;
+  function renderSearchList(filter: string): void {
+    const f = filter.trim().toLowerCase();
+    const matches = f ? searchEntries.filter((e) => e.slug.includes(f) || e.name.toLowerCase().includes(f)) : searchEntries;
+    searchList.innerHTML = '';
+    matches.forEach((e, i) => {
+      const li = document.createElement('li');
+      li.className = 'cosmos-search__item';
+      li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', String(i === searchSelection));
+      li.dataset.slug = e.slug;
+      li.innerHTML = `<span>${e.name}</span><span class="cosmos-search__item-kind">${e.kind}</span>`;
+      li.addEventListener('click', () => {
+        closeSearch();
+        openSlug(e.slug);
+      });
+      searchList.appendChild(li);
+    });
+  }
+  function openSearch(): void {
+    searchOverlay.dataset.open = 'true';
+    searchInput.value = '';
+    searchSelection = 0;
+    renderSearchList('');
+    searchInput.focus();
+  }
+  function closeSearch(): void {
+    searchOverlay.dataset.open = 'false';
+    searchInput.blur();
+  }
+  searchInput.addEventListener('input', () => {
+    searchSelection = 0;
+    renderSearchList(searchInput.value);
+  });
+  searchInput.addEventListener('keydown', (e: KeyboardEvent) => {
+    const items = Array.from(searchList.querySelectorAll('.cosmos-search__item')) as HTMLLIElement[];
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeSearch();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      searchSelection = Math.min(searchSelection + 1, items.length - 1);
+      items.forEach((el, i) => el.setAttribute('aria-selected', String(i === searchSelection)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      searchSelection = Math.max(searchSelection - 1, 0);
+      items.forEach((el, i) => el.setAttribute('aria-selected', String(i === searchSelection)));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = items[searchSelection];
+      const slug = sel?.dataset.slug;
+      if (slug) {
+        closeSearch();
+        openSlug(slug);
+      }
+    }
+  });
+  searchOverlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === searchOverlay) closeSearch();
+  });
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key !== '/') return;
+    const tag = (document.activeElement as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    openSearch();
+  });
+
   // Reset zoom + pan with key 'r' for keyboard users.
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'r' || e.key === 'R') {
@@ -2042,7 +2363,8 @@ export function mountCosmos(data: CosmosData): void {
       userPanX = 0;
       userPanY = 0;
       userZoomMul = 1;
-      applyViewMode('cosmos');
+      // V3.4 — R no longer changes view mode; it just resets zoom + pan.
+      // Previous behaviour forced 'cosmos' which fights user view preference.
       syncViewToggle();
       scheduleUrlWrite();
     }

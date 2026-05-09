@@ -54,7 +54,7 @@
       "content": "Tools, mind maps, certification paths, and a long-running blog. Each one started because Sush needed it himself.",
       "founder": "In my head, I'm still the curious intern. What overflows lands here.",
       "stats": ["56 tools", "66 mind maps", "9 cert paths"],
-      "orbit": { "radius": 280, "ecc": 0.04, "tilt": 6, "speedSec": 89, "phase": 0 },
+      "orbit": { "radius": 420, "ecc": 0.04, "tilt": 6, "speedSec": 89, "phase": 0 },
       "body": { "size": 36, "glowCore": "#A5B4FC", "glowOuter": "#6366F1" },
       "moons": [
         {
