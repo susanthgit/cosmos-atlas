@@ -20,29 +20,17 @@ async function shoot(label, vp, fn) {
   await ctx.close();
 }
 
-// 1) Desktop topdown — default
+// 1) Desktop topdown — default (only view now)
 await shoot('01-desktop-topdown', { width: 1440, height: 900 });
 
-// 2) Desktop side view
-await shoot('02-desktop-side', { width: 1440, height: 900 }, async (p) => {
-  await p.click('#view-side');
-  await p.waitForTimeout(2000);
-});
-
-// 3) Desktop topdown — focused on Earth (force click — orbits move)
-await shoot('03-desktop-earth-focus', { width: 1440, height: 900 }, async (p) => {
+// 2) Desktop topdown — focused on Earth (force click — orbits move)
+await shoot('02-desktop-earth-focus', { width: 1440, height: 900 }, async (p) => {
   await p.click('button[data-slug="earth"]', { force: true });
   await p.waitForTimeout(1500);
 });
 
-// 4) Mobile topdown
-await shoot('04-mobile-topdown', { width: 390, height: 844 });
-
-// 5) Mobile side
-await shoot('05-mobile-side', { width: 390, height: 844 }, async (p) => {
-  await p.click('#view-side');
-  await p.waitForTimeout(2000);
-});
+// 3) Mobile topdown
+await shoot('03-mobile-topdown', { width: 390, height: 844 });
 
 // 6) Desktop list view
 await shoot('06-desktop-listview', { width: 1440, height: 900 }, async (p) => {

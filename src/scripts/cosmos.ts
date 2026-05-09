@@ -160,31 +160,20 @@ export function mountCosmos(data: CosmosData): void {
   }
   const TILT_MIN = 0;
   const TILT_MAX = 80 * DEG;
-  // V3.4 — Cosmos perspective view replaced with SIDE view per Sush. Side
-  // view shows the system edge-on (orbital plane nearly horizontal), reading
-  // as a horizontal slice of the system instead of a tilted bird's-eye view.
-  const SIDE_TILT_RAD = (data.atmosphere.sideTilt ?? 78) * DEG;
+  // V3.4.1 — Side view removed per Sush. Only topdown exists now. Manual
+  // drag-to-tilt is still available but there's no preset toggle.
 
-  // V2.2 — view mode: 'side' (edge-on) ↔ 'topdown' (overhead). Tilt lerps to target.
-  // V3.x — topdown is now the default per Sush. Existing visitors who
-  // explicitly toggled to either mode keep their stored preference.
-  // V3.4 — key bumped v2→v3 because the 'cosmos' tilted mode was replaced
-  // with 'side' (edge-on). Anyone with stored 'cosmos' migrates to 'side'.
-  const viewModeKey = 'cosmosViewMode.v3';
-  const legacyStored = window.localStorage.getItem('cosmosViewMode.v2');
-  const storedMode = window.localStorage.getItem(viewModeKey)
-    ?? (legacyStored === 'cosmos' ? 'side' : legacyStored);
-  let viewMode: 'side' | 'topdown' = storedMode === 'side' ? 'side' : 'topdown';
-  let targetTiltRad = viewMode === 'topdown' ? 0 : SIDE_TILT_RAD;
-  if (viewMode === 'topdown') setTilt(0);
-  function applyViewMode(mode: 'side' | 'topdown', persist = true): void {
-    viewMode = mode;
-    targetTiltRad = mode === 'topdown' ? 0 : SIDE_TILT_RAD;
-    if (persist) {
-      try { window.localStorage.setItem(viewModeKey, mode); } catch (_) { /* */ }
-    }
-    document.body.dataset.viewMode = mode;
-    scheduleUrlWrite();
+  // V2.2 — view mode locked to 'topdown' (V3.4.1). Kept as a constant rather
+  // than a variable so any future expansion (multi-view) has a clean
+  // re-introduction point. localStorage and URL params are ignored — topdown
+  // is the only experience.
+  const viewMode: 'topdown' = 'topdown';
+  let targetTiltRad = 0;
+  setTilt(0);
+  function applyViewMode(_mode: 'topdown', _persist = true): void {
+    // No-op: topdown is the only view. Kept to preserve the call signature
+    // for any internal callers (e.g., focus reset) without behavioural change.
+    targetTiltRad = 0;
   }
   document.body.dataset.viewMode = viewMode;
 
@@ -334,14 +323,11 @@ export function mountCosmos(data: CosmosData): void {
     clampUserPan();
   }
   if (initialViewParam === 'side' || initialViewParam === 'cosmos' || initialViewParam === 'topdown') {
-    // V3.4 — accept legacy 'cosmos' query param as alias for 'side' so existing
-    // shared URLs still work.
-    const resolved: 'side' | 'topdown' = initialViewParam === 'topdown' ? 'topdown' : 'side';
-    // override stored mode without persisting (URL wins per visit)
-    viewMode = resolved;
-    targetTiltRad = viewMode === 'topdown' ? 0 : SIDE_TILT_RAD;
-    if (viewMode === 'topdown') setTilt(0);
-    document.body.dataset.viewMode = viewMode;
+    // V3.4.1 — Side view dropped. URL param is parsed for backward compat but
+    // ignored — topdown is the only mode now.
+    targetTiltRad = 0;
+    setTilt(0);
+    document.body.dataset.viewMode = 'topdown';
   }
 
   let urlWriteScheduled = 0;
@@ -359,9 +345,10 @@ export function mountCosmos(data: CosmosData): void {
         } else {
           qs.delete('pan');
         }
-        // URL convention: default mode is omitted, non-default is set.
-        // V3.4 — non-default is now 'side' (edge-on), replacing 'cosmos'.
-        if (viewMode === 'side') qs.set('view', 'side'); else qs.delete('view');
+        // URL convention: V3.4.1 dropped the view= param entirely (only
+        // topdown exists now). Any legacy view param will be ignored on next
+        // page load. We always omit it from URLs we write.
+        qs.delete('view');
         const next = qs.toString();
         const url = next ? `${window.location.pathname}?${next}` : window.location.pathname;
         window.history.replaceState(null, '', url);
@@ -2126,28 +2113,10 @@ export function mountCosmos(data: CosmosData): void {
     }
   });
 
-  // V3.4 — view-mode toggle (side ↔ topdown).
-  const viewSideBtn = (document.getElementById('view-side') ?? document.getElementById('view-cosmos')) as HTMLButtonElement | null;
-  const viewTopdownBtn = document.getElementById('view-topdown') as HTMLButtonElement | null;
-  function syncViewToggle(): void {
-    if (viewSideBtn) viewSideBtn.setAttribute('aria-pressed', String(viewMode === 'side'));
-    if (viewTopdownBtn) viewTopdownBtn.setAttribute('aria-pressed', String(viewMode === 'topdown'));
-  }
+  // V3.4.1 — view-mode toggle removed (only topdown exists). syncViewToggle
+  // kept as a no-op so existing call sites don't break.
+  function syncViewToggle(): void { /* no-op: topdown is the only view */ }
   syncViewToggle();
-  if (viewSideBtn) {
-    viewSideBtn.addEventListener('click', () => {
-      markInteraction();
-      applyViewMode('side');
-      syncViewToggle();
-    });
-  }
-  if (viewTopdownBtn) {
-    viewTopdownBtn.addEventListener('click', () => {
-      markInteraction();
-      applyViewMode('topdown');
-      syncViewToggle();
-    });
-  }
 
   // P1 #11 — track cursor for magnetism + reset on leave.
   root.addEventListener('pointermove', (e: PointerEvent) => {
