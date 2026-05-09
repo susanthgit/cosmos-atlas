@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cosmos Bar — preview</title>
+  <link rel="stylesheet" href="/cosmos-bar.css">
+  <style>
+    body { margin: 0; font-family: system-ui; background: #fafafa; color: #111; }
+    main { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { margin-top: 1rem; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    .controls button { font-size: 12px; padding: 6px 10px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; }
+    .controls button.on { background: #02030E; color: #F2EDE3; border-color: #02030E; }
+    .stack { background: #fff; border-radius: 8px; padding: 16px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-top: 12px; }
+    /* Fake the host planet's nav below the cosmos bar */
+    .fake-nav { background: #fff; border-bottom: 1px solid #eee; padding: 12px 16px; font-weight: 600; color: #444; }
+  </style>
+</head>
+<body>
+  <!-- The cosmos bar — vendored placeholder + the element + the script -->
+  <cosmos-bar active="shift" data-host="self"></cosmos-bar>
+  <script async src="/cosmos-bar.js"></script>
+
+  <!-- The "host planet's" own nav goes BELOW the cosmos bar -->
+  <div class="fake-nav">🛠 Shift — masthead</div>
+
+  <main>
+    <h1>Cosmos Bar — preview</h1>
+    <p>Use the controls below to preview the bar on each "host planet".</p>
+    <div class="controls" id="ctl">
+      <button data-active="">none</button>
+      <button data-active="earth">earth</button>
+      <button data-active="guided">guided (moon)</button>
+      <button data-active="brainbar">brainbar</button>
+      <button data-active="shift" class="on">shift</button>
+      <button data-active="plainai">plainai</button>
+      <button data-active="curriculum">curriculum (moon)</button>
+      <button data-active="agentic">agentic</button>
+      <button data-active="claw">claw</button>
+    </div>
+    <div class="stack">
+      <p><strong>What to verify:</strong></p>
+      <ul>
+        <li>Bar renders deep-cosmos black, sticky on top</li>
+        <li>8 planet/moon icons + small dim MCP dish + "open the cosmos →" CTA</li>
+        <li>Click a control button → that planet's icon dims to 50%, ▼ indicator dot below</li>
+        <li>Hover any icon → 1-line tagline tooltip appears below after 200ms</li>
+        <li>Brainbar's $_ blinks, Shift's needle ticks, Agentic pulses, Plain AI gradient</li>
+        <li>Resize window below 640px → desktop bodies vanish, ✦ launcher appears, click it → mobile sheet slides down with all bodies + taglines</li>
+      </ul>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById('ctl').addEventListener('click', (e) => {
+      const t = e.target;
+      if (t.tagName !== 'BUTTON') return;
+      document.querySelectorAll('#ctl button').forEach(b => b.classList.remove('on'));
+      t.classList.add('on');
+      const v = t.getAttribute('data-active') || '';
+      document.querySelector('cosmos-bar').setAttribute('active', v);
+    });
+  </script>
+</body>
+</html>

@@ -644,17 +644,16 @@ for (const vp of VIEWPORTS) {
     // ── Phase C — lens framework checks ──
     console.log(`\n=== ${vp.name} / Phase C ===`);
 
-    // 10. Lens pill exists + can toggle open
-    const pillState = await page.evaluate(() => {
-      const pill = document.getElementById('lens-pill');
-      const toggle = document.getElementById('lens-pill-toggle');
-      const options = pill ? pill.querySelectorAll('.lens-pill__option').length : 0;
-      return { hasPill: !!pill, hasToggle: !!toggle, optionCount: options };
+    // 10. Lens grid exists + 4 options visible (Wave 5 — was lens-pill)
+    const gridState = await page.evaluate(() => {
+      const grid = document.getElementById('lens-grid');
+      const options = grid ? grid.querySelectorAll('.lens-grid__option').length : 0;
+      return { hasGrid: !!grid, optionCount: options };
     });
-    if (pillState.hasPill && pillState.hasToggle && pillState.optionCount === 4) {
-      console.log(`  lens pill: ✓ rendered with 4 options`);
+    if (gridState.hasGrid && gridState.optionCount === 4) {
+      console.log(`  lens grid: ✓ rendered with 4 always-visible options`);
     } else {
-      console.log(`  lens pill: 🔴 ${JSON.stringify(pillState)}`);
+      console.log(`  lens grid: 🔴 ${JSON.stringify(gridState)}`);
       totalFails++;
     }
 
@@ -662,7 +661,7 @@ for (const vp of VIEWPORTS) {
     //     changes and bodies are still clickable after the transition.
     for (const lens of ['constellation', 'timeline', 'audience', 'cosmos']) {
       await page.evaluate((l) => {
-        const opt = document.querySelector(`.lens-pill__option[data-lens="${l}"]`);
+        const opt = document.querySelector(`.lens-grid__option[data-lens="${l}"]`);
         if (opt) opt.click();
       }, lens);
       await page.waitForTimeout(900); // wait past LENS_TRANSITION_MS (700ms)
@@ -693,7 +692,7 @@ for (const vp of VIEWPORTS) {
 
     // 12. Lens choice persists across reload (localStorage)
     await page.evaluate(() => {
-      const opt = document.querySelector('.lens-pill__option[data-lens="constellation"]');
+      const opt = document.querySelector('.lens-grid__option[data-lens="constellation"]');
       if (opt) opt.click();
     });
     await page.waitForTimeout(900);
@@ -709,7 +708,7 @@ for (const vp of VIEWPORTS) {
     // Reset to cosmos for downstream tests
     await page.evaluate(() => {
       try { localStorage.setItem('cosmosLens', 'cosmos'); } catch (_) { /* */ }
-      const opt = document.querySelector('.lens-pill__option[data-lens="cosmos"]');
+      const opt = document.querySelector('.lens-grid__option[data-lens="cosmos"]');
       if (opt) opt.click();
     });
     await page.waitForTimeout(900);
@@ -929,72 +928,110 @@ for (const vp of VIEWPORTS) {
       }
     }
 
-    // 2) Ambient panel — click 🔊 → panel opens, has 3 modes + volume slider.
-    const ambBtn = await page.$('#ambient-toggle');
-    if (!ambBtn) {
-      console.log(`  ambient toggle: 🔴 #ambient-toggle not found`);
+    // 2) Ambient player (Wave 4) — left-column collapsible player with full
+    //    transport controls + 11-track playlist + shuffle + repeat.
+    const ambHead = await page.$('#ambient-toggle-panel');
+    if (!ambHead) {
+      console.log(`  ambient player: 🔴 #ambient-toggle-panel not found`);
       totalFails++;
     } else {
-      await ambBtn.click();
-      await page.waitForTimeout(300);
-      const ambReport = await page.evaluate(() => {
-        const panel = document.getElementById('ambient-panel');
-        const modes = Array.from(document.querySelectorAll('.ambient-mode'));
-        const vol = document.getElementById('ambient-volume');
+      // Expand the player.
+      await page.evaluate(() => (document.getElementById('ambient-toggle-panel'))?.click());
+      await page.waitForTimeout(250);
+      const probe = await page.evaluate(() => {
+        const player = document.getElementById('ambient-player');
+        const list = document.querySelectorAll('.ambient-list__item');
+        const audio = document.getElementById('ambient-audio');
         return {
-          panelOpen: panel?.getAttribute('data-open') === 'true',
-          modeCount: modes.length,
-          modes: modes.map((b) => b.getAttribute('data-ambient-mode')),
-          volPresent: !!vol,
+          state: player?.getAttribute('data-state'),
+          tracks: list.length,
+          hasAudio: !!audio,
+          hasPrev: !!document.getElementById('ambient-prev'),
+          hasPlay: !!document.getElementById('ambient-play'),
+          hasNext: !!document.getElementById('ambient-next'),
+          hasShuffle: !!document.getElementById('ambient-shuffle'),
+          hasRepeat: !!document.getElementById('ambient-repeat'),
+          hasVol: !!document.getElementById('ambient-volume'),
         };
       });
-      if (ambReport.panelOpen && ambReport.modeCount >= 4 && ambReport.volPresent) {
-        console.log(`  ambient panel: ✓ opened, ${ambReport.modeCount} modes (${ambReport.modes.join('/')}) + volume slider`);
+      const ok = probe.state === 'expanded'
+        && probe.tracks >= 8
+        && probe.hasAudio && probe.hasPrev && probe.hasPlay && probe.hasNext
+        && probe.hasShuffle && probe.hasRepeat && probe.hasVol;
+      if (ok) {
+        console.log(`  ambient player: ✓ expanded, ${probe.tracks} tracks + transport + shuffle + repeat + volume`);
       } else {
-        console.log(`  ambient panel: 🔴 panelOpen=${ambReport.panelOpen}, modes=${ambReport.modeCount}, vol=${ambReport.volPresent}`);
+        console.log(`  ambient player: 🔴 ${JSON.stringify(probe)}`);
         totalFails++;
       }
-      await page.click('#ambient-close');
+      // Toggle shuffle and repeat — verify state changes.
+      await page.evaluate(() => (document.getElementById('ambient-shuffle'))?.click());
+      await page.waitForTimeout(150);
+      const shuffleOn = await page.evaluate(() => document.getElementById('ambient-shuffle')?.getAttribute('aria-pressed'));
+      if (shuffleOn === 'true') console.log(`  ambient shuffle: ✓ toggled on`);
+      else { console.log(`  ambient shuffle: 🔴 still "${shuffleOn}"`); totalFails++; }
+      await page.evaluate(() => (document.getElementById('ambient-repeat'))?.click());
+      await page.waitForTimeout(150);
+      const repeatMode = await page.evaluate(() => document.getElementById('ambient-repeat')?.getAttribute('data-repeat'));
+      if (repeatMode && repeatMode !== 'all') console.log(`  ambient repeat: ✓ cycled to "${repeatMode}"`);
+      else { console.log(`  ambient repeat: 🔴 still "${repeatMode}"`); totalFails++; }
+      // Click first track in list — currentIndex should update.
+      await page.evaluate(() => {
+        const first = document.querySelector('.ambient-list__btn[data-track-index="0"]');
+        if (first) first.click();
+      });
+      await page.waitForTimeout(300);
+      const audioReady = await page.evaluate(() => {
+        const a = document.getElementById('ambient-audio');
+        const activeEl = document.querySelector('.ambient-list__item--active [data-track-index]');
+        return { src: (a && a.currentSrc) || '', activeIdx: activeEl ? activeEl.getAttribute('data-track-index') : null };
+      });
+      if (audioReady.src && audioReady.activeIdx === '0') {
+        console.log(`  ambient track load: ✓ audio src set, item 0 marked active`);
+      } else {
+        console.log(`  ambient track load: 🔴 src="${audioReady.src.slice(-40)}" activeIdx="${audioReady.activeIdx}"`);
+        totalFails++;
+      }
+      // Collapse player to leave clean state.
+      await page.evaluate(() => (document.getElementById('ambient-toggle-panel'))?.click());
       await page.waitForTimeout(200);
     }
 
-    // 3) Pomodoro panel — click ⏱ → panel opens, start → timer ticks down.
-    const pomoBtn = await page.$('#pomodoro-toggle');
-    if (!pomoBtn) {
-      console.log(`  pomodoro toggle: 🔴 #pomodoro-toggle not found`);
+    // 3) Pomodoro inline card (Wave 5) — click head → expand → start → time ticks.
+    const pomoHead = await page.$('#pomodoro-toggle-panel');
+    if (!pomoHead) {
+      console.log(`  pomodoro card: 🔴 #pomodoro-toggle-panel not found`);
       totalFails++;
     } else {
-      await pomoBtn.click();
-      await page.waitForTimeout(400);
-      const panelOpenBefore = await page.evaluate(() => {
-        const panel = document.getElementById('pomodoro-panel');
+      await page.evaluate(() => (document.getElementById('pomodoro-toggle-panel'))?.click());
+      await page.waitForTimeout(300);
+      const cardState = await page.evaluate(() => {
+        const card = document.getElementById('pomodoro-card');
         return {
-          dataOpen: panel?.getAttribute('data-open'),
+          state: card?.getAttribute('data-state'),
           startVisible: !document.getElementById('pomodoro-start')?.hasAttribute('hidden'),
-          startEnabled: !document.getElementById('pomodoro-start')?.hasAttribute('disabled'),
         };
       });
       const initialTime = await page.evaluate(() => document.getElementById('pomodoro-time')?.textContent || '');
-      // Direct click via DOM to avoid Playwright's actionability checks (popover
-      // animation could race). The button has stopPropagation so this is safe.
+      // Direct click via DOM to avoid Playwright's actionability checks racing CSS animation.
       await page.evaluate(() => (document.getElementById('pomodoro-start'))?.click());
-      await page.waitForTimeout(150);   // give setPhase a moment
+      await page.waitForTimeout(150);
       const phaseImmediate = await page.evaluate(() => document.body.getAttribute('data-pomodoro'));
-      await page.waitForTimeout(1300);  // wait for tick to update time at +1.5s
+      await page.waitForTimeout(1300);
       const tickedTime = await page.evaluate(() => document.getElementById('pomodoro-time')?.textContent || '');
       const phaseFocus = await page.evaluate(() => document.body.getAttribute('data-pomodoro'));
       const ok = initialTime === '25:00' && phaseFocus === 'focus' && tickedTime !== initialTime;
       if (ok) {
         console.log(`  pomodoro: ✓ started focus phase (${initialTime} → ${tickedTime}, body.pomodoro="${phaseFocus}")`);
       } else {
-        console.log(`  pomodoro: 🔴 panel=${panelOpenBefore.dataOpen}, startVisible=${panelOpenBefore.startVisible}, initial="${initialTime}", phase-immediate="${phaseImmediate}", phase-after="${phaseFocus}", time-after="${tickedTime}"`);
+        console.log(`  pomodoro: 🔴 cardState=${cardState.state}, startVisible=${cardState.startVisible}, initial="${initialTime}", phase-immediate="${phaseImmediate}", phase-after="${phaseFocus}", time-after="${tickedTime}"`);
         totalFails++;
       }
-      // Stop and close to leave clean state for downstream tests.
+      // Stop + collapse to leave clean state for downstream tests.
       const stopVisible = await page.evaluate(() => !document.getElementById('pomodoro-stop')?.hasAttribute('hidden'));
       if (stopVisible) await page.evaluate(() => (document.getElementById('pomodoro-stop'))?.click());
       await page.waitForTimeout(200);
-      await page.evaluate(() => (document.getElementById('pomodoro-close'))?.click());
+      await page.evaluate(() => (document.getElementById('pomodoro-toggle-panel'))?.click());
       await page.waitForTimeout(200);
     }
 
@@ -1025,6 +1062,177 @@ for (const vp of VIEWPORTS) {
     const resetKey = await page.$('kbd:has-text("R")');
     await page.keyboard.press('r');
     await page.waitForTimeout(400);
+  }
+
+  await ctx.close();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COSMOS BAR — cross-planet nav artifacts (Phase 1 ship — 9 May 2026 EVE)
+// Checks the slim feed + the bundled web component that lives at:
+//   /atlas-bar.json  /cosmos-bar.css  /cosmos-bar.js
+// And the integration preview page:
+//   /cosmos-bar-preview.html
+//
+// Growing-guardrail rule: every cosmos-bar bug found in production must be
+// added here BEFORE shipping the fix. Suite only grows, never shrinks.
+// ════════════════════════════════════════════════════════════════════════════
+{
+  console.log(`\n=== cosmos-bar artifacts ===`);
+  const baseUrl = URL.replace(/\/$/, '');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 600 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => { console.log('  cosmos-bar PAGE ERROR:', e.message); totalFails++; });
+
+  // 1. atlas-bar.json reachable, valid, has 9 bodies
+  const feedResp = await page.goto(`${baseUrl}/atlas-bar.json`, { waitUntil: 'load' });
+  if (feedResp && feedResp.status() === 200) {
+    const feed = await feedResp.json();
+    const bc = Array.isArray(feed.bodies) ? feed.bodies.length : 0;
+    if (bc === 9) {
+      console.log(`  atlas-bar.json: ✓ 200 OK, ${bc} bodies (6 planets + 2 moons + 1 relay)`);
+    } else {
+      console.log(`  atlas-bar.json: 🔴 expected 9 bodies, got ${bc}`);
+      totalFails++;
+    }
+    // Verify each body has slug + url + tagline
+    const malformed = (feed.bodies || []).filter((b) => !b.slug || !b.url || !b.kind);
+    if (malformed.length > 0) {
+      console.log(`  atlas-bar.json: 🔴 ${malformed.length} bodies missing slug/url/kind: ${malformed.map((m) => m.slug || '?').join(',')}`);
+      totalFails++;
+    } else {
+      console.log(`  atlas-bar.json: ✓ all bodies have slug + url + kind`);
+    }
+  } else {
+    console.log(`  atlas-bar.json: 🔴 status=${feedResp?.status()}`);
+    totalFails++;
+  }
+
+  // 2. cosmos-bar.css reachable + has the placeholder selector
+  const cssResp = await page.goto(`${baseUrl}/cosmos-bar.css`, { waitUntil: 'load' });
+  if (cssResp && cssResp.status() === 200) {
+    const css = await cssResp.text();
+    if (css.includes('cosmos-bar:not(:defined)') && css.includes('--cosmos-bar-h')) {
+      console.log(`  cosmos-bar.css: ✓ 200 OK, ${css.length} bytes, has placeholder + height token`);
+    } else {
+      console.log(`  cosmos-bar.css: 🔴 missing expected selectors`);
+      totalFails++;
+    }
+  } else {
+    console.log(`  cosmos-bar.css: 🔴 status=${cssResp?.status()}`);
+    totalFails++;
+  }
+
+  // 3. cosmos-bar.js reachable + is JS
+  const jsResp = await page.goto(`${baseUrl}/cosmos-bar.js`, { waitUntil: 'load' });
+  if (jsResp && jsResp.status() === 200) {
+    const ct = (jsResp.headers()['content-type'] || '').toLowerCase();
+    if (ct.includes('javascript') || ct.includes('text/js')) {
+      console.log(`  cosmos-bar.js: ✓ 200 OK (${ct.split(';')[0]})`);
+    } else {
+      console.log(`  cosmos-bar.js: 🔴 wrong content-type "${ct}"`);
+      totalFails++;
+    }
+  } else {
+    console.log(`  cosmos-bar.js: 🔴 status=${jsResp?.status()}`);
+    totalFails++;
+  }
+
+  // 4. Integration preview — load the preview page and verify the live bar.
+  await page.goto(`${baseUrl}/cosmos-bar-preview.html`, { waitUntil: 'networkidle' });
+  // Wait for the custom element to define and render its bodies (9 = cosmos + 8 siblings).
+  try {
+    await page.waitForFunction(() => {
+      const el = document.querySelector('cosmos-bar');
+      return el && customElements.get('cosmos-bar') && el.shadowRoot && el.shadowRoot.querySelectorAll('.body').length === 9;
+    }, { timeout: 5000 });
+    console.log(`  bar renders: ✓ 9 bodies (cosmos + 8 siblings)`);
+  } catch {
+    console.log(`  bar renders: 🔴 9 bodies did not render within 5s`);
+    totalFails++;
+  }
+
+  // 4b. Cosmos is the first body (visual hierarchy: parent before siblings).
+  const firstSlug = await page.evaluate(() =>
+    document.querySelector('cosmos-bar')?.shadowRoot?.querySelector('.body')?.dataset.slug
+  );
+  if (firstSlug === 'cosmos') console.log(`  cosmos-first ordering: ✓`);
+  else { console.log(`  cosmos-first ordering: 🔴 first body slug=${firstSlug}`); totalFails++; }
+
+  // 5. Active-planet dimming. Preview defaults to active=shift.
+  const activeOk = await page.evaluate(() => {
+    const root = document.querySelector('cosmos-bar')?.shadowRoot;
+    if (!root) return { ok: false, reason: 'no shadow' };
+    const shift = root.querySelector('.body[data-slug="shift"]');
+    if (!shift) return { ok: false, reason: 'no shift body' };
+    const opacity = parseFloat(getComputedStyle(shift).opacity);
+    return { ok: shift.getAttribute('aria-current') === 'true' && opacity < 1, opacity };
+  });
+  if (activeOk.ok) {
+    console.log(`  active-planet dimming: ✓ shift dimmed to opacity=${activeOk.opacity}`);
+  } else {
+    console.log(`  active-planet dimming: 🔴 ${JSON.stringify(activeOk)}`);
+    totalFails++;
+  }
+
+  // 6. Hover tooltip — earth's tagline appears after hover.
+  try {
+    const earthHandle = await page.evaluateHandle(() =>
+      document.querySelector('cosmos-bar').shadowRoot.querySelector('.body[data-slug="earth"]')
+    );
+    await earthHandle.hover();
+    await page.waitForTimeout(400);
+    const tipVisible = await page.evaluate(() => {
+      const earth = document.querySelector('cosmos-bar').shadowRoot.querySelector('.body[data-slug="earth"]');
+      const tip = earth.querySelector('.tip');
+      return tip && parseFloat(getComputedStyle(tip).opacity) > 0.5;
+    });
+    if (tipVisible) console.log(`  hover tooltip: ✓ Earth tagline appears on hover`);
+    else { console.log(`  hover tooltip: 🔴 tooltip did not appear`); totalFails++; }
+    // Move mouse away.
+    await page.mouse.move(640, 500);
+    await page.waitForTimeout(300);
+  } catch (e) {
+    console.log(`  hover tooltip: 🔴 ${e.message}`);
+    totalFails++;
+  }
+
+  // 7. Freshness dots — at least 1 fresh body (atlas has many fresh-shipped planets).
+  const freshCount = await page.evaluate(() =>
+    document.querySelector('cosmos-bar').shadowRoot.querySelectorAll('.body[data-fresh="1"]').length
+  );
+  if (freshCount > 0) console.log(`  freshness dots: ✓ ${freshCount} bodies show fresh-shipped pulse`);
+  else { console.log(`  freshness dots: 🔴 expected ≥1 fresh body, got 0`); totalFails++; }
+
+  // 8. Mobile sheet — at <640px the launcher appears and the sheet opens.
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.waitForTimeout(200);
+  const launchVisible = await page.evaluate(() => {
+    const el = document.querySelector('cosmos-bar').shadowRoot.querySelector('.mobile-launch');
+    return el && getComputedStyle(el).display !== 'none';
+  });
+  if (launchVisible) console.log(`  mobile launcher visible at 390px: ✓`);
+  else { console.log(`  mobile launcher visible at 390px: 🔴`); totalFails++; }
+
+  await page.evaluate(() => {
+    document.querySelector('cosmos-bar').shadowRoot.querySelector('.mobile-launch').click();
+  });
+  await page.waitForTimeout(400);
+  const sheetState = await page.evaluate(() => {
+    const sheet = document.querySelector('cosmos-bar').shadowRoot.querySelector('.sheet');
+    if (!sheet) return { ok: false };
+    const r = sheet.getBoundingClientRect();
+    return {
+      open: sheet.getAttribute('data-open') === '1',
+      visibleBelowBar: r.top >= 30 && r.height > 100, // sheet should extend below the bar
+      rowCount: document.querySelector('cosmos-bar').shadowRoot.querySelectorAll('.sheet-row').length,
+    };
+  });
+  if (sheetState.open && sheetState.visibleBelowBar && sheetState.rowCount === 10) {
+    console.log(`  mobile sheet: ✓ opens, extends below bar, ${sheetState.rowCount} rows`);
+  } else {
+    console.log(`  mobile sheet: 🔴 ${JSON.stringify(sheetState)}`);
+    totalFails++;
   }
 
   await ctx.close();

@@ -1,0 +1,338 @@
+/**
+ * Cosmos Bar — styles
+ * ════════════════════════════════════════════════════════════════════════════
+ * One source, two consumers:
+ *
+ * 1. PLACEHOLDER block (between PLACEHOLDER-START / PLACEHOLDER-END markers)
+ *    — extracted by emit-cosmos-bar.mjs to public/cosmos-bar.css. Vendored
+ *    once into each planet repo. Reserves the 36px slot, paints the black
+ *    strip, paints the loading ✦ — guarantees no FOUC.
+ *
+ * 2. FULL block (everything between FULL-START / FULL-END markers)
+ *    — extracted by emit-cosmos-bar.mjs and inlined into the shadow root by
+ *    cosmos-bar.js. Adds icons, hover tooltip, freshness dots, mobile sheet,
+ *    everything that makes the bar feel alive.
+ *
+ * Brand discipline: ALWAYS deep-cosmos black + cream + Space Grotesk. Never
+ * inherits the host planet's theme. Cosmos identity stays consistent.
+ *
+ * Touched: 9 May 2026 EVE — initial build.
+ */
+
+/* PLACEHOLDER-START
+   Vendored once per repo. ~30 lines. Reserves layout + paints the strip
+   before cosmos-bar.js arrives. Lives at root link rel=stylesheet path. */
+:root { --cosmos-bar-h: 36px; }
+@media (max-width: 640px) { :root { --cosmos-bar-h: 32px; } }
+
+cosmos-bar,
+.cosmos-bar-placeholder {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--cosmos-bar-h);
+  width: 100%;
+  background: #02030E;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  color: #F2EDE3;
+  /* layout containment is fine, but paint containment would trap fixed-positioned
+     descendants (mobile sheet) inside the 36px bar. Don't use `contain: paint`. */
+  contain: layout;
+  /* Cosmos chrome stays cosmos chrome — never inherits page theme. */
+  color-scheme: dark;
+}
+cosmos-bar:not(:defined),
+.cosmos-bar-placeholder {
+  /* Pre-JS state: a black strip with ✦ on the left telling visitors what this is. */
+  background:
+    linear-gradient(to right, rgba(255, 179, 71, 0.06) 0%, transparent 8%, transparent 100%)
+    , #02030E;
+  position: sticky;
+  top: 0;
+}
+cosmos-bar:not(:defined)::after,
+.cosmos-bar-placeholder::after {
+  content: "✦ cosmos";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #FFD89A;
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  cosmos-bar, .cosmos-bar-placeholder { transition: none !important; }
+}
+/* PLACEHOLDER-END */
+
+/* FULL-START
+   Inlined into shadow DOM. Covers the live bar — icons, freshness dots, hover
+   tooltip, active-planet dimming, mobile sheet. */
+:host {
+  all: initial;
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--cosmos-bar-h, 36px);
+  width: 100%;
+  background: #02030E;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  color: #F2EDE3;
+  /* layout-only containment — paint containment would trap the fixed-position
+     mobile sheet inside the 36px host. */
+  contain: layout;
+  color-scheme: dark;
+}
+@media (max-width: 640px) { :host { --cosmos-bar-h: 32px; } }
+
+* { box-sizing: border-box; }
+
+.bar {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 20px;
+  gap: 22px;
+}
+
+.bodies {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.spacer { flex: 1 1 auto; }
+
+.tail {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+
+/* Hairline divider between cosmos identity and sibling planets */
+.divider {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  flex: 0 0 auto;
+}
+
+/* Body chip — clickable icon slot */
+.body {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 180ms ease-out, opacity 180ms ease-out, background-color 180ms ease-out;
+  flex: 0 0 auto;
+}
+.body:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+.body:focus-visible {
+  outline: 2px solid #FFB347;
+  outline-offset: 2px;
+}
+.body[aria-current="true"] {
+  opacity: 0.5;
+}
+.body[aria-current="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #F2EDE3;
+}
+
+/* Cosmos home anchor — subtle warm accent so it reads as parent, not sibling.
+   Same width/height as a body so spacing matches; just a soft amber tint. */
+.body--cosmos {
+  background: rgba(255, 179, 71, 0.06);
+}
+.body--cosmos:hover {
+  background: rgba(255, 179, 71, 0.16);
+}
+
+/* Freshness dot — appears top-right of the icon if shipped < 14 days ago */
+.body[data-fresh="1"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #FFB347;
+  box-shadow: 0 0 4px rgba(255, 179, 71, 0.6);
+  animation: cb-fresh 2.4s ease-in-out infinite;
+}
+@keyframes cb-fresh {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.15); }
+}
+
+/* SVG / IMG inside .body */
+.body svg, .body img { display: block; pointer-events: none; }
+
+/* Tail — MCP relay (small + dim) */
+.relay {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  opacity: 0.55;
+  text-decoration: none;
+  transition: opacity 180ms ease-out;
+}
+.relay:hover { opacity: 1; }
+.relay:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }
+
+/* Tooltip — the hover tagline */
+.tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 6px 10px;
+  background: rgba(2, 3, 14, 0.95);
+  color: #F2EDE3;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+  z-index: 101;
+  max-width: 280px;
+}
+.body:hover .tip,
+.body:focus-visible .tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 200ms;
+}
+.tip::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: rgba(2, 3, 14, 0.95);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Mobile mode — collapse to a single ✦ launcher + the cosmos CTA */
+.mobile-launch {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: #F2EDE3;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+}
+.mobile-launch:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .bar { gap: 8px; padding: 0 14px; }
+  .bodies { display: none; }
+  .divider { display: none; }
+  .mobile-launch { display: inline-flex; }
+  .relay { width: 20px; height: 20px; }
+}
+
+/* Sheet row variant — cosmos parent gets the same warm accent as the desktop body */
+.sheet-row--cosmos {
+  background: rgba(255, 179, 71, 0.04);
+}
+.sheet-row--cosmos:hover {
+  background: rgba(255, 179, 71, 0.12);
+}
+
+/* Mobile sheet — slide-down panel with all bodies + taglines */
+.sheet {
+  position: fixed;
+  top: var(--cosmos-bar-h, 32px);
+  left: 0;
+  right: 0;
+  background: #02030E;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  padding: 12px 16px 16px;
+  transform: translateY(-110%);
+  transition: transform 220ms ease-out;
+  z-index: 99;
+  max-height: calc(100vh - var(--cosmos-bar-h, 32px));
+  overflow-y: auto;
+}
+.sheet[data-open="1"] { transform: translateY(0); }
+
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #F2EDE3;
+  transition: background-color 180ms ease-out;
+}
+.sheet-row:hover, .sheet-row:focus-visible { background: rgba(255, 255, 255, 0.05); outline: none; }
+.sheet-row[aria-current="true"] { opacity: 0.55; }
+.sheet-row .icon-slot {
+  position: relative;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+}
+.sheet-row .label { font-size: 14px; font-weight: 600; }
+.sheet-row .tagline { font-size: 12px; color: #A39B8A; margin-top: 2px; }
+.sheet-row .text { display: flex; flex-direction: column; min-width: 0; }
+
+.sheet-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 8px 0;
+}
+
+/* Reduced motion — kill all transitions + SVG animations */
+@media (prefers-reduced-motion: reduce) {
+  .body, .relay, .tip, .sheet, .body[data-fresh="1"]::before {
+    transition: none !important;
+    animation: none !important;
+  }
+  /* Disable inline SVG <animate> elements within shadow DOM */
+  :host ::part(svg-animate) { display: none; }
+}
+/* FULL-END */
