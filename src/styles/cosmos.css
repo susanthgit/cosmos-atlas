@@ -1997,10 +1997,10 @@ body.list-view .ambient-player { display: none; }
 .lens-pill { display: none !important; }
 
 /* Lens grid — always-visible 2x2 in left column. Replaces the old expandable
-   pill. Encourages exploration. Mobile: stays visible (compact pill row). */
+   pill. Compact, no emoji noise, just text pills. */
 .lens-grid {
   position: absolute;
-  top: 150px;
+  top: 148px;
   left: var(--space-5);
   width: 240px;
   z-index: 215;
@@ -2024,54 +2024,49 @@ body.list-view .ambient-player { display: none; }
   gap: 4px;
 }
 .lens-grid__option {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 8px 10px 9px;
+  padding: 5px 8px;
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--bg-edge) 70%, transparent);
-  color: var(--hud);
+  color: var(--hud-muted);
   font-family: var(--mono);
-  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-align: center;
   cursor: pointer;
   transition: border-color var(--duration-base) var(--ease-out),
               background-color var(--duration-base) var(--ease-out),
-              transform var(--duration-base) var(--ease-out);
+              color var(--duration-base) var(--ease-out);
 }
 .lens-grid__option:hover,
 .lens-grid__option:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  transform: translateY(-1px);
+  color: var(--hud);
 }
 .lens-grid__option[aria-pressed="true"] {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, var(--bg-edge));
+  color: var(--accent);
 }
-.lens-grid__icon {
-  font-size: 14px;
-  line-height: 1;
+/* Hide the emoji icon + sub-label on desktop too — just the name. Minimal. */
+.lens-grid__icon,
+.lens-grid__sub {
+  display: none;
 }
 .lens-grid__name {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
-.lens-grid__option[aria-pressed="true"] .lens-grid__name {
-  color: var(--accent);
-}
-.lens-grid__sub {
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  color: var(--hud-faint);
-  text-transform: lowercase;
-}
 body.list-view .lens-grid { display: none; }
 
-/* Reposition the ambient player to sit below the lens grid on desktop. */
-.ambient-player { top: 268px !important; }
+/* Reposition ambient + pomodoro to sit closer below the smaller lens grid. */
+.ambient-player { top: 230px !important; }
+.pomodoro-card { top: 280px !important; }
 
 /* Pomodoro inline card — sits below the ambient player. Same collapsible
    pattern. State label shows "idle" / "25:00" / "05:00" etc. */
@@ -2179,51 +2174,19 @@ body.list-view .lens-grid { display: none; }
 body.list-view .pomodoro-card { display: none; }
 
 /* ─── Mobile (≤ 720px) — minimal interface ─────────────────────────
-   Per Sush's V5 directive: on mobile, hide the entire left-column
-   control panel except the lens grid (which becomes a compact row at
-   the top). Keep the canvas, mast, audience filter, list-view toggle,
-   drift toggle, and the lens grid — that's it. */
+   Per Sush's V5 directive: on mobile we keep things simple. Only the
+   canvas + audience filter + list-view + drift toggle. Everything else
+   (lens grid, ambient, pomodoro, bodies-count, orientation buttons,
+   lede) is hidden. Mobile users get the cosmos to look at; controls
+   live on desktop. */
 @media (max-width: 720px) {
-  /* Hide the desktop-only chrome that crowds the canvas on mobile. */
   .bodies-count,
   .hud-orientation,
   .ambient-player,
   .pomodoro-card,
+  .lens-grid,
   .cosmos-lede {
     display: none !important;
-  }
-
-  /* Compact lens grid on mobile — single row of 4 small icon-only buttons,
-     anchored top-left under the mast. Stays visible (the only control
-     besides drift). */
-  .lens-grid {
-    top: 56px;
-    left: var(--space-4);
-    width: auto;
-    max-width: calc(100vw - var(--space-7));
-  }
-  .lens-grid__label { display: none; }
-  .lens-grid__options {
-    display: flex;
-    gap: 4px;
-  }
-  .lens-grid__option {
-    flex: 0 0 auto;
-    padding: 6px 8px;
-    flex-direction: row;
-    gap: 4px;
-  }
-  .lens-grid__name { display: none; }
-  .lens-grid__sub { display: none; }
-  .lens-grid__option[aria-pressed="true"] {
-    padding-right: 10px;
-  }
-  .lens-grid__option[aria-pressed="true"]::after {
-    content: attr(data-lens);
-    font-size: 9px;
-    letter-spacing: 0.04em;
-    color: var(--accent);
-    text-transform: lowercase;
   }
 }
 /* Wave 5 fix — make sure [hidden] body stays hidden. The user-agent rule
