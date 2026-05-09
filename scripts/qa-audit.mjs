@@ -459,6 +459,116 @@ for (const vp of VIEWPORTS) {
     console.log(`  rest state: 🟡 ${restState.focused} body(ies) focused at rest — confirm intentional`);
   }
 
+  // Phase A — desktop-only checks for HUD declutter, share button, shortcuts
+  // modal, replay-coach. Growing-guardrail rule: every Phase A behaviour
+  // ships with a check before deploy.
+  if (vp.name === 'desktop') {
+    console.log(`\n=== ${vp.name} / Phase A ===`);
+
+    // 1. Old HUD chrome removed
+    const hudHinted = await page.evaluate(() => ({
+      hudHint: !!document.querySelector('.hud-hint'),
+      hudShortcuts: !!document.querySelector('.hud-shortcuts'),
+    }));
+    if (!hudHinted.hudHint) console.log(`  hud-hint removed: ✓`);
+    else { console.log(`  hud-hint removed: 🔴 still present`); totalFails++; }
+    if (!hudHinted.hudShortcuts) console.log(`  hud-shortcuts removed: ✓`);
+    else { console.log(`  hud-shortcuts removed: 🔴 still present`); totalFails++; }
+
+    // 2. Aux buttons present
+    const auxButtons = await page.evaluate(() => ({
+      replayCoach: !!document.getElementById('replay-coach'),
+      openShortcuts: !!document.getElementById('open-shortcuts'),
+    }));
+    if (auxButtons.replayCoach) console.log(`  hud-aux replay-coach: ✓ present`);
+    else { console.log(`  hud-aux replay-coach: 🔴 missing`); totalFails++; }
+    if (auxButtons.openShortcuts) console.log(`  hud-aux open-shortcuts: ✓ present`);
+    else { console.log(`  hud-aux open-shortcuts: 🔴 missing`); totalFails++; }
+
+    // 3. Card-share button copies → label changes briefly
+    await page.evaluate(() => {
+      const earth = document.querySelector('.planet-body[data-slug="earth"]');
+      if (earth) earth.click();
+    });
+    await page.waitForTimeout(800);
+    // Grant clipboard permissions (no-op if browser refuses, fallback path uses execCommand)
+    try { await page.context().grantPermissions(['clipboard-read', 'clipboard-write']); } catch (_) { /* */ }
+    const shareBefore = await page.evaluate(() => {
+      const btn = document.getElementById('card-share');
+      if (!btn) return null;
+      const lbl = btn.querySelector('.card-share__label');
+      return { exists: true, label: lbl ? lbl.textContent : '' };
+    });
+    if (!shareBefore) {
+      console.log(`  card-share: 🔴 button missing (#card-share)`);
+      totalFails++;
+    } else {
+      await page.click('#card-share');
+      await page.waitForTimeout(250);
+      const shareAfter = await page.evaluate(() => {
+        const btn = document.getElementById('card-share');
+        const lbl = btn?.querySelector('.card-share__label');
+        return { copied: btn?.dataset.copied, label: lbl ? lbl.textContent : '' };
+      });
+      if (shareAfter.copied === 'true' || shareAfter.label === 'copied ✓') {
+        console.log(`  card-share copy: ✓ feedback shown ("${shareAfter.label}")`);
+      } else {
+        console.log(`  card-share copy: 🔴 no feedback (data-copied="${shareAfter.copied}" label="${shareAfter.label}")`);
+        totalFails++;
+      }
+      // Close earth card before continuing
+      await page.evaluate(() => document.getElementById('card-close')?.click());
+      await page.waitForTimeout(300);
+    }
+
+    // 4. Shortcuts modal opens via "?" key, closes via Esc
+    await page.keyboard.press('?');
+    await page.waitForTimeout(200);
+    const shortcutsOpen = await page.evaluate(() => {
+      const ov = document.querySelector('.cosmos-shortcuts');
+      return ov?.dataset.open;
+    });
+    if (shortcutsOpen === 'true') console.log(`  shortcuts modal "?": ✓ opened`);
+    else { console.log(`  shortcuts modal "?": 🔴 did not open (data-open="${shortcutsOpen}")`); totalFails++; }
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    const shortcutsClosedKey = await page.evaluate(() =>
+      document.querySelector('.cosmos-shortcuts')?.dataset.open
+    );
+    if (shortcutsClosedKey === 'false') console.log(`  shortcuts modal Esc: ✓ closed`);
+    else { console.log(`  shortcuts modal Esc: 🔴 did not close (data-open="${shortcutsClosedKey}")`); totalFails++; }
+
+    // 5. Shortcuts modal opens via UI button click
+    await page.click('#open-shortcuts');
+    await page.waitForTimeout(200);
+    const shortcutsOpenBtn = await page.evaluate(() =>
+      document.querySelector('.cosmos-shortcuts')?.dataset.open
+    );
+    if (shortcutsOpenBtn === 'true') console.log(`  shortcuts modal button: ✓ opened`);
+    else { console.log(`  shortcuts modal button: 🔴 did not open`); totalFails++; }
+    // Close it via the X button
+    await page.evaluate(() => document.querySelector('.cosmos-shortcuts__close')?.click());
+    await page.waitForTimeout(200);
+
+    // 6. Replay-coach button re-mounts coach
+    await page.click('#replay-coach');
+    await page.waitForTimeout(250);
+    const coachState = await page.evaluate(() => {
+      const c = document.getElementById('cosmos-coach');
+      return c ? { present: true, visible: c.dataset.visible, step: c.dataset.step } : { present: false };
+    });
+    if (coachState.present && coachState.visible === 'true' && coachState.step === '0') {
+      console.log(`  replay-coach: ✓ coach re-mounted at step 0`);
+      // Dismiss it before next test
+      await page.evaluate(() => document.getElementById('coach-skip')?.click());
+      await page.waitForTimeout(400);
+    } else {
+      console.log(`  replay-coach: 🔴 coach not re-mounted (${JSON.stringify(coachState)})`);
+      totalFails++;
+    }
+  }
+
   // Drag-pan limits (desktop only — touch drag on mobile is different)
   if (vp.name === 'desktop') {
     const visibleBefore = await page.evaluate(() => Array.from(document.querySelectorAll('.planet-body'))

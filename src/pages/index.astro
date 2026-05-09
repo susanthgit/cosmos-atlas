@@ -201,19 +201,30 @@ const clientData = {
         </button>
       </nav>
 
-      <p class="hud-hint" aria-hidden="true">Hover · click a planet to see what it is</p>
-
-      <ul class="hud-shortcuts" aria-hidden="true">
-        <li><kbd>1</kbd>–<kbd>6</kbd> · focus</li>
-        <li><kbd>0</kbd> · MCP star</li>
-        <li><kbd>⇧</kbd>+drag · tilt</li>
-        <li>wheel · zoom</li>
-        <li><kbd>R</kbd> · reset</li>
-      </ul>
-
       <p class="hud-attribution">
         <a href="https://www.aguidetocloud.com/about/" rel="noopener">by A Guide to Cloud</a>
       </p>
+
+      <!-- Phase A — replay-coach + shortcuts trigger. Tiny corner buttons.
+           Replay coach (ⓘ) re-runs the 3-step intro. Shortcuts (?) opens the
+           keyboard-shortcuts modal. Both intentionally quiet so they don't
+           compete with the cosmos at rest. -->
+      <div class="hud-aux" aria-label="Help">
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="replay-coach"
+          aria-label="Replay the cosmos intro"
+          title="Replay the intro"
+        >ⓘ</button>
+        <button
+          type="button"
+          class="hud-aux__btn"
+          id="open-shortcuts"
+          aria-label="Show keyboard shortcuts"
+          title="Keyboard shortcuts (press ?)"
+        >?</button>
+      </div>
 
       <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>
 
@@ -272,6 +283,16 @@ const clientData = {
     >
       <button
         type="button"
+        class="card-share"
+        id="card-share"
+        aria-label="Copy link to this planet"
+        title="Copy link to this view"
+      >
+        <span class="card-share__icon" aria-hidden="true">↗</span>
+        <span class="card-share__label">copy link</span>
+      </button>
+      <button
+        type="button"
         class="card-close"
         id="card-close"
         aria-label="Close planet card"
@@ -283,9 +304,9 @@ const clientData = {
     <article class="static-shell" id="static-shell">
       <header class="static-hero">
         <h1>The cosmos, mapped.</h1>
-        <p>A growing universe of planets, moons, and a star — each one for a different audience, each with its own atmosphere. The interactive version turns this list into a living solar system. This is the honest fallback.</p>
+        <p>A growing universe of planets, moons, and a star — each one for a different audience, each with its own atmosphere. The interactive version turns this list into a living solar system.</p>
         <p class="static-fallback-note">
-          You're reading the static planet list. It's here for screen readers, search engines, low-bandwidth visitors, and anyone whose JavaScript is off. The interactive version lives at the same URL — refresh once JS is enabled.
+          The planet list. The interactive cosmos lives at the same URL when JavaScript is on.
         </p>
       </header>
 

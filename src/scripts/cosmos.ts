@@ -125,6 +125,7 @@ export function mountCosmos(data: CosmosData): void {
   const cardPanel = document.getElementById('card-panel') as HTMLElement | null;
   const cardBody = document.getElementById('card-body') as HTMLElement | null;
   const cardClose = document.getElementById('card-close') as HTMLButtonElement | null;
+  const cardShare = document.getElementById('card-share') as HTMLButtonElement | null;
   const planetLabel = document.getElementById('planet-label') as HTMLElement | null;
   const toggleList = document.getElementById('toggle-list') as HTMLButtonElement | null;
   const bodiesRoot = document.getElementById('bodies') as HTMLElement | null;
@@ -2156,6 +2157,42 @@ export function mountCosmos(data: CosmosData): void {
 
   cardClose.addEventListener('click', () => { markInteraction(); closeCard(); });
 
+  // Phase A — copy-link share button. The deep-link state is already kept in
+  // the URL (?planet=<slug>&zoom=&pan=), so window.location.href is the
+  // canonical "this view" URL. We just need a one-click copy affordance.
+  if (cardShare) {
+    cardShare.addEventListener('click', async () => {
+      markInteraction();
+      const url = window.location.href;
+      let copied = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        }
+      } catch (_) { /* fall through to fallback */ }
+      if (!copied) {
+        // Fallback for non-secure contexts (older browsers / file:// dev).
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { copied = document.execCommand('copy'); } catch (_) { /* */ }
+        document.body.removeChild(ta);
+      }
+      cardShare.dataset.copied = copied ? 'true' : 'error';
+      const labelEl = cardShare.querySelector('.card-share__label') as HTMLElement | null;
+      const originalLabel = labelEl?.textContent ?? 'copy link';
+      if (labelEl) labelEl.textContent = copied ? 'copied ✓' : 'copy failed';
+      window.setTimeout(() => {
+        delete cardShare.dataset.copied;
+        if (labelEl) labelEl.textContent = originalLabel;
+      }, 1800);
+    });
+  }
+
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape' && focusedSlug) {
       e.preventDefault();
@@ -2253,7 +2290,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .cosmos-coach')) {
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2262,7 +2299,11 @@ export function mountCosmos(data: CosmosData): void {
     // V3.6 — also ignore clicks on the first-visit coach. Without this,
     // root.setPointerCapture() stole click events from coach buttons (next,
     // back, skip) so they never advanced. Found by Sush in V3.5.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .cosmos-coach')) return;
+    // Phase A — also ignore .hud-aux (replay-coach + open-shortcuts buttons)
+    // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
+    // their clicks the same way it stole coach clicks. Caught by qa-audit
+    // Phase A checks.
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -2420,6 +2461,78 @@ export function mountCosmos(data: CosmosData): void {
     openSearch();
   });
 
+  // Phase A — shortcuts modal. Linear-style overlay shown on `?` key OR when
+  // the corner ⓘ/? buttons are clicked. Mirrors the cosmos-search overlay
+  // pattern: dynamic creation, dialog role, Esc + click-outside to close.
+  const shortcutsOverlay = document.createElement('div');
+  shortcutsOverlay.className = 'cosmos-shortcuts';
+  shortcutsOverlay.setAttribute('role', 'dialog');
+  shortcutsOverlay.setAttribute('aria-label', 'Keyboard shortcuts');
+  shortcutsOverlay.dataset.open = 'false';
+  shortcutsOverlay.innerHTML = `
+    <div class="cosmos-shortcuts__panel">
+      <header class="cosmos-shortcuts__head">
+        <h2 class="cosmos-shortcuts__title">Keyboard shortcuts</h2>
+        <button type="button" class="cosmos-shortcuts__close" aria-label="Close">×</button>
+      </header>
+      <div class="cosmos-shortcuts__body">
+        <section>
+          <h3>Navigate</h3>
+          <ul>
+            <li><kbd>1</kbd>–<kbd>9</kbd><span>focus a planet</span></li>
+            <li><kbd>0</kbd><span>focus the MCP star</span></li>
+            <li><kbd>Esc</kbd><span>close card</span></li>
+          </ul>
+        </section>
+        <section>
+          <h3>View</h3>
+          <ul>
+            <li><kbd>drag</kbd><span>pan the cosmos</span></li>
+            <li><kbd>⇧</kbd>+<kbd>drag</kbd><span>tilt the orbital plane</span></li>
+            <li><kbd>wheel</kbd><span>zoom in / out</span></li>
+            <li><kbd>R</kbd><span>reset zoom + pan</span></li>
+          </ul>
+        </section>
+        <section>
+          <h3>Search &amp; help</h3>
+          <ul>
+            <li><kbd>/</kbd><span>open search</span></li>
+            <li><kbd>?</kbd><span>this menu</span></li>
+          </ul>
+        </section>
+      </div>
+      <footer class="cosmos-shortcuts__foot">Esc to close</footer>
+    </div>
+  `;
+  document.body.appendChild(shortcutsOverlay);
+  const shortcutsClose = shortcutsOverlay.querySelector('.cosmos-shortcuts__close') as HTMLButtonElement;
+  function openShortcuts(): void {
+    shortcutsOverlay.dataset.open = 'true';
+    shortcutsClose.focus();
+  }
+  function closeShortcuts(): void {
+    shortcutsOverlay.dataset.open = 'false';
+  }
+  shortcutsClose.addEventListener('click', closeShortcuts);
+  shortcutsOverlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === shortcutsOverlay) closeShortcuts();
+  });
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (shortcutsOverlay.dataset.open === 'true' && e.key === 'Escape') {
+      e.preventDefault();
+      closeShortcuts();
+      return;
+    }
+    if (e.key !== '?') return;
+    const tag = (document.activeElement as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    openShortcuts();
+  });
+  // Wire the corner ? button (also shown next to ⓘ replay button).
+  const openShortcutsBtn = document.getElementById('open-shortcuts') as HTMLButtonElement | null;
+  openShortcutsBtn?.addEventListener('click', () => { markInteraction(); openShortcuts(); });
+
   // Reset zoom + pan with key 'r' for keyboard users.
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'r' || e.key === 'R') {
@@ -2514,10 +2627,44 @@ export function mountCosmos(data: CosmosData): void {
   }
 
   // First-visit coach: 3 steps with skip + back + next.
+  // Phase A — added replay-coach button: clicking ⓘ in the HUD re-runs the
+  // coach (clears the seen-flag and re-mounts). Returning visitors finally
+  // have a way back to the orientation tour.
   const coachEl = document.getElementById('cosmos-coach') as HTMLElement | null;
   const coachSkipBtn = document.getElementById('coach-skip') as HTMLButtonElement | null;
   const coachBackBtn = document.getElementById('coach-back') as HTMLButtonElement | null;
   const coachNextBtn = document.getElementById('coach-next') as HTMLButtonElement | null;
+  const replayCoachBtn = document.getElementById('replay-coach') as HTMLButtonElement | null;
+
+  function bindCoachInteractions(el: HTMLElement): void {
+    const skipBtn = el.querySelector('#coach-skip') as HTMLButtonElement | null;
+    const backBtn = el.querySelector('#coach-back') as HTMLButtonElement | null;
+    const nextBtn = el.querySelector('#coach-next') as HTMLButtonElement | null;
+    const setStep = (n: number): void => {
+      const clamped = Math.max(0, Math.min(2, n));
+      el.dataset.step = String(clamped);
+      if (backBtn) backBtn.style.visibility = clamped === 0 ? 'hidden' : 'visible';
+      if (nextBtn) nextBtn.textContent = clamped === 2 ? 'done' : 'next →';
+    };
+    const dismiss = (): void => {
+      el.dataset.visible = 'false';
+      try { window.localStorage.setItem(COACH_FLAG, '1'); } catch (_) { /* noop */ }
+      window.setTimeout(() => { el.remove(); }, 600);
+    };
+    setStep(0);
+    window.setTimeout(() => { el.dataset.visible = 'true'; }, 60);
+    skipBtn?.addEventListener('click', dismiss);
+    backBtn?.addEventListener('click', () => {
+      const cur = parseInt(el.dataset.step ?? '0', 10);
+      setStep(cur - 1);
+    });
+    nextBtn?.addEventListener('click', () => {
+      const cur = parseInt(el.dataset.step ?? '0', 10);
+      if (cur >= 2) dismiss();
+      else setStep(cur + 1);
+    });
+  }
+
   if (coachEl) {
     if (!coachWillShow) {
       coachEl.remove();
@@ -2547,6 +2694,53 @@ export function mountCosmos(data: CosmosData): void {
       });
     }
   }
+
+  // Phase A — replay-coach button. Always available, even after the first
+  // visit. Clicking re-mounts the same coach markup we removed (or hid) so
+  // returning visitors can re-orient any time.
+  replayCoachBtn?.addEventListener('click', () => {
+    markInteraction();
+    try { window.localStorage.removeItem(COACH_FLAG); } catch (_) { /* noop */ }
+    const existing = document.getElementById('cosmos-coach') as HTMLElement | null;
+    const fresh = document.createElement('div');
+    fresh.className = 'cosmos-coach';
+    fresh.id = 'cosmos-coach';
+    fresh.dataset.step = '0';
+    fresh.dataset.visible = 'false';
+    fresh.setAttribute('role', 'dialog');
+    fresh.setAttribute('aria-labelledby', 'coach-title-0');
+    fresh.setAttribute('aria-modal', 'false');
+    fresh.innerHTML = `
+      <button class="cosmos-coach__skip" id="coach-skip" type="button" aria-label="Skip the intro">Skip</button>
+      <div class="cosmos-coach__step cosmos-coach__step--0">
+        <span class="cosmos-coach__title" id="coach-title-0">a quick tour · 1 of 3</span>
+        <p class="cosmos-coach__body">this is the cosmos — a living map of <strong>A Guide to Cloud</strong>. each planet is a different audience.</p>
+      </div>
+      <div class="cosmos-coach__step cosmos-coach__step--1">
+        <span class="cosmos-coach__title" id="coach-title-1">the source · 2 of 3</span>
+        <p class="cosmos-coach__body">the glow at the centre is the <strong>Sun</strong> — the AI co-founder. invisible by design.</p>
+      </div>
+      <div class="cosmos-coach__step cosmos-coach__step--2">
+        <span class="cosmos-coach__title" id="coach-title-2">how to roam · 3 of 3</span>
+        <p class="cosmos-coach__body"><strong>Earth</strong> is the home. tap it to start. drag to pan · wheel to zoom · tap any planet.</p>
+      </div>
+      <div class="cosmos-coach__nav">
+        <span class="cosmos-coach__dots" aria-hidden="true">
+          <span class="cosmos-coach__dot"></span>
+          <span class="cosmos-coach__dot"></span>
+          <span class="cosmos-coach__dot"></span>
+        </span>
+        <button class="cosmos-coach__btn" id="coach-back" type="button">← back</button>
+        <button class="cosmos-coach__btn cosmos-coach__btn--primary" id="coach-next" type="button">next →</button>
+      </div>
+    `;
+    if (existing) existing.replaceWith(fresh);
+    else {
+      const hud = document.querySelector('.hud') as HTMLElement | null;
+      hud?.appendChild(fresh);
+    }
+    bindCoachInteractions(fresh);
+  });
 
   requestAnimationFrame((now) => {
     lastFrame = now;

@@ -671,3 +671,208 @@ body.list-view .static-shell {
 @media (prefers-reduced-motion: reduce) {
   .cosmos-coach { transition: none; transform: translate(-50%, 0); }
 }
+
+/* ═══════════════ Phase A — share button · HUD aux · shortcuts modal ═══════════════ */
+
+/* Card share button — sibling of .card-close, sits to the LEFT of it.
+   Same visual weight, intentionally quieter than the primary Visit CTA. */
+.card-share {
+  position: absolute;
+  top: var(--space-4);
+  right: calc(var(--space-4) + 36px + var(--space-2));
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  background: rgba(2, 3, 14, 0.6);
+  color: var(--hud);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+  z-index: 1010;
+}
+.card-share:hover,
+.card-share:focus-visible {
+  outline: 0;
+  border-color: var(--accent-soft);
+  color: var(--accent-soft);
+}
+.card-share__icon { font-size: 13px; }
+.card-share__label { text-transform: lowercase; }
+.card-share[data-copied="true"] {
+  border-color: color-mix(in srgb, #6EE7B7 70%, transparent);
+  color: #6EE7B7;
+}
+.card-share[data-copied="error"] {
+  border-color: color-mix(in srgb, #F87171 70%, transparent);
+  color: #F87171;
+}
+
+/* Hide share label on narrow viewports (icon still readable). Desktop only
+   per current scope, but defensive so the button never overflows the panel. */
+@media (max-width: 480px) {
+  .card-share__label { display: none; }
+  .card-share { padding: 0; width: 36px; justify-content: center; }
+  .card-share { right: calc(var(--space-4) + 36px + 6px); }
+}
+
+/* HUD aux corner — replay-coach (ⓘ) + open-shortcuts (?). Bottom-right,
+   intentionally tiny, mono font, ghost border. Never compete with the
+   cosmos itself. */
+.hud-aux {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 220;
+}
+.hud-aux__btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
+  border-radius: 999px;
+  background: rgba(2, 3, 14, 0.55);
+  color: color-mix(in srgb, var(--hud) 70%, transparent);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+}
+.hud-aux__btn:hover,
+.hud-aux__btn:focus-visible {
+  outline: 0;
+  color: var(--accent-soft);
+  border-color: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 12%, rgba(2, 3, 14, 0.6));
+}
+body.list-view .hud-aux { display: none; }
+
+/* Shortcuts modal — mirrors .cosmos-search overlay pattern. */
+.cosmos-shortcuts {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 96px 16px 24px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 2000;
+}
+.cosmos-shortcuts[data-open="true"] { display: flex; }
+.cosmos-shortcuts__panel {
+  width: min(620px, 100%);
+  background: color-mix(in srgb, var(--bg-edge) 92%, var(--hud));
+  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(2, 3, 14, 0.6);
+  overflow: hidden;
+}
+.cosmos-shortcuts__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--hud) 12%, transparent);
+}
+.cosmos-shortcuts__title {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hud);
+  margin: 0;
+}
+.cosmos-shortcuts__close {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--hud) 70%, transparent);
+  font-family: var(--mono);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+.cosmos-shortcuts__close:hover,
+.cosmos-shortcuts__close:focus-visible {
+  outline: 0;
+  color: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+.cosmos-shortcuts__body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px 22px;
+  padding: 16px 18px;
+}
+.cosmos-shortcuts__body section h3 {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--hud) 60%, transparent);
+}
+.cosmos-shortcuts__body ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cosmos-shortcuts__body li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--hud);
+}
+.cosmos-shortcuts__body li span {
+  color: color-mix(in srgb, var(--hud) 80%, transparent);
+}
+.cosmos-shortcuts__body kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--hud) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hud) 18%, transparent);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--hud);
+  min-width: 18px;
+  text-align: center;
+}
+.cosmos-shortcuts__foot {
+  padding: 10px 18px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--hud) 12%, transparent);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: color-mix(in srgb, var(--hud) 50%, transparent);
+  text-align: right;
+}
