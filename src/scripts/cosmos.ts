@@ -2788,7 +2788,7 @@ export function mountCosmos(data: CosmosData): void {
       cursorX = -9999;
       cursorY = -9999;
       window.scrollTo({ top: 0, behavior: 'auto' });
-      toggleList.textContent = '🌌 Cosmos view';
+      toggleList.textContent = '✦ Cosmos view';
       toggleList.setAttribute('aria-label', 'Tap to return to the interactive cosmos');
     } else {
       toggleList.textContent = '📋 List view';
@@ -2843,7 +2843,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) {
+    if (focusedSlug && !target.closest('cosmos-bar, .card-panel, .planet-body, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2856,7 +2856,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('cosmos-bar, .planet-body, .card-panel, .hud-tools, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {

@@ -135,9 +135,14 @@ class CosmosBar extends HTMLElement {
 
     // Cosmos home anchor — leads the bar. Same shape as a body so spacing + hover
     // behave identically. Distinct via the .body--cosmos modifier (subtle accent).
+    // 10 May 2026 — also honours active="cosmos" (when the bar lives on the
+    // cosmos atlas itself), getting the same aria-current dimming as any
+    // other "you are here" planet.
+    const cosmosIsActive = this.active === 'cosmos';
     const cosmosBody = `<a class="body body--cosmos"
         href="${COSMOS_HOST}/"
         data-slug="cosmos"
+        ${cosmosIsActive ? 'aria-current="true"' : ''}
         aria-label="Open the cosmos portal"
         title="">${iconSvg('cosmos', 'home')}<span class="tip">open the cosmos portal</span></a>`;
     // Hairline divider between cosmos identity and sibling planets.
@@ -157,7 +162,7 @@ class CosmosBar extends HTMLElement {
         </div>
       </div>
       <div class="sheet" data-open="${this.sheetOpen ? '1' : '0'}" role="dialog" aria-label="Cosmos planets" aria-hidden="${!this.sheetOpen}">
-        <a class="sheet-row sheet-row--cosmos" href="${COSMOS_HOST}/"><span class="icon-slot">${iconSvg('cosmos', 'sheet-cosmos')}</span><span class="text"><span class="label">Open the cosmos portal</span><span class="tagline">cosmos.aguidetocloud.com</span></span></a>
+        <a class="sheet-row sheet-row--cosmos" href="${COSMOS_HOST}/" ${cosmosIsActive ? 'aria-current="true"' : ''}><span class="icon-slot">${iconSvg('cosmos', 'sheet-cosmos')}</span><span class="text"><span class="label">Open the cosmos portal</span><span class="tagline">cosmos.aguidetocloud.com</span></span></a>
         <div class="sheet-divider" aria-hidden="true"></div>
         ${sheetRows}
         ${

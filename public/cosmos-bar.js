@@ -1,7 +1,7 @@
 /* cosmos-bar.js — single-file web component, served at https://cosmos.aguidetocloud.com/cosmos-bar.js
    Source: cosmos-atlas/src/cosmos-bar/component.ts
-   Generated: 2026-05-09T08:59:19.183Z */
-"use strict";(()=>{var f=Object.defineProperty;var g=(i,s,e)=>s in i?f(i,s,{enumerable:!0,configurable:!0,writable:!0,value:e}):i[s]=e;var n=(i,s,e)=>g(i,typeof s!="symbol"?s+"":s,e);var m=["earth","guided","brainbar","shift","plainai","curriculum","agentic","claw"],v="https://cosmos.aguidetocloud.com";function r(i,s="bar"){switch(i){case"earth":return`<img src="${v}/planets/earth-lotus.webp" width="24" height="24" alt="" loading="lazy" decoding="async" />`;case"guided":return`<svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false">
+   Generated: 2026-05-10T02:00:25.609Z */
+"use strict";(()=>{var g=Object.defineProperty;var m=(i,s,e)=>s in i?g(i,s,{enumerable:!0,configurable:!0,writable:!0,value:e}):i[s]=e;var n=(i,s,e)=>m(i,typeof s!="symbol"?s+"":s,e);var v=["earth","guided","brainbar","shift","plainai","curriculum","agentic","claw"],y="https://cosmos.aguidetocloud.com";function r(i,s="bar"){switch(i){case"earth":return`<img src="${y}/planets/earth-lotus.webp" width="24" height="24" alt="" loading="lazy" decoding="async" />`;case"guided":return`<svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false">
         <mask id="cb-${s}-guided-mask">
           <rect width="32" height="32" fill="white"/>
           <circle cx="20" cy="13" r="11" fill="black"/>
@@ -73,7 +73,7 @@
     <path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z" fill="#F2EDE3" opacity="0.85">
       <animate attributeName="opacity" values="0.6;0.95;0.6" dur="3.4s" repeatCount="indefinite"/>
     </path>
-  </svg>`}var c="https://cosmos.aguidetocloud.com",y=14,h=class extends HTMLElement{constructor(){super();n(this,"root");n(this,"data",null);n(this,"active","");n(this,"sheetOpen",!1);n(this,"onDocClick",e=>{if(!this.sheetOpen)return;e.composedPath().includes(this)||this.setSheet(!1)});n(this,"onKey",e=>{e.key==="Escape"&&this.sheetOpen&&this.setSheet(!1)});this.root=this.attachShadow({mode:"open"})}static get observedAttributes(){return["active"]}attributeChangedCallback(e,t,a){e==="active"&&(this.active=(a||"").trim().toLowerCase(),this.data&&this.render())}async connectedCallback(){this.active=(this.getAttribute("active")||"").trim().toLowerCase(),this.root.innerHTML=`<style>:host {\r
+  </svg>`}var d="https://cosmos.aguidetocloud.com",b=14,h=class extends HTMLElement{constructor(){super();n(this,"root");n(this,"data",null);n(this,"active","");n(this,"sheetOpen",!1);n(this,"onDocClick",e=>{if(!this.sheetOpen)return;e.composedPath().includes(this)||this.setSheet(!1)});n(this,"onKey",e=>{e.key==="Escape"&&this.sheetOpen&&this.setSheet(!1)});this.root=this.attachShadow({mode:"open"})}static get observedAttributes(){return["active"]}attributeChangedCallback(e,t,a){e==="active"&&(this.active=(a||"").trim().toLowerCase(),this.data&&this.render())}async connectedCallback(){this.active=(this.getAttribute("active")||"").trim().toLowerCase(),this.root.innerHTML=`<style>:host {\r
   all: initial;\r
   display: block;\r
   position: sticky;\r
@@ -335,23 +335,24 @@
   }\r
   /* Disable inline SVG <animate> elements within shadow DOM */\r
   :host ::part(svg-animate) { display: none; }\r
-}</style><div class="bar"><div class="bodies" aria-busy="true"></div></div>`;try{let e=await this.fetchAtlas();this.data=e,this.render()}catch(e){console.warn("[cosmos-bar] failed to load atlas-bar.json",e),this.renderFallback()}}async fetchAtlas(){let e=(this.getAttribute("data-host")||"").trim(),t=c;e==="self"?t=window.location.origin:e&&(t=e.replace(/\/$/,""));let a=`${t}/atlas-bar.json`,l=await fetch(a,{credentials:"omit",cache:"force-cache"});if(!l.ok)throw new Error(`atlas-bar.json HTTP ${l.status}`);return await l.json()}isFresh(e){if(!e.lastShippedAt)return!1;let t=Date.parse(e.lastShippedAt);if(Number.isNaN(t))return!1;let a=(Date.now()-t)/(1e3*60*60*24);return a>=0&&a<=y}bodyHtml(e){let t=e.slug===this.active,a=this.isFresh(e),l=this.escape(e.tagline||e.name),d=this.escape(`${e.name}${e.tagline?" \u2014 "+e.tagline:""}`);return`<a class="body"
+}</style><div class="bar"><div class="bodies" aria-busy="true"></div></div>`;try{let e=await this.fetchAtlas();this.data=e,this.render()}catch(e){console.warn("[cosmos-bar] failed to load atlas-bar.json",e),this.renderFallback()}}async fetchAtlas(){let e=(this.getAttribute("data-host")||"").trim(),t=d;e==="self"?t=window.location.origin:e&&(t=e.replace(/\/$/,""));let a=`${t}/atlas-bar.json`,o=await fetch(a,{credentials:"omit",cache:"force-cache"});if(!o.ok)throw new Error(`atlas-bar.json HTTP ${o.status}`);return await o.json()}isFresh(e){if(!e.lastShippedAt)return!1;let t=Date.parse(e.lastShippedAt);if(Number.isNaN(t))return!1;let a=(Date.now()-t)/(1e3*60*60*24);return a>=0&&a<=b}bodyHtml(e){let t=e.slug===this.active,a=this.isFresh(e),o=this.escape(e.tagline||e.name),c=this.escape(`${e.name}${e.tagline?" \u2014 "+e.tagline:""}`);return`<a class="body"
         href="${this.escapeUrl(e.url)}"
         data-slug="${this.escape(e.slug)}"
         ${t?'aria-current="true"':""}
         ${a?'data-fresh="1"':""}
-        aria-label="${d}"
-        title="">${r(e.slug,"bar")}<span class="tip">${l}</span></a>`}sheetRowHtml(e){let t=e.slug===this.active,a=this.isFresh(e);return`<a class="sheet-row" href="${this.escapeUrl(e.url)}" data-slug="${this.escape(e.slug)}" ${t?'aria-current="true"':""}>
+        aria-label="${c}"
+        title="">${r(e.slug,"bar")}<span class="tip">${o}</span></a>`}sheetRowHtml(e){let t=e.slug===this.active,a=this.isFresh(e);return`<a class="sheet-row" href="${this.escapeUrl(e.url)}" data-slug="${this.escape(e.slug)}" ${t?'aria-current="true"':""}>
         <span class="icon-slot" ${a?'data-fresh="1"':""}>${r(e.slug,"sheet")}</span>
         <span class="text">
           <span class="label">${this.escape(e.name)}</span>
           ${e.tagline?`<span class="tagline">${this.escape(e.tagline)}</span>`:""}
         </span>
-      </a>`}render(){if(!this.data)return;let e=this.data.bodies.filter(o=>o.kind!=="relay"),t=this.data.bodies.find(o=>o.kind==="relay"),a=e.map(o=>this.bodyHtml(o)).join(""),l=e.map(o=>this.sheetRowHtml(o)).join(""),d=`<a class="body body--cosmos"
-        href="${c}/"
+      </a>`}render(){if(!this.data)return;let e=this.data.bodies.filter(l=>l.kind!=="relay"),t=this.data.bodies.find(l=>l.kind==="relay"),a=e.map(l=>this.bodyHtml(l)).join(""),o=e.map(l=>this.sheetRowHtml(l)).join(""),c=this.active==="cosmos",p=`<a class="body body--cosmos"
+        href="${d}/"
         data-slug="cosmos"
+        ${c?'aria-current="true"':""}
         aria-label="Open the cosmos portal"
-        title="">${r("cosmos","home")}<span class="tip">open the cosmos portal</span></a>`,p='<span class="divider" aria-hidden="true"></span>';this.root.innerHTML=`<style>:host {\r
+        title="">${r("cosmos","home")}<span class="tip">open the cosmos portal</span></a>`,f='<span class="divider" aria-hidden="true"></span>';this.root.innerHTML=`<style>:host {\r
   all: initial;\r
   display: block;\r
   position: sticky;\r
@@ -616,16 +617,16 @@
 }</style>
       <div class="bar">
         <button class="mobile-launch" type="button" aria-label="Open the cosmos menu" aria-expanded="${this.sheetOpen}">${u()}</button>
-        <div class="bodies" role="navigation" aria-label="Cosmos">${d}${p}${a}</div>
+        <div class="bodies" role="navigation" aria-label="Cosmos">${p}${f}${a}</div>
         <div class="spacer" aria-hidden="true"></div>
         <div class="tail">
           ${t?`<a class="relay" href="${this.escapeUrl(t.url)}" aria-label="${this.escape(t.name+" \u2014 "+(t.tagline||""))}" title="${this.escape(t.name)}">${r("mcp","relay")}</a>`:""}
         </div>
       </div>
       <div class="sheet" data-open="${this.sheetOpen?"1":"0"}" role="dialog" aria-label="Cosmos planets" aria-hidden="${!this.sheetOpen}">
-        <a class="sheet-row sheet-row--cosmos" href="${c}/"><span class="icon-slot">${r("cosmos","sheet-cosmos")}</span><span class="text"><span class="label">Open the cosmos portal</span><span class="tagline">cosmos.aguidetocloud.com</span></span></a>
+        <a class="sheet-row sheet-row--cosmos" href="${d}/" ${c?'aria-current="true"':""}><span class="icon-slot">${r("cosmos","sheet-cosmos")}</span><span class="text"><span class="label">Open the cosmos portal</span><span class="tagline">cosmos.aguidetocloud.com</span></span></a>
         <div class="sheet-divider" aria-hidden="true"></div>
-        ${l}
+        ${o}
         ${t?`<div class="sheet-divider" aria-hidden="true"></div><a class="sheet-row" href="${this.escapeUrl(t.url)}"><span class="icon-slot">${r("mcp","sheet-relay")}</span><span class="text"><span class="label">${this.escape(t.name)}</span>${t.tagline?`<span class="tagline">${this.escape(t.tagline)}</span>`:""}</span></a>`:""}
       </div>`,this.wire()}renderFallback(){this.root.innerHTML=`<style>:host {\r
   all: initial;\r
@@ -891,6 +892,6 @@
   :host ::part(svg-animate) { display: none; }\r
 }</style>
       <div class="bar">
-        <a class="body body--cosmos" href="${c}/" aria-label="Open the cosmos portal">${r("cosmos","home")}<span class="tip">open the cosmos portal</span></a>
+        <a class="body body--cosmos" href="${d}/" aria-label="Open the cosmos portal">${r("cosmos","home")}<span class="tip">open the cosmos portal</span></a>
         <div class="spacer" aria-hidden="true"></div>
       </div>`}wire(){let e=this.root.querySelector(".mobile-launch"),t=this.root.querySelector(".sheet");e&&t&&(e.addEventListener("click",a=>{a.stopPropagation(),this.toggleSheet()}),t.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>this.setSheet(!1)))),document.addEventListener("click",this.onDocClick),document.addEventListener("keydown",this.onKey)}toggleSheet(){this.setSheet(!this.sheetOpen)}setSheet(e){this.sheetOpen=e;let t=this.root.querySelector(".sheet"),a=this.root.querySelector(".mobile-launch");t&&(t.setAttribute("data-open",e?"1":"0"),t.setAttribute("aria-hidden",e?"false":"true")),a&&a.setAttribute("aria-expanded",String(e))}disconnectedCallback(){document.removeEventListener("click",this.onDocClick),document.removeEventListener("keydown",this.onKey)}escape(e){return String(e).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}escapeUrl(e){let t=String(e||"").trim();return/^(https?:|mailto:|\/[^/])/.test(t)||t==="/"||t===""?this.escape(t):""}};customElements.get("cosmos-bar")||customElements.define("cosmos-bar",h);})();

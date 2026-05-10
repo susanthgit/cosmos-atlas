@@ -234,7 +234,7 @@ for (const vp of VIEWPORTS) {
       for (const [x, y] of candidates) {
         const el = document.elementFromPoint(x, y);
         if (!el) continue;
-        const isProtected = el.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution');
+        const isProtected = el.closest('cosmos-bar, .card-panel, .planet-body, .hud-tools, .hud-attribution');
         // Astro dev-toolbar overlay isn't present in production; skip it during dev
         const isDevTool = el.tagName.startsWith('ASTRO-');
         if (!isProtected && !isDevTool) return { x, y, tag: el.tagName };
@@ -1059,6 +1059,50 @@ for (const vp of VIEWPORTS) {
         console.log(`  left-stack mute (re-idle): ✓ muted again to opacity=${reIdle.toFixed(2)}`);
       } else {
         console.log(`  left-stack mute (re-idle): 🔴 opacity=${reIdle.toFixed(2)} — must drop back to ≤ 0.60 when mouse leaves`);
+        totalFails++;
+      }
+    }
+
+    // ─── 10 May 2026 — universal cosmos-bar guardrail on the atlas itself ───
+    // Path D: the bar replaces the masthead so the atlas matches every other
+    // page in the universe. Must be present, must mark cosmos as active,
+    // must render 9 bodies in the shadow root, and the .cosmos main must
+    // start below the bar (so the bar is visible, not covered).
+    {
+      const bar = await page.evaluate(() => {
+        const el = document.querySelector('cosmos-bar');
+        if (!el) return { present: false };
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        const sr = el.shadowRoot;
+        const bodies = sr ? sr.querySelectorAll('.body').length : 0;
+        const cosmosSlot = sr?.querySelector('.body--cosmos');
+        const cosmosActive = cosmosSlot?.getAttribute('aria-current');
+        return {
+          present: true,
+          active: el.getAttribute('active'),
+          dataHost: el.getAttribute('data-host'),
+          height: r.height,
+          top: r.top,
+          position: cs.position,
+          bodies,
+          cosmosActive,
+        };
+      });
+      const cosmosTop = await page.evaluate(() => document.querySelector('.cosmos')?.getBoundingClientRect().top);
+      const has1735 = await page.evaluate(() => /🌌/.test(document.body.innerHTML));
+      const ok = bar.present
+        && bar.active === 'cosmos'
+        && bar.bodies === 9
+        && bar.cosmosActive === 'true'
+        && bar.height >= 30 && bar.height <= 40
+        && bar.top === 0
+        && cosmosTop >= bar.height - 1
+        && !has1735;
+      if (ok) {
+        console.log(`  cosmos-bar on atlas: ✓ present, active=cosmos, ${bar.bodies} bodies, height=${bar.height}px, .cosmos starts at y=${cosmosTop}px (below bar), no 🌌 emoji`);
+      } else {
+        console.log(`  cosmos-bar on atlas: 🔴 ${JSON.stringify({ ...bar, cosmosTop, has1735 })}`);
         totalFails++;
       }
     }

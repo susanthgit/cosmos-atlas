@@ -35,6 +35,12 @@ const {
 
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
+  <!-- 10 May 2026 — universal cosmos-bar. Loaded on every planet across the
+       universe; the atlas hosts the source-of-truth files locally. The bar's
+       placeholder CSS also provides the --cosmos-bar-h variable that .cosmos
+       uses to leave room at the top. -->
+  <link rel="stylesheet" href="/cosmos-bar.css">
+
   <meta property="og:type" content="website">
   <meta property="og:title" content={title}>
   <meta property="og:description" content={description}>
@@ -59,7 +65,16 @@ const {
 </head>
 <body>
   <a href="#static-shell" class="skip-link">Skip to planet list</a>
+
+  <!-- 10 May 2026 — Universal cosmos-bar leads every page in the universe.
+       active="cosmos" dims the cosmos slot (you-are-here). data-host="self"
+       makes it fetch atlas-bar.json from the current origin so localhost dev
+       and the production cosmos host both work. -->
+  <cosmos-bar data-host="self" active="cosmos"></cosmos-bar>
+
   <slot />
+
+  <script async src="/cosmos-bar.js"></script>
 </body>
 </html>
 

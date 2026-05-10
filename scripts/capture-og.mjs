@@ -71,7 +71,7 @@ async function captureOne(page, target, outPath) {
   // any element added later that would clutter the OG should be added here.
   await page.evaluate(() => {
     const hide = [
-      '#gesture-hint', '.hud-shortcuts', '.hud-mast', '.hud-tools',
+      '#gesture-hint', '.hud-shortcuts', 'cosmos-bar', '.hud-tools',
       '.hud-attribution', '.hud-hint', '.hud-aux', '.lens-pill',
       '.this-week-ribbon', '.cosmos-coach',
       '.cosmos-shortcuts', '.lens-legend', '.lens-audience-cols',
