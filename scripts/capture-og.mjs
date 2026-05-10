@@ -73,7 +73,7 @@ async function captureOne(page, target, outPath) {
     const hide = [
       '#gesture-hint', '.hud-shortcuts', '.hud-mast', '.hud-tools',
       '.hud-attribution', '.hud-hint', '.hud-aux', '.lens-pill',
-      '.audience-filter', '.this-week-ribbon', '.cosmos-coach',
+      '.this-week-ribbon', '.cosmos-coach',
       '.cosmos-shortcuts', '.lens-legend', '.lens-audience-cols',
       '.planet-label', '#card-panel',
       'astro-dev-toolbar', 'astro-dev-overlay',

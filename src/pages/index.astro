@@ -271,28 +271,12 @@ const clientData = {
       </nav>
 
       <p class="hud-attribution">
-        <a href="https://www.aguidetocloud.com/about/" rel="noopener">by A Guide to Cloud</a>
+        <a href="https://www.aguidetocloud.com/about/" rel="noopener" title="About Susanth Sutheesh — A Guide to Cloud">— made by Sush</a>
       </p>
 
-      {/* Phase D — audience filter pills. Always-on filter (different from
-           Phase C audience LENS — that re-positions bodies into columns;
-           this dims non-matching bodies regardless of which lens is active).
-           Multi-select: click multiple pills to OR them. All unset = no filter. */}
-      <div class="audience-filter" id="audience-filter" role="group" aria-label="Filter by audience">
-        <button type="button" class="audience-filter__pill" data-audience="curious" aria-pressed="false">
-          <span class="audience-filter__dot" aria-hidden="true"></span>curious
-        </button>
-        <button type="button" class="audience-filter__pill" data-audience="cert-prep" aria-pressed="false">
-          <span class="audience-filter__dot" aria-hidden="true"></span>cert prep
-        </button>
-        <button type="button" class="audience-filter__pill" data-audience="techie" aria-pressed="false">
-          <span class="audience-filter__dot" aria-hidden="true"></span>techie
-        </button>
-        <button type="button" class="audience-filter__pill" data-audience="job-watcher" aria-pressed="false">
-          <span class="audience-filter__dot" aria-hidden="true"></span>job watcher
-        </button>
-        <button type="button" class="audience-filter__clear" id="audience-filter-clear" aria-label="Clear audience filter" hidden>×</button>
-      </div>
+      {/* Phase D audience filter pills removed 10 May 2026 — felt like a marketing
+           form, broke the cosmos vibe. AUDIENCE_MAP is still used by the audience
+           LENS in Phase C, so the data layer stays. */}
 
       {/* Wave 5 — Lens grid (always-visible 2x2). Replaces the old expandable
            lens-pill. Lives in the left column on desktop, top-right compact
@@ -346,8 +330,30 @@ const clientData = {
               <button type="button" class="ambient-btn ambient-btn--play" id="ambient-play" aria-label="Play" aria-pressed="false" title="Play / pause">▶</button>
               <button type="button" class="ambient-btn" id="ambient-next" aria-label="Next track" title="Next">⏭</button>
               <span class="ambient-transport__spacer" aria-hidden="true"></span>
-              <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-shuffle" aria-pressed="false" title="Shuffle">🔀</button>
-              <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-repeat" data-repeat="off" aria-pressed="false" title="Repeat: off">🔁</button>
+              <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-shuffle" aria-pressed="false" title="Shuffle" aria-label="Shuffle">
+                <svg class="ambient-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M16 3h5v5"/>
+                  <path d="M4 20 21 3"/>
+                  <path d="M21 16v5h-5"/>
+                  <path d="m15 15 6 6"/>
+                  <path d="m4 4 5 5"/>
+                </svg>
+              </button>
+              <button type="button" class="ambient-btn ambient-btn--mode" id="ambient-repeat" data-repeat="off" aria-pressed="false" title="Repeat: off" aria-label="Repeat">
+                <svg class="ambient-svg-icon ambient-svg-icon--repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m17 2 4 4-4 4"/>
+                  <path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
+                  <path d="m7 22-4-4 4-4"/>
+                  <path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+                </svg>
+                <svg class="ambient-svg-icon ambient-svg-icon--repeat-one" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m17 2 4 4-4 4"/>
+                  <path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
+                  <path d="m7 22-4-4 4-4"/>
+                  <path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+                  <path d="M11 10h1v4"/>
+                </svg>
+              </button>
             </div>
             <label class="ambient-volume-row">
               <span class="ambient-volume-row__label" aria-hidden="true">vol</span>

@@ -261,8 +261,31 @@ body.list-view::before {
    through but the inner <a> keeps pointer-events: auto. Fixes long-form
    comet click being eaten by the bottom-of-screen text overlay. */
 .hud-hint { pointer-events: none !important; }
+/* ─── 10 May 2026 — handwritten attribution signature ──────────────────
+   Replaces the camouflaged "by A Guide to Cloud" footer link. Caveat font
+   (already loaded for the blog notebook system) signals "this is a personal
+   signature" instead of corporate footer. Dashed underline tells the eye
+   it's a real link. Wrapper keeps pointer-events:none so it never blocks
+   planet clicks; the inner <a> restores pointer-events:auto. */
 .hud-attribution { pointer-events: none !important; }
-.hud-attribution a { pointer-events: auto !important; }
+.hud-attribution a {
+  pointer-events: auto !important;
+  font-family: var(--handwritten);
+  font-size: 18px;
+  letter-spacing: 0.005em;
+  color: var(--hud-faint);
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--hud) 22%, transparent);
+  padding-bottom: 1px;
+  transition: color var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+.hud-attribution a:hover,
+.hud-attribution a:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  outline: 0;
+}
 .hud-shortcuts { pointer-events: none !important; }
 .mast-tag, .mast-rule, .mast-mark { pointer-events: none; }
 
@@ -1226,92 +1249,13 @@ body[data-lens="audience"] .lens-audience-cols { display: grid; }
 }
 
 /* ═══════════════ Phase D — audience filter pills ═══════════════ */
-.audience-filter {
-  position: absolute;
-  top: 24px;
-  right: 130px; /* clear list-view button on the right */
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  z-index: 215;
-  pointer-events: auto;
-  font-family: var(--mono);
-  flex-wrap: wrap;
-  max-width: calc(100% - 320px);
-}
-.audience-filter__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 11px 5px 9px;
-  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-edge) 78%, transparent);
-  color: color-mix(in srgb, var(--hud) 80%, transparent);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
-  text-transform: lowercase;
-  cursor: pointer;
-  transition: color var(--duration-base) var(--ease-out),
-              border-color var(--duration-base) var(--ease-out),
-              background var(--duration-base) var(--ease-out);
-}
-.audience-filter__pill:hover,
-.audience-filter__pill:focus-visible {
-  outline: 0;
-  color: var(--hud);
-  border-color: color-mix(in srgb, var(--hud) 38%, transparent);
-}
-.audience-filter__pill[aria-pressed="true"] {
-  color: var(--accent-soft);
-  border-color: var(--accent-soft);
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-edge));
-}
-.audience-filter__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: currentColor;
-  opacity: 0.55;
-}
-.audience-filter__pill[aria-pressed="true"] .audience-filter__dot { opacity: 1; }
-.audience-filter__clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid color-mix(in srgb, var(--hud) 22%, transparent);
-  border-radius: 999px;
-  background: transparent;
-  color: color-mix(in srgb, var(--hud) 70%, transparent);
-  font-family: var(--mono);
-  font-size: 12px;
-  cursor: pointer;
-  transition: color var(--duration-base) var(--ease-out),
-              border-color var(--duration-base) var(--ease-out);
-}
-.audience-filter__clear:hover { color: var(--hud); border-color: var(--accent-soft); }
-
-/* When the filter is active, dim non-matching planet bodies to 30% via
-   data-audience-dim attribute set by JS. Magnetism / focus pulses stay
-   intact — this is purely a visual filter overlay. */
-.planet-body[data-audience-dim="true"] {
-  opacity: 0.3 !important;
-  filter: saturate(0.5) brightness(0.7);
-}
-
-@media (max-width: 720px) {
-  .audience-filter { right: 16px; top: 56px; gap: 4px; }
-  .audience-filter__pill { font-size: 9.5px; padding: 4px 8px; }
-}
-body.list-view .audience-filter { display: none; }
+/* Audience filter pills — REMOVED 10 May 2026.
+   Lived between Phase D (always-on dim filter) and the lens-grid. Sush
+   removed them — felt like a marketing form, broke the cosmos vibe.
+   AUDIENCE_MAP in cosmos.ts is preserved for the audience LENS (Phase C). */
 
 /* ═══════════════ Phase D — tour mode visual cue ═══════════════ */
 body[data-tour="active"] .lens-pill,
-body[data-tour="active"] .audience-filter,
 body[data-tour="active"] .blog-asteroid {
   opacity: 0.35;
   pointer-events: none;
@@ -1418,7 +1362,6 @@ body[data-drift="active"] .hud-mast,
 body[data-drift="active"] .hud-tools,
 body[data-drift="active"] .hud-aux,
 body[data-drift="active"] .lens-pill,
-body[data-drift="active"] .audience-filter,
 body[data-drift="active"] .this-week-ribbon,
 body[data-drift="active"] #cosmos-lede,
 body[data-drift="active"] #cosmos-coach,
@@ -1595,18 +1538,20 @@ body[data-drift="active"] .canvas-stage {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--accent);
   border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--bg);
+  background: transparent;
+  color: var(--accent);
   font-family: var(--display);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: transform var(--duration-base) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out),
               box-shadow var(--duration-base) var(--ease-out);
 }
 .pomodoro-btn:hover, .pomodoro-btn:focus-visible {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(255, 179, 71, 0.35);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: none;
 }
 .pomodoro-btn--ghost {
   background: transparent;
@@ -1860,6 +1805,22 @@ body.list-view .ambient-player { display: none; }
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ─── 10 May 2026 — SVG icons replace 🔀 🔁 emoji ──────────────────────
+   "Handwritten over emoji" rule: pick a typeset element when one exists.
+   Lucide-style line icons drawn with currentColor inherit the button's
+   color, so they pick up muted/active/playing states automatically. */
+.ambient-svg-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  pointer-events: none;
+}
+/* Repeat button: two icons live in the DOM; CSS shows the right one based
+   on data-repeat. JS only flips the attribute — no innerHTML thrash. */
+#ambient-repeat .ambient-svg-icon--repeat-one { display: none; }
+#ambient-repeat[data-repeat="one"] .ambient-svg-icon--repeat { display: none; }
+#ambient-repeat[data-repeat="one"] .ambient-svg-icon--repeat-one { display: block; }
 
 /* Volume row */
 .ambient-volume-row {
@@ -2175,10 +2136,9 @@ body.list-view .pomodoro-card { display: none; }
 
 /* ─── Mobile (≤ 720px) — minimal interface ─────────────────────────
    Per Sush's V5 directive: on mobile we keep things simple. Only the
-   canvas + audience filter + list-view + drift toggle. Everything else
-   (lens grid, ambient, pomodoro, bodies-count, orientation buttons,
-   lede) is hidden. Mobile users get the cosmos to look at; controls
-   live on desktop. */
+   canvas + list-view + drift toggle. Everything else (lens grid, ambient,
+   pomodoro, bodies-count, orientation buttons, lede) is hidden. Mobile
+   users get the cosmos to look at; controls live on desktop. */
 @media (max-width: 720px) {
   .bodies-count,
   .hud-orientation,
@@ -2222,6 +2182,63 @@ body.list-view .left-stack { display: none; }
   left: auto !important;
   width: 100%;
   max-height: none;
+}
+
+/* ─── 10 May 2026 — "muted by default" ──────────────────────────────────────
+   Sush's note: the left cards were pulling attention away from the planets.
+   Solution: cards step back into ghost mode by default. They wake up when:
+     1. user hovers / focuses inside (intent to use)
+     2. data-playing="true"  — music is actually playing
+     3. data-active="true"   — pomodoro is actually running
+   Only chrome (border, head text, chevron, idle status) is muted.
+   Content (volume slider, pomodoro time, transport buttons) stays readable.
+   Keeps the cherry-blossom rule: the planets are the content; everything
+   else is scenery until you ask for it.
+*/
+.left-stack > .ambient-player,
+.left-stack > .pomodoro-card {
+  opacity: 0.55;
+  border-color: var(--rule) !important;
+  transition: opacity var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+
+/* Mute the head row hooks more aggressively when idle */
+.left-stack > .ambient-player .ambient-player__head,
+.left-stack > .pomodoro-card .pomodoro-card__head { color: var(--hud-faint); }
+
+.left-stack > .ambient-player .ambient-player__chevron,
+.left-stack > .pomodoro-card .pomodoro-card__chevron,
+.left-stack > .ambient-player[data-playing="false"] .ambient-player__state,
+.left-stack > .pomodoro-card:not([data-active="true"]) .pomodoro-card__state {
+  color: var(--hud-muted);
+}
+
+/* Wake-up: hover, keyboard focus inside, or genuine activity */
+.left-stack > .ambient-player:hover,
+.left-stack > .ambient-player:focus-within,
+.left-stack > .ambient-player[data-playing="true"],
+.left-stack > .pomodoro-card:hover,
+.left-stack > .pomodoro-card:focus-within,
+.left-stack > .pomodoro-card[data-active="true"] {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
+}
+
+/* When awake, restore head text contrast */
+.left-stack > .ambient-player:hover .ambient-player__head,
+.left-stack > .ambient-player:focus-within .ambient-player__head,
+.left-stack > .ambient-player[data-playing="true"] .ambient-player__head,
+.left-stack > .pomodoro-card:hover .pomodoro-card__head,
+.left-stack > .pomodoro-card:focus-within .pomodoro-card__head,
+.left-stack > .pomodoro-card[data-active="true"] .pomodoro-card__head {
+  color: var(--hud);
+}
+
+/* prefers-reduced-motion: instant wake-up, no opacity fade */
+@media (prefers-reduced-motion: reduce) {
+  .left-stack > .ambient-player,
+  .left-stack > .pomodoro-card { transition: none; }
 }
 
 /* Mobile: hide the left stack too (already hidden via individual cards but

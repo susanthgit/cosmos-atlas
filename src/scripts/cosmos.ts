@@ -2843,7 +2843,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) {
+    if (focusedSlug && !target.closest('.card-panel, .planet-body, .hud-tools, .hud-mast, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2856,7 +2856,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .audience-filter, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('.planet-body, .card-panel, .hud-tools, .hud-mast, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -3105,45 +3105,10 @@ export function mountCosmos(data: CosmosData): void {
   const openShortcutsBtn = document.getElementById('open-shortcuts') as HTMLButtonElement | null;
   openShortcutsBtn?.addEventListener('click', () => { markInteraction(); openShortcuts(); });
 
-  // Phase D — audience filter pills. Multi-select; OR semantics; clears
-  // the dim when nothing selected. Bodies are tagged with their primary
-  // audience via the same AUDIENCE_MAP used by the audience LENS in Phase C.
-  const audienceFilterRoot = document.getElementById('audience-filter') as HTMLElement | null;
-  const audienceFilterClear = document.getElementById('audience-filter-clear') as HTMLButtonElement | null;
-  const activeAudiences = new Set<string>();
-  function applyAudienceFilter(): void {
-    const anyActive = activeAudiences.size > 0;
-    if (audienceFilterClear) audienceFilterClear.hidden = !anyActive;
-    for (const b of bodies) {
-      const audience = AUDIENCE_MAP[b.slug];
-      const matches = !anyActive || (audience !== undefined && activeAudiences.has(audience));
-      if (matches) {
-        delete b.el.dataset.audienceDim;
-      } else {
-        b.el.dataset.audienceDim = 'true';
-      }
-    }
-  }
-  if (audienceFilterRoot) {
-    const pills = audienceFilterRoot.querySelectorAll<HTMLButtonElement>('.audience-filter__pill');
-    pills.forEach((p) => {
-      p.addEventListener('click', () => {
-        markInteraction();
-        const aud = p.dataset.audience;
-        if (!aud) return;
-        if (activeAudiences.has(aud)) activeAudiences.delete(aud);
-        else activeAudiences.add(aud);
-        p.setAttribute('aria-pressed', String(activeAudiences.has(aud)));
-        applyAudienceFilter();
-      });
-    });
-    audienceFilterClear?.addEventListener('click', () => {
-      markInteraction();
-      activeAudiences.clear();
-      pills.forEach((p) => p.setAttribute('aria-pressed', 'false'));
-      applyAudienceFilter();
-    });
-  }
+  // Phase D audience filter pills — REMOVED 10 May 2026. The pills felt like
+  // a marketing form and broke the cosmos vibe. AUDIENCE_MAP is preserved
+  // above for the audience LENS (Phase C). data-audience-dim is no longer
+  // applied to any body — the filter behaviour is gone entirely.
 
   // Phase D — tour mode. 35-second auto-flythrough of the 7 main bodies.
   // openSlug() is called for each stop in turn with 5s per stop. User
@@ -3577,8 +3542,9 @@ export function mountCosmos(data: CosmosData): void {
     }
 
     function updateRepeatBtn(): void {
-      const labels: Record<RepeatMode, string> = { off: '🔁', one: '🔂', all: '🔁' };
-      repeatBtn!.textContent = labels[repeatMode];
+      // 10 May 2026 — emoji 🔁 / 🔂 replaced with inline SVGs that live in
+      // the button HTML. CSS swaps which icon is visible based on data-repeat.
+      // We just toggle the attribute + ARIA + active class; no textContent.
       repeatBtn!.setAttribute('data-repeat', repeatMode);
       repeatBtn!.setAttribute('aria-pressed', repeatMode !== 'off' ? 'true' : 'false');
       repeatBtn!.setAttribute('title', `Repeat: ${repeatMode}`);

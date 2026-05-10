@@ -735,41 +735,8 @@ for (const vp of VIEWPORTS) {
       console.log(`  ⌘K palette: 🟡 search already open at test start — skipping`);
     }
 
-    // 14. Audience filter pills — clicking one toggles aria-pressed and
-    //     dims at least one planet body.
-    const filterState = await page.evaluate(() => {
-      const root = document.getElementById('audience-filter');
-      if (!root) return { hasRoot: false };
-      const pills = root.querySelectorAll('.audience-filter__pill');
-      return { hasRoot: true, pillCount: pills.length };
-    });
-    if (filterState.hasRoot && filterState.pillCount === 4) {
-      await page.evaluate(() => {
-        const techie = document.querySelector('.audience-filter__pill[data-audience="techie"]');
-        if (techie) techie.click();
-      });
-      await page.waitForTimeout(220);
-      const filterApplied = await page.evaluate(() => {
-        const techie = document.querySelector('.audience-filter__pill[data-audience="techie"]');
-        const dimmed = document.querySelectorAll('.planet-body[data-audience-dim="true"]').length;
-        return { pressed: techie?.getAttribute('aria-pressed'), dimmed };
-      });
-      if (filterApplied.pressed === 'true' && filterApplied.dimmed > 0) {
-        console.log(`  audience filter: ✓ "techie" pressed, ${filterApplied.dimmed} bodies dimmed`);
-      } else {
-        console.log(`  audience filter: 🔴 ${JSON.stringify(filterApplied)}`);
-        totalFails++;
-      }
-      // Clear filter
-      await page.evaluate(() => {
-        const clear = document.getElementById('audience-filter-clear');
-        if (clear) clear.click();
-      });
-      await page.waitForTimeout(220);
-    } else {
-      console.log(`  audience filter: 🔴 ${JSON.stringify(filterState)}`);
-      totalFails++;
-    }
+    // Audience filter pills — REMOVED 10 May 2026 (feature removed entirely).
+    // Test deleted with the feature.
 
     // 15. Tour mode — start tour, verify body[data-tour="active"], stop via Esc.
     const tourBefore = await page.evaluate(() => document.body.dataset.tour);
@@ -1033,6 +1000,67 @@ for (const vp of VIEWPORTS) {
       await page.waitForTimeout(200);
       await page.evaluate(() => (document.getElementById('pomodoro-toggle-panel'))?.click());
       await page.waitForTimeout(200);
+    }
+
+    // ─── 10 May 2026 — left-stack "muted by default" guardrail ───
+    // Sush asked for the cards to step back so the planets stay the focus.
+    // Lock the design intent: cards must be ≤ 0.60 opacity when fully idle
+    // (mouse away, not playing, not active) and must wake up to ≥ 0.95 on
+    // hover. Future sessions that accidentally raise idle opacity will trip
+    // this check. (Cosmos growing-guardrail rule.)
+    {
+      // First, force a clean idle state. Earlier ambient-transport tests may
+      // have left data-playing="true" or audio mid-load — mute that explicitly
+      // so we're testing the at-rest design, not a residual playing state.
+      await page.evaluate(() => {
+        const audio = document.getElementById('ambient-audio');
+        if (audio) { try { audio.pause(); } catch {} audio.currentTime = 0; }
+        const ap = document.getElementById('ambient-player');
+        if (ap) ap.setAttribute('data-playing', 'false');
+        const pc = document.getElementById('pomodoro-card');
+        if (pc) pc.setAttribute('data-active', 'false');
+      });
+      // Move mouse far away so neither card is being hovered.
+      await page.mouse.move(vp.width / 2, vp.height / 2);
+      await page.waitForTimeout(300);
+      const idle = await page.evaluate(() => {
+        const ap = document.getElementById('ambient-player');
+        const pc = document.getElementById('pomodoro-card');
+        return {
+          ambient: parseFloat(ap ? getComputedStyle(ap).opacity : '1'),
+          pomodoro: parseFloat(pc ? getComputedStyle(pc).opacity : '1'),
+          ambientPlaying: ap?.dataset.playing,
+          pomodoroActive: pc?.dataset.active,
+        };
+      });
+      const idleOk = idle.ambient <= 0.6 && idle.pomodoro <= 0.6
+        && idle.ambientPlaying !== 'true' && idle.pomodoroActive !== 'true';
+      if (idleOk) {
+        console.log(`  left-stack mute (idle): ✓ ambient=${idle.ambient.toFixed(2)} pomodoro=${idle.pomodoro.toFixed(2)} (both ≤ 0.60, cards stepped back)`);
+      } else {
+        console.log(`  left-stack mute (idle): 🔴 ${JSON.stringify(idle)} — cards must be ≤ 0.60 opacity at rest`);
+        totalFails++;
+      }
+      // Hover the ambient player — it should wake up to full opacity.
+      await page.hover('#ambient-player');
+      await page.waitForTimeout(300);
+      const hoverAmb = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('ambient-player')).opacity));
+      if (hoverAmb >= 0.95) {
+        console.log(`  left-stack mute (hover ambient): ✓ woke up to opacity=${hoverAmb.toFixed(2)}`);
+      } else {
+        console.log(`  left-stack mute (hover ambient): 🔴 opacity=${hoverAmb.toFixed(2)} — must be ≥ 0.95 on hover`);
+        totalFails++;
+      }
+      // Move away — should mute again.
+      await page.mouse.move(vp.width / 2, vp.height / 2);
+      await page.waitForTimeout(300);
+      const reIdle = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('ambient-player')).opacity));
+      if (reIdle <= 0.6) {
+        console.log(`  left-stack mute (re-idle): ✓ muted again to opacity=${reIdle.toFixed(2)}`);
+      } else {
+        console.log(`  left-stack mute (re-idle): 🔴 opacity=${reIdle.toFixed(2)} — must drop back to ≤ 0.60 when mouse leaves`);
+        totalFails++;
+      }
     }
 
     // ─── End Wave 2 (V5) ───
