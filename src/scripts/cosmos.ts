@@ -2856,7 +2856,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('cosmos-bar, .planet-body, .card-panel, .hud-tools, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('cosmos-bar, .planet-body, .card-panel, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {

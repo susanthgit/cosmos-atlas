@@ -255,21 +255,25 @@ body.list-view::before {
    comet click being eaten by the bottom-of-screen text overlay. */
 .hud-hint { pointer-events: none !important; }
 /* ─── 10 May 2026 — handwritten attribution signature ──────────────────
-   Replaces the camouflaged "by A Guide to Cloud" footer link. Caveat font
-   (already loaded for the blog notebook system) signals "this is a personal
-   signature" instead of corporate footer. Dashed underline tells the eye
-   it's a real link. Wrapper keeps pointer-events:none so it never blocks
-   planet clicks; the inner <a> restores pointer-events:auto. */
+   Replaces the camouflaged "by A Guide to Cloud" footer link. Now in
+   small caps mono — Sush asked for small caps after the handwritten
+   Caveat felt too loud + cursive for a footer signature. Solid
+   underline tells the eye it's a real link. Wrapper keeps
+   pointer-events:none so it never blocks planet clicks; the inner <a>
+   restores pointer-events:auto. */
 .hud-attribution { pointer-events: none !important; }
 .hud-attribution a {
   pointer-events: auto !important;
-  font-family: var(--handwritten);
-  font-size: 18px;
-  letter-spacing: 0.005em;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: 0.10em;
   color: var(--hud-faint);
   text-decoration: none;
-  border-bottom: 1px dashed color-mix(in srgb, var(--hud) 22%, transparent);
-  padding-bottom: 1px;
+  border-bottom: 1px solid color-mix(in srgb, var(--hud) 25%, transparent);
+  padding-bottom: 2px;
   transition: color var(--duration-base) var(--ease-out),
               border-color var(--duration-base) var(--ease-out);
 }

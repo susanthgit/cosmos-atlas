@@ -234,7 +234,7 @@ for (const vp of VIEWPORTS) {
       for (const [x, y] of candidates) {
         const el = document.elementFromPoint(x, y);
         if (!el) continue;
-        const isProtected = el.closest('cosmos-bar, .card-panel, .planet-body, .hud-tools, .hud-attribution');
+        const isProtected = el.closest('cosmos-bar, .card-panel, .planet-body, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .left-stack, .cosmos-coach, .cosmos-shortcuts, .blog-asteroid');
         // Astro dev-toolbar overlay isn't present in production; skip it during dev
         const isDevTool = el.tagName.startsWith('ASTRO-');
         if (!isProtected && !isDevTool) return { x, y, tag: el.tagName };
@@ -1134,6 +1134,47 @@ for (const vp of VIEWPORTS) {
     const resetKey = await page.$('kbd:has-text("R")');
     await page.keyboard.press('r');
     await page.waitForTimeout(400);
+
+    // ─── 10 May 2026 — signature link click guardrail ───
+    // Sush bug: real mouse clicks on .hud-attribution were stolen by
+    // root.setPointerCapture in the cosmos pointerdown handler. The link
+    // appeared interactive but didn't navigate. Lock in: a real click
+    // MUST trigger a navigation to /about/. Run this LAST so the page
+    // navigation doesn't disrupt other tests.
+    {
+      const linkInfo = await page.evaluate(() => {
+        const a = document.querySelector('.hud-attribution a');
+        return a ? { href: a.getAttribute('href'), text: a.textContent } : null;
+      });
+      if (!linkInfo) {
+        console.log(`  signature link: 🔴 .hud-attribution a not found`);
+        totalFails++;
+      } else {
+        // Block the actual navigation so we don't leave the page; just
+        // verify the browser ATTEMPTED to navigate to /about/.
+        let navAttempted = null;
+        const onReq = (req) => {
+          if (req.isNavigationRequest() && req.url().includes('/about/')) {
+            navAttempted = req.url();
+          }
+        };
+        page.on('request', onReq);
+        await page.route('**/about/**', (route) => route.abort('aborted')).catch(() => {});
+        try {
+          await page.click('.hud-attribution a', { timeout: 3000 });
+        } catch { /* expected — navigation aborted */ }
+        await page.waitForTimeout(600);
+        page.off('request', onReq);
+        await page.unroute('**/about/**').catch(() => {});
+        const ok = navAttempted && navAttempted.includes('/about/');
+        if (ok) {
+          console.log(`  signature link: ✓ click triggers nav to ${navAttempted}`);
+        } else {
+          console.log(`  signature link: 🔴 click did NOT navigate (root.setPointerCapture stole it?). text="${linkInfo.text}" href="${linkInfo.href}"`);
+          totalFails++;
+        }
+      }
+    }
   }
 
   await ctx.close();
