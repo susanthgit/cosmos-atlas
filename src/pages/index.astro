@@ -221,7 +221,7 @@ const clientData = {
 
       {/* V5 polish — original tour / replay / shortcuts buttons moved here from
            the bottom-right hud-aux row. They're orientation aids — natural
-           home is with the rest of the top-left meta UI. Drift toggle 🌙
+           home is with the rest of the top-left meta UI. Screensaver toggle 🌙
            also lives here now (was bottom-right). */}
       <div class="hud-orientation" aria-label="Orientation">
         <button
@@ -248,41 +248,19 @@ const clientData = {
         <button
           type="button"
           class="hud-aux__btn"
-          id="drift-toggle"
-          aria-label="Drift mode (slow screensaver)"
+          id="screensaver-toggle"
+          aria-label="Screensaver mode"
           aria-pressed="false"
-          title="Drift mode — slow screensaver (any input exits)"
+          title="Screensaver mode (any input exits)"
         >🌙</button>
       </div>
 
       <nav class="hud-tools" aria-label="View tools">
-        <button
-          type="button"
-          class="hud-btn"
-          id="toggle-list"
-          aria-pressed="false"
-          aria-label="Tap to read the planet list view"
-          title="Tap for the static planet list (great for screen readers)"
-        >
-          📋 List view
-        </button>
-      </nav>
-
-      <p class="hud-attribution">
-        <a href="https://www.aguidetocloud.com/about/" rel="noopener" title="About Susanth Sutheesh — A Guide to Cloud">made by sush</a>
-      </p>
-
-      {/* Phase D audience filter pills removed 10 May 2026 — felt like a marketing
-           form, broke the cosmos vibe. AUDIENCE_MAP is still used by the audience
-           LENS in Phase C, so the data layer stays. */}
-
-      {/* Wave 5 — Lens grid (always-visible 2x2). Replaces the old expandable
-           lens-pill. Lives in the left column on desktop, top-right compact
-           pill on mobile. Encourages exploration — first-timers see the four
-           lens options upfront instead of having to discover a hidden pill. */}
-      <div class="lens-grid" id="lens-grid" data-lens="cosmos" role="group" aria-label="Cosmos view">
-        <span class="lens-grid__label">Views</span>
-        <div class="lens-grid__options">
+        {/* May 2026 polish — lens picker (Cosmos / Constellation / Timeline / Audience)
+             merged into the top tools row alongside List view. Buttons keep their
+             id="lens-grid" wrapper + data-lens attribute + .lens-grid__option class
+             so existing cosmos.ts handlers + QA selectors continue to work. */}
+        <div class="lens-grid" id="lens-grid" data-lens="cosmos" role="group" aria-label="Cosmos view">
           <button class="lens-grid__option" type="button" data-lens="cosmos" aria-label="Cosmos lens — solar system" aria-pressed="true">
             <span class="lens-grid__icon" aria-hidden="true">🪐</span>
             <span class="lens-grid__name">Cosmos</span>
@@ -304,9 +282,27 @@ const clientData = {
             <span class="lens-grid__sub">who it's for</span>
           </button>
         </div>
-      </div>
+        <button
+          type="button"
+          class="hud-btn"
+          id="toggle-list"
+          aria-pressed="false"
+          aria-label="Tap to read the planet list view"
+          title="Tap for the static planet list (great for screen readers)"
+        >
+          📋 List view
+        </button>
+      </nav>
 
-      <!-- Wave 5 — Bottom-right hud-aux removed entirely. Drift toggle moved
+      <p class="hud-attribution">
+        <a href="https://www.aguidetocloud.com/about/" rel="noopener" title="About Susanth Sutheesh — A Guide to Cloud">made by sush</a>
+      </p>
+
+      {/* Phase D audience filter pills removed 10 May 2026 — felt like a marketing
+           form, broke the cosmos vibe. AUDIENCE_MAP is still used by the audience
+           LENS in Phase C, so the data layer stays. */}
+
+      <!-- Wave 5 — Bottom-right hud-aux removed entirely. Screensaver toggle moved
            up to .hud-orientation (top-left next to ▶ ⓘ ?). All controls now
            live in the left column. -->
 
@@ -381,7 +377,7 @@ const clientData = {
               <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min</button>
               <button type="button" class="pomodoro-btn pomodoro-btn--ghost" id="pomodoro-stop" hidden>Stop</button>
             </div>
-            <p class="pomodoro-hint">auto-engages drift while focusing.</p>
+            <p class="pomodoro-hint">auto-engages screensaver while focusing.</p>
             <p class="pomodoro-counter" id="pomodoro-counter" hidden></p>
           </div>
         </aside>

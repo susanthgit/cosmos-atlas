@@ -532,12 +532,13 @@ export function mountCosmos(data: CosmosData): void {
   // every capture is bit-identical. Tuned to spread the bodies nicely.
   const OG_SIM_T = 12.6;
 
-  // Wave 2 (V5) — drift mode (slow screensaver). When active, simT advances
-  // at 1/8 normal speed so the cosmos feels like a calm, drifting field for
-  // a second-screen ambient display. Toggled via the 🌙 hud-aux button, the
-  // ?drift=1 URL param, or auto-engaged after 5 minutes of no input.
-  let driftActive = false;
-  const DRIFT_TIME_SCALE = 0.125; // 1/8 — eight times slower
+  // Wave 2 (V5) — screensaver mode (renamed from "drift" — May 2026 polish).
+  // When active, simT advances at 1/8 normal speed so the cosmos feels like a
+  // calm, drifting field for a second-screen ambient display. UI fades except
+  // the canvas. Toggled via the 🌙 hud-orientation button, the ?screensaver=1
+  // URL param (or legacy ?drift=1), or auto-engaged after 5 minutes of no input.
+  let screensaverActive = false;
+  const SCREENSAVER_TIME_SCALE = 0.125; // 1/8 — eight times slower
 
   function getRealT(): number { return (performance.now() - startTime) / 1000; }
 
@@ -547,7 +548,7 @@ export function mountCosmos(data: CosmosData): void {
     const shouldPause = !reducedMotion && (hoveredSlug !== null || focusedSlug !== null);
     if (!shouldPause) {
       const delta = realT - lastSimSampleRealT;
-      simT += delta * (driftActive ? DRIFT_TIME_SCALE : 1);
+      simT += delta * (screensaverActive ? SCREENSAVER_TIME_SCALE : 1);
     }
     lastSimSampleRealT = realT;
   }
@@ -2019,12 +2020,15 @@ export function mountCosmos(data: CosmosData): void {
     // V3 #2 — Camera lerp boost during warp window. Pulls the camera toward target faster
     // for the first WARP_DURATION_MS, then eases back to normal.
     let lerp = baseLerp;
+    // May 2026 polish — softened camera boost from 1+2.5*sin (peak 3.5×) to
+    // 1+0.8*sin (peak 1.8×). The original peak felt like a jerk when opening
+    // a card; the gentler boost still glides toward the focused body without
+    // the sudden rush.
     if (!reducedMotion && warpStartMs > 0) {
       const wt = performance.now() - warpStartMs;
       if (wt < WARP_DURATION_MS) {
         const wp = wt / WARP_DURATION_MS; // 0 → 1
-        // Boost peaks early then decays (sin curve from 1.0 → ~3.5 → 1.0)
-        const boost = 1 + 2.5 * Math.sin(wp * Math.PI);
+        const boost = 1 + 0.8 * Math.sin(wp * Math.PI);
         lerp = Math.min(1, baseLerp * boost);
       } else {
         warpStartMs = 0;
@@ -2516,18 +2520,19 @@ export function mountCosmos(data: CosmosData): void {
     const toY = cardRect.top + cardRect.height * 0.35;
     const now = performance.now();
     const color = body.glowOuter ?? '#FFFFFF';
-    // Phase B-2 — card flyby (lite): bumped from 10 to 18 particles with
-    // longer streamline + brighter cores. Combined with the tether drawn
-    // in drawCardTether below, the card visually arrives FROM the focused
-    // body rather than just sliding in from the side.
-    const count = 18;
+    // May 2026 polish — particle count 18 → 8, stagger 24ms → 50ms. Still
+    // delivers the "card came from THIS body" affordance via the tether and
+    // a gentle particle trail, but without the burst-flicker that contributed
+    // to the open-card "jerk" feeling. The card panel slide-in itself is
+    // already smooth via --duration-glide on transform.
+    const count = 8;
     for (let i = 0; i < count; i++) {
       cardParticles.push({
         fromX: body.screenX + (Math.random() - 0.5) * 14,
         fromY: body.screenY + (Math.random() - 0.5) * 14,
         toX: toX + (Math.random() - 0.5) * 18,
         toY: toY + (Math.random() - 0.5) * 18,
-        startMs: now + i * 24,
+        startMs: now + i * 50,
         color,
         size: 1.8 + Math.random() * 1.6,
       });
@@ -3368,26 +3373,27 @@ export function mountCosmos(data: CosmosData): void {
   })();
 
   // ─── Wave 2 (V5) — focus companion ─────────────────────────────────
-  // 🌙 Drift mode (slow screensaver) · 🔊 Ambient sound (procedural) ·
-  // ⏱ Pomodoro (25/5 cycle, ties drift + ambient).
+  // 🌙 Screensaver mode (slow ambient) · 🔊 Ambient sound (procedural) ·
+  // ⏱ Pomodoro (25/5 cycle, ties screensaver + ambient).
   // All opt-in. Default OFF. localStorage-persisted preferences.
   // Honour Plain AI commons philosophy on Pomodoro: no streaks, no badges,
   // no celebration animations.
 
-  // ─── Drift mode ──────────────────────────────────────────────────
-  (function driftMode(): void {
-    const driftBtn = document.getElementById('drift-toggle') as HTMLButtonElement | null;
-    if (!driftBtn) return;
+  // ─── Screensaver mode ─────────────────────────────────────────────
+  (function screensaverMode(): void {
+    const screensaverBtn = document.getElementById('screensaver-toggle') as HTMLButtonElement | null;
+    if (!screensaverBtn) return;
     const IDLE_MS = 5 * 60 * 1000;  // 5 minutes
     const url = new URL(window.location.href);
-    const startInDrift = url.searchParams.get('drift') === '1';
+    // Accept both ?screensaver=1 (new) and ?drift=1 (legacy) for backward compat.
+    const startInScreensaver = url.searchParams.get('screensaver') === '1' || url.searchParams.get('drift') === '1';
 
-    function setDrift(active: boolean, suppressIdleReset?: boolean): void {
-      driftActive = active;
-      document.body.dataset.drift = active ? 'active' : '';
-      if (!document.body.dataset.drift) delete document.body.dataset.drift;
-      driftBtn!.setAttribute('aria-pressed', active ? 'true' : 'false');
-      try { window.localStorage.setItem('cosmosDriftPref', active ? 'on' : 'off'); }
+    function setScreensaver(active: boolean, suppressIdleReset?: boolean): void {
+      screensaverActive = active;
+      document.body.dataset.screensaver = active ? 'active' : '';
+      if (!document.body.dataset.screensaver) delete document.body.dataset.screensaver;
+      screensaverBtn!.setAttribute('aria-pressed', active ? 'true' : 'false');
+      try { window.localStorage.setItem('cosmosScreensaverPref', active ? 'on' : 'off'); }
       catch { /* private mode silent */ }
       if (active && !suppressIdleReset) {
         // Clear card so the cosmos itself drifts cleanly.
@@ -3395,34 +3401,35 @@ export function mountCosmos(data: CosmosData): void {
         cardCloseEl?.click();
       }
     }
-    driftBtn.addEventListener('click', (e) => {
+    screensaverBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      setDrift(!driftActive);
+      setScreensaver(!screensaverActive);
     });
 
     // Auto-engage after IDLE_MS of no input (mouse, touch, keyboard).
-    let idleTimer = window.setTimeout(() => setDrift(true, true), IDLE_MS);
+    let idleTimer = window.setTimeout(() => setScreensaver(true, true), IDLE_MS);
     function resetIdle(e?: Event): void {
-      // Don't auto-exit drift on hud-aux clicks (drift toggle, ambient, pomodoro
-      // buttons + popovers) — those are intentional UI interactions, not "user
-      // is back at the keyboard". Without this, clicking the drift toggle a
-      // second time would race: window pointerdown clears drift, then click
-      // handler re-enables it. Net effect: stuck on.
+      // Don't auto-exit screensaver when the click is on the screensaver toggle itself.
+      // pointerdown on the toggle fires BEFORE the click handler — without this
+      // narrow exclusion, the second click of the toggle would race:
+      //   pointerdown -> clears screensaver; then click -> setScreensaver(!false) -> re-enables.
+      // Net effect: stuck on. Other UI clicks (ambient, pomodoro, lens, etc.)
+      // count as "user is back" and should exit screensaver normally.
       const target = e?.target as HTMLElement | null;
-      if (target?.closest && target.closest('.hud-aux, .cosmos-popover')) return;
+      if (target?.closest && target.closest('#screensaver-toggle')) return;
       window.clearTimeout(idleTimer);
-      // Any input in drift exits drift (except clicks on the toggle itself —
-      // the click handler on driftBtn fires first via stopPropagation above).
-      if (driftActive) setDrift(false, true);
-      idleTimer = window.setTimeout(() => setDrift(true, true), IDLE_MS);
+      // Any input in screensaver exits it (except clicks on the toggle itself —
+      // the click handler on screensaverBtn fires first via stopPropagation above).
+      if (screensaverActive) setScreensaver(false, true);
+      idleTimer = window.setTimeout(() => setScreensaver(true, true), IDLE_MS);
     }
     ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) => {
       window.addEventListener(ev, resetIdle, { passive: true });
     });
 
-    if (startInDrift) {
+    if (startInScreensaver) {
       // Defer slightly so initial intro animation lands first.
-      window.setTimeout(() => setDrift(true, true), 1200);
+      window.setTimeout(() => setScreensaver(true, true), 1200);
     }
   })();
 
@@ -3721,7 +3728,7 @@ export function mountCosmos(data: CosmosData): void {
   })();
 
   // ─── Pomodoro mode ─────────────────────────────────────────────────
-  // 25-min focus → 5-min break, repeats. Auto-engages drift mode for
+  // 25-min focus → 5-min break, repeats. Auto-engages screensaver mode for
   // immersion. Quietly dims ambient sound during focus. Counter shown
   // (no streaks, no celebration animations — Plain AI commons philosophy).
   (function pomodoroMode(): void {
@@ -3786,12 +3793,12 @@ export function mountCosmos(data: CosmosData): void {
       o2.stop(ctx.currentTime + 1.7);
     }
 
-    function setDriftFromPomo(active: boolean): void {
-      const driftBtn = document.getElementById('drift-toggle') as HTMLButtonElement | null;
-      if (!driftBtn) return;
-      const isOn = driftBtn.getAttribute('aria-pressed') === 'true';
-      if (active && !isOn) driftBtn.click();
-      else if (!active && isOn) driftBtn.click();
+    function setScreensaverFromPomo(active: boolean): void {
+      const screensaverBtn = document.getElementById('screensaver-toggle') as HTMLButtonElement | null;
+      if (!screensaverBtn) return;
+      const isOn = screensaverBtn.getAttribute('aria-pressed') === 'true';
+      if (active && !isOn) screensaverBtn.click();
+      else if (!active && isOn) screensaverBtn.click();
     }
 
     function setPhase(next: 'idle' | 'focus' | 'break'): void {
@@ -3806,7 +3813,7 @@ export function mountCosmos(data: CosmosData): void {
         if (stateLabel) stateLabel.textContent = '25:00';
         card!.dataset.active = 'true';
         document.body.dataset.pomodoro = 'focus';
-        setDriftFromPomo(true);
+        setScreensaverFromPomo(true);
         amb?.adjustVolume(0.55);
       } else if (next === 'break') {
         endsAt = Date.now() + BREAK_MIN * 60 * 1000;
@@ -3815,7 +3822,7 @@ export function mountCosmos(data: CosmosData): void {
         card!.dataset.active = 'true';
         document.body.dataset.pomodoro = 'break';
         amb?.restoreVolume();
-        setDriftFromPomo(false);
+        setScreensaverFromPomo(false);
       } else {
         endsAt = 0;
         phaseEl!.textContent = 'focus';
@@ -3827,7 +3834,7 @@ export function mountCosmos(data: CosmosData): void {
         delete document.body.dataset.pomodoro;
         timeEl!.textContent = `${String(FOCUS_MIN).padStart(2, '0')}:00`;
         amb?.restoreVolume();
-        setDriftFromPomo(false);
+        setScreensaverFromPomo(false);
       }
     }
 

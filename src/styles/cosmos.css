@@ -134,9 +134,12 @@ body[data-view-mode="topdown"] .hud-shortcuts li:nth-child(3) { opacity: 0.4; }
 .gesture-hint[data-visible="false"] { pointer-events: none; }
 @media (min-width: 720px) { .gesture-hint { display: none; } }
 @media (prefers-reduced-motion: reduce) { .gesture-hint { transition: opacity 200ms linear; transform: translate(-50%, 0); } }
-/* V3 #2 — Cinematic warp-in. While the camera is rushing toward (or away from) the focused planet, bodies pick up a soft motion blur that quickly settles. */
-.cosmos[data-warp] .planet-body__icon { filter: blur(1.6px) drop-shadow(0 0 14px var(--accent-soft)); transition: filter 280ms cubic-bezier(0.18, 0.7, 0.2, 1); }
-.cosmos[data-warp="out"] .planet-body__icon { filter: blur(1.2px) drop-shadow(0 0 10px var(--accent-soft)); }
+/* V3 #2 — Cinematic warp-in. While the camera is gliding toward (or away from)
+   the focused planet, bodies pick up a soft glow that quickly settles.
+   May 2026 polish — dropped the blur filter (was the dominant source of "jerk"
+   when opening a card). Drop-shadow halo only. */
+.cosmos[data-warp] .planet-body__icon { filter: drop-shadow(0 0 14px var(--accent-soft)); transition: filter 280ms cubic-bezier(0.18, 0.7, 0.2, 1); }
+.cosmos[data-warp="out"] .planet-body__icon { filter: drop-shadow(0 0 10px var(--accent-soft)); }
 @media (prefers-reduced-motion: reduce) { .cosmos[data-warp] .planet-body__icon { filter: drop-shadow(0 0 6px rgba(2, 3, 14, 0.4)); transition: none; } }
 /* V3.x polish #5 — Caveat handwritten founder note. Sush's voice should *look*
    like handwriting on the napkin, not body copy. Applies in the open card,
@@ -1351,31 +1354,21 @@ body[data-tour="active"] #start-tour {
   background: color-mix(in srgb, var(--accent) 14%, rgba(2, 3, 14, 0.6));
 }
 
-/* Drift-mode global affordance — quiet HUD, slow CSS animations. The orbit
-   slowdown is applied via JS to simT (1/8 speed). Here we soften the chrome
-   so the cosmos feels like a screensaver. */
-body[data-drift="active"] .hud-tools,
-body[data-drift="active"] .hud-aux,
-body[data-drift="active"] .lens-pill,
-body[data-drift="active"] .this-week-ribbon,
-body[data-drift="active"] #cosmos-lede,
-body[data-drift="active"] #cosmos-coach,
-body[data-drift="active"] .blog-asteroid,
-body[data-drift="active"] .planet-label {
-  opacity: 0.25;
-  transition: opacity 1200ms var(--ease-out);
+/* Screensaver-mode global affordance (renamed from "drift" — May 2026 polish).
+   When active, fade EVERYTHING except the canvas (nebulae, starfield, orbits,
+   sun glow) so the cosmos drifts cleanly. Any input event on window exits
+   screensaver (handled by resetIdle in cosmos.ts). pointer-events:none on
+   faded chrome means hover/clicks pass through to the underlying canvas/main
+   and the window listener fires regardless. */
+body[data-screensaver="active"] .cosmos > :not(.canvas-stage),
+body[data-screensaver="active"] cosmos-bar {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms var(--ease-out);
 }
-body[data-drift="active"] .hud-aux__btn#drift-toggle,
-body[data-drift="active"] .planet-body {
-  opacity: 1;
-}
-body[data-drift="active"] .hud-aux {
-  opacity: 1;     /* keep the aux row dim but readable */
-  filter: opacity(0.7);
-}
-body[data-drift="active"] .canvas-stage {
+body[data-screensaver="active"] .canvas-stage {
   filter: brightness(0.92) saturate(0.94);
-  transition: filter 1200ms var(--ease-out);
+  transition: filter 600ms var(--ease-out);
 }
 
 /* Tiny popover panels for ambient + pomodoro. Positioned above the
@@ -1568,7 +1561,7 @@ body[data-drift="active"] .canvas-stage {
 
 /* Hide the popovers / toggles in list view (consistent with other HUD elements) */
 body.list-view .cosmos-popover,
-body.list-view #drift-toggle,
+body.list-view #screensaver-toggle,
 body.list-view #ambient-toggle,
 body.list-view #pomodoro-toggle,
 body.list-view .hud-aux__divider {
@@ -1939,47 +1932,40 @@ body.list-view .ambient-player { display: none; }
 /* Old lens-pill is replaced by .lens-grid below — hide if it leaks in. */
 .lens-pill { display: none !important; }
 
-/* Lens grid — always-visible 2x2 in left column. Replaces the old expandable
-   pill. Compact, no emoji noise, just text pills. */
+/* Lens picker — May 2026 polish, merged into top tools row alongside List view.
+   Was an absolute-positioned 2×2 grid in the left column; now an inline flex
+   row that sits inside .hud-tools. Buttons match .hud-btn pill styling. */
 .lens-grid {
-  position: absolute;
-  top: 148px;
-  left: var(--space-5);
-  width: 240px;
-  z-index: 215;
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .lens-grid__label {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--hud-faint);
-  padding-left: 2px;
+  /* Was "Views" label above the 2×2 grid. Hidden in the inline row — the row
+     is self-evident. */
+  display: none;
 }
 .lens-grid__options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .lens-grid__option {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 5px 8px;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--bg-edge) 70%, transparent);
-  color: var(--hud-muted);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  background: rgba(2, 3, 14, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.04em;
-  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hud);
   cursor: pointer;
   transition: border-color var(--duration-base) var(--ease-out),
               background-color var(--duration-base) var(--ease-out),
@@ -1987,29 +1973,53 @@ body.list-view .ambient-player { display: none; }
 }
 .lens-grid__option:hover,
 .lens-grid__option:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  color: var(--hud);
-}
-.lens-grid__option[aria-pressed="true"] {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-edge));
   color: var(--accent);
 }
-/* Hide the emoji icon + sub-label on desktop too — just the name. Minimal. */
-.lens-grid__icon,
+.lens-grid__option[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.lens-grid__icon {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  /* Reverse the uppercase letter-spacing for emoji */
+  letter-spacing: 0;
+}
+.lens-grid__name {
+  display: inline-block;
+}
+/* Sub-labels ("solar system", "relationships", "ship date", "who it's for")
+   read as marketing copy in an inline pill row. Hide them. */
 .lens-grid__sub {
   display: none;
 }
-.lens-grid__name {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+/* Phone polish: shrink padding so all 5 pills (4 lenses + List view) fit. */
+@media (max-width: 720px) {
+  .lens-grid__option {
+    padding: var(--space-1) var(--space-3);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .lens-grid__icon { font-size: 12px; }
+  /* If still too tight, drop the names and keep icons (strong aria-labels). */
+}
+@media (max-width: 480px) {
+  .lens-grid__name {
+    display: none;
+  }
+  .lens-grid__option {
+    padding: var(--space-2);
+  }
 }
 body.list-view .lens-grid { display: none; }
 
-/* Reposition ambient + pomodoro to sit closer below the smaller lens grid. */
-.ambient-player { top: 230px !important; }
-.pomodoro-card { top: 280px !important; }
+/* Reposition ambient + pomodoro back to the top of the left column now that
+   the lens grid no longer occupies that space. */
+.ambient-player { top: 80px !important; }
+.pomodoro-card { top: 140px !important; }
 
 /* Pomodoro inline card — sits below the ambient player. Same collapsible
    pattern. State label shows "idle" / "25:00" / "05:00" etc. */
@@ -2118,15 +2128,16 @@ body.list-view .pomodoro-card { display: none; }
 
 /* ─── Mobile (≤ 720px) — minimal interface ─────────────────────────
    Per Sush's V5 directive: on mobile we keep things simple. Only the
-   canvas + list-view + drift toggle. Everything else (lens grid, ambient,
-   pomodoro, bodies-count, orientation buttons, lede) is hidden. Mobile
-   users get the cosmos to look at; controls live on desktop. */
+   canvas + top tools row (lens picker + list view) + screensaver toggle.
+   Everything else (ambient, pomodoro, bodies-count, orientation buttons,
+   lede) is hidden. Mobile users get the cosmos to look at + the basics.
+   May 2026 polish — .lens-grid moved into .hud-tools top row and is now
+   visible on mobile (was hidden in the 2x2 left-column era). */
 @media (max-width: 720px) {
   .bodies-count,
   .hud-orientation,
   .ambient-player,
   .pomodoro-card,
-  .lens-grid,
   .cosmos-lede {
     display: none !important;
   }

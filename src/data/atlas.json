@@ -76,7 +76,7 @@
           "content": "Practice exams for AZ-900, AZ-104, AI-900, MS-900 and more. $9 per cert. One year of access.",
           "founder": "Most cert-prep sites charge $79 for what should cost $9. Honest take? It still costs me to run.",
           "stats": ["12+ certs", "$9 each", "1 year access"],
-          "orbit": { "radius": 55, "speedSec": 14, "phase": 60 },
+          "orbit": { "radius": 64, "speedSec": 14, "phase": 60 },
           "body": { "size": 22, "glowCore": "#F4ECDA", "glowOuter": "#E0D7BE" }
         }
       ]
@@ -93,7 +93,7 @@
       "content": "A growing index of Microsoft jargon. Type `$_` to launch. One entry, one plain-English answer.",
       "founder": "I forgot what GCC High meant for the third time. So I built CMD.",
       "stats": ["growing index", "`$_` launcher", "plain-English answers"],
-      "orbit": { "radius": 800, "ecc": 0.06, "tilt": -4, "speedSec": 131, "phase": 60 },
+      "orbit": { "radius": 920, "ecc": 0.06, "tilt": -4, "speedSec": 131, "phase": 200 },
       "body": { "size": 30, "glowCore": "#86EFAC", "glowOuter": "#22C55E" }
     },
     {

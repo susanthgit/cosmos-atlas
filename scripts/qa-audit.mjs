@@ -187,12 +187,35 @@ for (const vp of VIEWPORTS) {
 
   // Click each planet → card opens with correct slug → close via close-button
   const planetSlugs = ['earth', 'brainbar', 'shift', 'plainai', 'agentic', 'claw'];
+  // Growing guardrail (12 May 2026): during card-open warp (first ~280ms),
+  // .planet-body__icon must NOT have a blur() filter. Body blur was a major
+  // source of the open-card "jerk"; dropped in this release. This check
+  // catches CSS regressions that reintroduce the blur.
+  let smoothCardChecked = false;
   for (const slug of planetSlugs) {
     const target = await page.$(`.planet-body[data-slug="${slug}"]`);
     if (!target) { console.log(`  ${slug}: 🔴 body element missing`); totalFails++; continue; }
     await target.click({ force: true });
-    // scheduleUrlWrite() debounces 600ms; wait long enough
-    await page.waitForTimeout(800);
+    // Sample the filter mid-warp (before the 280ms warp duration completes).
+    if (!smoothCardChecked) {
+      await page.waitForTimeout(80);
+      const filterProbe = await page.evaluate(() => {
+        const icons = Array.from(document.querySelectorAll('.planet-body__icon'));
+        const filters = icons.map((el) => getComputedStyle(el).filter);
+        return filters.filter((f) => f && f !== 'none' && /blur\(/.test(f));
+      });
+      if (filterProbe.length === 0) {
+        console.log(`  smooth card open (no blur during warp): ✓`);
+      } else {
+        console.log(`  smooth card open (no blur during warp): 🔴 found blur() on ${filterProbe.length} icon(s) — ${filterProbe[0]}`);
+        totalFails++;
+      }
+      smoothCardChecked = true;
+      await page.waitForTimeout(720); // remainder of the 800ms scheduleUrlWrite debounce
+    } else {
+      // scheduleUrlWrite() debounces 600ms; wait long enough
+      await page.waitForTimeout(800);
+    }
     const cardOpen = await page.evaluate(() => {
       const panel = document.querySelector('.card-panel[data-open="true"]');
       if (!panel) return null;
@@ -866,31 +889,50 @@ for (const vp of VIEWPORTS) {
 
     // ─── End Wave 1 (V5) ───
 
-    // ─── Wave 2 (V5) — drift / ambient / pomodoro ───
+    // ─── Wave 2 (V5) — screensaver / ambient / pomodoro ───
     console.log(`\n=== ${vp.name} / Wave 2 (V5) ===`);
 
-    // 1) Drift toggle — click 🌙 → body.dataset.drift="active"; click again → cleared.
-    const driftBtn = await page.$('#drift-toggle');
-    if (!driftBtn) {
-      console.log(`  drift toggle: 🔴 #drift-toggle not found`);
+    // 1) Screensaver toggle — click 🌙 → body.dataset.screensaver="active"; click again → cleared.
+    const screensaverBtn = await page.$('#screensaver-toggle');
+    if (!screensaverBtn) {
+      console.log(`  screensaver toggle: 🔴 #screensaver-toggle not found`);
       totalFails++;
     } else {
-      await driftBtn.click();
+      await screensaverBtn.click();
       await page.waitForTimeout(300);
-      const driftOn = await page.evaluate(() => document.body.getAttribute('data-drift'));
-      if (driftOn === 'active') {
-        console.log(`  drift toggle: ✓ activated (body.dataset.drift="active")`);
+      const screensaverOn = await page.evaluate(() => document.body.getAttribute('data-screensaver'));
+      if (screensaverOn === 'active') {
+        console.log(`  screensaver toggle: ✓ activated (body.dataset.screensaver="active")`);
       } else {
-        console.log(`  drift toggle: 🔴 expected active, got "${driftOn}"`);
+        console.log(`  screensaver toggle: 🔴 expected active, got "${screensaverOn}"`);
         totalFails++;
       }
-      await driftBtn.click();
-      await page.waitForTimeout(300);
-      const driftOff = await page.evaluate(() => document.body.getAttribute('data-drift'));
-      if (!driftOff) {
-        console.log(`  drift toggle off: ✓ cleared on second click`);
+      // Growing guardrail (12 May 2026): assert fade landed. After 700ms (> 600ms
+      // CSS transition), the .hud overlay must be invisible (opacity ≤ 0.05) and
+      // the canvas-stage must remain visible (opacity ≥ 0.95). Catches regressions
+      // where the screensaver CSS rule selector breaks (e.g. renaming data-attr).
+      await page.waitForTimeout(700);
+      const fadeProbe = await page.evaluate(() => ({
+        hud: parseFloat(getComputedStyle(document.querySelector('.hud')).opacity),
+        canvas: parseFloat(getComputedStyle(document.querySelector('.canvas-stage')).opacity),
+      }));
+      if (fadeProbe.hud <= 0.05 && fadeProbe.canvas >= 0.95) {
+        console.log(`  screensaver fade: ✓ hud=${fadeProbe.hud.toFixed(2)} canvas=${fadeProbe.canvas.toFixed(2)}`);
       } else {
-        console.log(`  drift toggle off: 🔴 still "${driftOff}" after second click`);
+        console.log(`  screensaver fade: 🔴 hud=${fadeProbe.hud.toFixed(2)} (≤0.05) canvas=${fadeProbe.canvas.toFixed(2)} (≥0.95)`);
+        totalFails++;
+      }
+      // Click toggle a second time — must clear. Tests the resetIdle race fix
+      // (pointerdown on toggle was clearing the flag before click re-set it).
+      // Use DOM click() so the synthetic event has target=button (no mouse-move
+      // race) — this is the same pattern as the legacy drift toggle test.
+      await page.evaluate(() => document.getElementById('screensaver-toggle')?.click());
+      await page.waitForTimeout(300);
+      const screensaverOff = await page.evaluate(() => document.body.getAttribute('data-screensaver'));
+      if (!screensaverOff) {
+        console.log(`  screensaver toggle off: ✓ cleared on second click`);
+      } else {
+        console.log(`  screensaver toggle off: 🔴 still "${screensaverOff}" after second click`);
         totalFails++;
       }
     }
@@ -902,8 +944,14 @@ for (const vp of VIEWPORTS) {
       console.log(`  ambient player: 🔴 #ambient-toggle-panel not found`);
       totalFails++;
     } else {
-      // Expand the player.
-      await page.evaluate(() => (document.getElementById('ambient-toggle-panel'))?.click());
+      // Normalize to expanded — HTML defaults to data-state="expanded" since
+      // V5 polish (commit c94d9b9). Only click to expand if currently collapsed
+      // (e.g. if persisted state collapsed it). Assert state ends as expanded.
+      await page.evaluate(() => {
+        const player = document.getElementById('ambient-player');
+        const head = document.getElementById('ambient-toggle-panel');
+        if (player?.getAttribute('data-state') !== 'expanded') head?.click();
+      });
       await page.waitForTimeout(250);
       const probe = await page.evaluate(() => {
         const player = document.getElementById('ambient-player');
