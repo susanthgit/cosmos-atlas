@@ -24,6 +24,16 @@ declare const __INLINE_STYLES__: string;
 const COSMOS_HOST = 'https://cosmos.aguidetocloud.com';
 const FRESHNESS_DAYS = 14;
 
+// Live counter endpoint — public CORS *, returns {totalUnique}.
+// Lives on Earth's worker (single source of truth for cosmos-wide GA4).
+const LIVE_COUNTER_URL = 'https://www.aguidetocloud.com/api/stats?realtime=cosmos';
+const LIVE_POLL_INTERVAL_MS = 45_000;
+const LIVE_HIDE_AFTER_FAILURES = 3;
+// Counter is only meaningful when the cosmos has actual aggregate visitors.
+// Hide entirely for totals < this threshold to avoid "🟠 1" loneliness signal
+// and intermittent flicker (a single visitor going to a new tab drops total to 0).
+const LIVE_MIN_VISIBLE = 2;
+
 interface BarBody {
   slug: BarSlug;
   name: string;
@@ -43,6 +53,14 @@ class CosmosBar extends HTMLElement {
   private data: AtlasBar | null = null;
   private active: string = '';
   private sheetOpen = false;
+
+  // Live counter state (added 12 May 2026 — Phase A1 of cosmos intelligence).
+  // Lifecycle-safe: ONE interval per element lifetime; AbortController per fetch;
+  // partial DOM updates (no full re-render); auto-hide after 3 consecutive fails.
+  private liveTimer: ReturnType<typeof setInterval> | null = null;
+  private liveAbort: AbortController | null = null;
+  private liveFailures = 0;
+  private liveStarted = false;
 
   constructor() {
     super();
@@ -154,6 +172,15 @@ class CosmosBar extends HTMLElement {
         <div class="bodies" role="navigation" aria-label="Cosmos">${cosmosBody}${divider}${desktopBodies}</div>
         <div class="spacer" aria-hidden="true"></div>
         <div class="tail">
+          <a class="live-pill"
+              href="${COSMOS_HOST}/"
+              data-state="loading"
+              aria-label="Live: people currently in the cosmos"
+              title="Live count across the cosmos">
+            <span class="live-pill-dot" aria-hidden="true"></span>
+            <span class="live-pill-num">·</span>
+            <span class="live-pill-label">in cosmos</span>
+          </a>
           ${
             relay
               ? `<a class="relay" href="${this.escapeUrl(relay.url)}" aria-label="${this.escape(relay.name + ' — ' + (relay.tagline || ''))}" title="${this.escape(relay.name)}">${iconSvg('mcp', 'relay')}</a>`
@@ -173,6 +200,77 @@ class CosmosBar extends HTMLElement {
       </div>`;
 
     this.wire();
+    // Start live-counter polling once on first successful render. Re-renders
+    // (e.g. on active-attribute change) must NOT restart it — that would leak
+    // intervals + listeners.
+    if (!this.liveStarted) {
+      this.liveStarted = true;
+      this.startLiveCounter();
+    }
+  }
+
+  // ── Live counter lifecycle ─────────────────────────────────────────
+  //
+  // Public surface — fetches /api/stats?realtime=cosmos from Earth's worker
+  // (CORS *). No auth header sent; returns {totalUnique}. Hides entirely
+  // when total < LIVE_MIN_VISIBLE or after LIVE_HIDE_AFTER_FAILURES failures.
+  // Per-planet breakdown is GATED and lives in Command Centre, not here.
+  private startLiveCounter() {
+    // Fire once immediately, then on the cadence. Single interval per lifetime.
+    void this.fetchLiveCount();
+    if (this.liveTimer) clearInterval(this.liveTimer);
+    this.liveTimer = setInterval(() => { void this.fetchLiveCount(); }, LIVE_POLL_INTERVAL_MS);
+  }
+
+  private async fetchLiveCount() {
+    // Abort any in-flight fetch (e.g. when poll fires while previous is hanging).
+    if (this.liveAbort) {
+      try { this.liveAbort.abort(); } catch (_) { /* no-op */ }
+    }
+    const ctl = new AbortController();
+    this.liveAbort = ctl;
+    try {
+      const res = await fetch(LIVE_COUNTER_URL, {
+        credentials: 'omit',
+        cache: 'no-store',
+        signal: ctl.signal,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { totalUnique?: number; error?: string };
+      const n = typeof data?.totalUnique === 'number' ? data.totalUnique : 0;
+      this.liveFailures = 0;
+      this.updateLivePill(n);
+    } catch (e) {
+      // AbortError is expected when we pre-empt — do NOT count as failure.
+      const aborted = (e as { name?: string })?.name === 'AbortError';
+      if (!aborted) {
+        this.liveFailures++;
+        if (this.liveFailures >= LIVE_HIDE_AFTER_FAILURES) this.hideLivePill();
+      }
+    }
+  }
+
+  private updateLivePill(total: number) {
+    const pill = this.root.querySelector('.live-pill') as HTMLElement | null;
+    if (!pill) return;
+    if (total < LIVE_MIN_VISIBLE) {
+      pill.setAttribute('data-state', 'hidden');
+      return;
+    }
+    pill.setAttribute('data-state', 'live');
+    pill.setAttribute('aria-label', `${total} people currently in the cosmos`);
+    const num = pill.querySelector('.live-pill-num') as HTMLElement | null;
+    if (num) num.textContent = String(total);
+  }
+
+  private hideLivePill() {
+    const pill = this.root.querySelector('.live-pill') as HTMLElement | null;
+    if (pill) pill.setAttribute('data-state', 'hidden');
+  }
+
+  private stopLiveCounter() {
+    if (this.liveTimer) { clearInterval(this.liveTimer); this.liveTimer = null; }
+    if (this.liveAbort) { try { this.liveAbort.abort(); } catch (_) { /* no-op */ } this.liveAbort = null; }
   }
 
   private renderFallback() {
@@ -229,6 +327,7 @@ class CosmosBar extends HTMLElement {
   disconnectedCallback() {
     document.removeEventListener('click', this.onDocClick);
     document.removeEventListener('keydown', this.onKey);
+    this.stopLiveCounter();
   }
 
   private escape(s: string): string {

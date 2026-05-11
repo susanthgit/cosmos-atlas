@@ -1,7 +1,7 @@
 /* cosmos-bar.js — single-file web component, served at https://cosmos.aguidetocloud.com/cosmos-bar.js
    Source: cosmos-atlas/src/cosmos-bar/component.ts
-   Generated: 2026-05-10T02:00:25.609Z */
-"use strict";(()=>{var g=Object.defineProperty;var m=(i,s,e)=>s in i?g(i,s,{enumerable:!0,configurable:!0,writable:!0,value:e}):i[s]=e;var n=(i,s,e)=>m(i,typeof s!="symbol"?s+"":s,e);var v=["earth","guided","brainbar","shift","plainai","curriculum","agentic","claw"],y="https://cosmos.aguidetocloud.com";function r(i,s="bar"){switch(i){case"earth":return`<img src="${y}/planets/earth-lotus.webp" width="24" height="24" alt="" loading="lazy" decoding="async" />`;case"guided":return`<svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false">
+   Generated: 2026-05-11T20:45:59.183Z */
+"use strict";(()=>{var f=Object.defineProperty;var m=(l,s,e)=>s in l?f(l,s,{enumerable:!0,configurable:!0,writable:!0,value:e}):l[s]=e;var a=(l,s,e)=>m(l,typeof s!="symbol"?s+"":s,e);var g=["earth","guided","brainbar","shift","plainai","curriculum","agentic","claw"],y="https://cosmos.aguidetocloud.com";function o(l,s="bar"){switch(l){case"earth":return`<img src="${y}/planets/earth-lotus.webp" width="24" height="24" alt="" loading="lazy" decoding="async" />`;case"guided":return`<svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false">
         <mask id="cb-${s}-guided-mask">
           <rect width="32" height="32" fill="white"/>
           <circle cx="20" cy="13" r="11" fill="black"/>
@@ -73,7 +73,7 @@
     <path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z" fill="#F2EDE3" opacity="0.85">
       <animate attributeName="opacity" values="0.6;0.95;0.6" dur="3.4s" repeatCount="indefinite"/>
     </path>
-  </svg>`}var d="https://cosmos.aguidetocloud.com",b=14,h=class extends HTMLElement{constructor(){super();n(this,"root");n(this,"data",null);n(this,"active","");n(this,"sheetOpen",!1);n(this,"onDocClick",e=>{if(!this.sheetOpen)return;e.composedPath().includes(this)||this.setSheet(!1)});n(this,"onKey",e=>{e.key==="Escape"&&this.sheetOpen&&this.setSheet(!1)});this.root=this.attachShadow({mode:"open"})}static get observedAttributes(){return["active"]}attributeChangedCallback(e,t,a){e==="active"&&(this.active=(a||"").trim().toLowerCase(),this.data&&this.render())}async connectedCallback(){this.active=(this.getAttribute("active")||"").trim().toLowerCase(),this.root.innerHTML=`<style>:host {\r
+  </svg>`}var c="https://cosmos.aguidetocloud.com",b=14,w="https://www.aguidetocloud.com/api/stats?realtime=cosmos",L=45e3,E=3,S=2,d=class extends HTMLElement{constructor(){super();a(this,"root");a(this,"data",null);a(this,"active","");a(this,"sheetOpen",!1);a(this,"liveTimer",null);a(this,"liveAbort",null);a(this,"liveFailures",0);a(this,"liveStarted",!1);a(this,"onDocClick",e=>{if(!this.sheetOpen)return;e.composedPath().includes(this)||this.setSheet(!1)});a(this,"onKey",e=>{e.key==="Escape"&&this.sheetOpen&&this.setSheet(!1)});this.root=this.attachShadow({mode:"open"})}static get observedAttributes(){return["active"]}attributeChangedCallback(e,t,i){e==="active"&&(this.active=(i||"").trim().toLowerCase(),this.data&&this.render())}async connectedCallback(){this.active=(this.getAttribute("active")||"").trim().toLowerCase(),this.root.innerHTML=`<style>:host {\r
   all: initial;\r
   display: block;\r
   position: sticky;\r
@@ -209,6 +209,60 @@
 }\r
 .relay:hover { opacity: 1; }\r
 .relay:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }\r
+\r
+/* Live cosmos counter pill \u2014 public vitality signal.\r
+   Added 12 May 2026 (cosmos-wide intelligence v1). Shows the cosmos-wide\r
+   total of active users in real time. No per-planet breakdown here \u2014\r
+   that's gated and lives in the Command Centre Cosmos tab. */\r
+.live-pill {\r
+  display: inline-flex;\r
+  align-items: center;\r
+  gap: 5px;\r
+  padding: 0 9px;\r
+  height: 22px;\r
+  border-radius: 999px;\r
+  background: rgba(255, 179, 71, 0.10);\r
+  border: 1px solid rgba(255, 179, 71, 0.20);\r
+  color: #F2EDE3;\r
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;\r
+  font-size: 11px;\r
+  font-weight: 600;\r
+  font-variant-numeric: tabular-nums;\r
+  letter-spacing: 0.01em;\r
+  line-height: 1;\r
+  text-decoration: none;\r
+  transition: background 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;\r
+  cursor: default;\r
+}\r
+.live-pill:hover {\r
+  background: rgba(255, 179, 71, 0.16);\r
+  border-color: rgba(255, 179, 71, 0.32);\r
+}\r
+.live-pill:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }\r
+.live-pill[data-state="hidden"] { display: none; }\r
+.live-pill[data-state="loading"] { opacity: 0.45; }\r
+.live-pill-dot {\r
+  width: 6px;\r
+  height: 6px;\r
+  border-radius: 50%;\r
+  background: #FFB347;\r
+  flex: 0 0 auto;\r
+  animation: live-pulse 2.4s ease-in-out infinite;\r
+}\r
+.live-pill-num { white-space: nowrap; }\r
+.live-pill-label { opacity: 0.78; font-weight: 500; }\r
+@keyframes live-pulse {\r
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 179, 71, 0.55); opacity: 1; }\r
+  50%      { box-shadow: 0 0 0 4px rgba(255, 179, 71, 0); opacity: 0.55; }\r
+}\r
+@media (max-width: 640px) {\r
+  .live-pill { padding: 0 7px; height: 20px; font-size: 10.5px; gap: 4px; }\r
+  .live-pill-label { display: none; }\r
+  .live-pill-dot { width: 5px; height: 5px; }\r
+}\r
+@media (prefers-reduced-motion: reduce) {\r
+  .live-pill-dot { animation: none; }\r
+}\r
 \r
 /* Tooltip \u2014 the hover tagline */\r
 .tip {\r
@@ -335,24 +389,24 @@
   }\r
   /* Disable inline SVG <animate> elements within shadow DOM */\r
   :host ::part(svg-animate) { display: none; }\r
-}</style><div class="bar"><div class="bodies" aria-busy="true"></div></div>`;try{let e=await this.fetchAtlas();this.data=e,this.render()}catch(e){console.warn("[cosmos-bar] failed to load atlas-bar.json",e),this.renderFallback()}}async fetchAtlas(){let e=(this.getAttribute("data-host")||"").trim(),t=d;e==="self"?t=window.location.origin:e&&(t=e.replace(/\/$/,""));let a=`${t}/atlas-bar.json`,o=await fetch(a,{credentials:"omit",cache:"force-cache"});if(!o.ok)throw new Error(`atlas-bar.json HTTP ${o.status}`);return await o.json()}isFresh(e){if(!e.lastShippedAt)return!1;let t=Date.parse(e.lastShippedAt);if(Number.isNaN(t))return!1;let a=(Date.now()-t)/(1e3*60*60*24);return a>=0&&a<=b}bodyHtml(e){let t=e.slug===this.active,a=this.isFresh(e),o=this.escape(e.tagline||e.name),c=this.escape(`${e.name}${e.tagline?" \u2014 "+e.tagline:""}`);return`<a class="body"
+}</style><div class="bar"><div class="bodies" aria-busy="true"></div></div>`;try{let e=await this.fetchAtlas();this.data=e,this.render()}catch(e){console.warn("[cosmos-bar] failed to load atlas-bar.json",e),this.renderFallback()}}async fetchAtlas(){let e=(this.getAttribute("data-host")||"").trim(),t=c;e==="self"?t=window.location.origin:e&&(t=e.replace(/\/$/,""));let i=`${t}/atlas-bar.json`,r=await fetch(i,{credentials:"omit",cache:"force-cache"});if(!r.ok)throw new Error(`atlas-bar.json HTTP ${r.status}`);return await r.json()}isFresh(e){if(!e.lastShippedAt)return!1;let t=Date.parse(e.lastShippedAt);if(Number.isNaN(t))return!1;let i=(Date.now()-t)/(1e3*60*60*24);return i>=0&&i<=b}bodyHtml(e){let t=e.slug===this.active,i=this.isFresh(e),r=this.escape(e.tagline||e.name),h=this.escape(`${e.name}${e.tagline?" \u2014 "+e.tagline:""}`);return`<a class="body"
         href="${this.escapeUrl(e.url)}"
         data-slug="${this.escape(e.slug)}"
         ${t?'aria-current="true"':""}
-        ${a?'data-fresh="1"':""}
-        aria-label="${c}"
-        title="">${r(e.slug,"bar")}<span class="tip">${o}</span></a>`}sheetRowHtml(e){let t=e.slug===this.active,a=this.isFresh(e);return`<a class="sheet-row" href="${this.escapeUrl(e.url)}" data-slug="${this.escape(e.slug)}" ${t?'aria-current="true"':""}>
-        <span class="icon-slot" ${a?'data-fresh="1"':""}>${r(e.slug,"sheet")}</span>
+        ${i?'data-fresh="1"':""}
+        aria-label="${h}"
+        title="">${o(e.slug,"bar")}<span class="tip">${r}</span></a>`}sheetRowHtml(e){let t=e.slug===this.active,i=this.isFresh(e);return`<a class="sheet-row" href="${this.escapeUrl(e.url)}" data-slug="${this.escape(e.slug)}" ${t?'aria-current="true"':""}>
+        <span class="icon-slot" ${i?'data-fresh="1"':""}>${o(e.slug,"sheet")}</span>
         <span class="text">
           <span class="label">${this.escape(e.name)}</span>
           ${e.tagline?`<span class="tagline">${this.escape(e.tagline)}</span>`:""}
         </span>
-      </a>`}render(){if(!this.data)return;let e=this.data.bodies.filter(l=>l.kind!=="relay"),t=this.data.bodies.find(l=>l.kind==="relay"),a=e.map(l=>this.bodyHtml(l)).join(""),o=e.map(l=>this.sheetRowHtml(l)).join(""),c=this.active==="cosmos",p=`<a class="body body--cosmos"
-        href="${d}/"
+      </a>`}render(){if(!this.data)return;let e=this.data.bodies.filter(n=>n.kind!=="relay"),t=this.data.bodies.find(n=>n.kind==="relay"),i=e.map(n=>this.bodyHtml(n)).join(""),r=e.map(n=>this.sheetRowHtml(n)).join(""),h=this.active==="cosmos",p=`<a class="body body--cosmos"
+        href="${c}/"
         data-slug="cosmos"
-        ${c?'aria-current="true"':""}
+        ${h?'aria-current="true"':""}
         aria-label="Open the cosmos portal"
-        title="">${r("cosmos","home")}<span class="tip">open the cosmos portal</span></a>`,f='<span class="divider" aria-hidden="true"></span>';this.root.innerHTML=`<style>:host {\r
+        title="">${o("cosmos","home")}<span class="tip">open the cosmos portal</span></a>`,v='<span class="divider" aria-hidden="true"></span>';this.root.innerHTML=`<style>:host {\r
   all: initial;\r
   display: block;\r
   position: sticky;\r
@@ -488,6 +542,60 @@
 }\r
 .relay:hover { opacity: 1; }\r
 .relay:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }\r
+\r
+/* Live cosmos counter pill \u2014 public vitality signal.\r
+   Added 12 May 2026 (cosmos-wide intelligence v1). Shows the cosmos-wide\r
+   total of active users in real time. No per-planet breakdown here \u2014\r
+   that's gated and lives in the Command Centre Cosmos tab. */\r
+.live-pill {\r
+  display: inline-flex;\r
+  align-items: center;\r
+  gap: 5px;\r
+  padding: 0 9px;\r
+  height: 22px;\r
+  border-radius: 999px;\r
+  background: rgba(255, 179, 71, 0.10);\r
+  border: 1px solid rgba(255, 179, 71, 0.20);\r
+  color: #F2EDE3;\r
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;\r
+  font-size: 11px;\r
+  font-weight: 600;\r
+  font-variant-numeric: tabular-nums;\r
+  letter-spacing: 0.01em;\r
+  line-height: 1;\r
+  text-decoration: none;\r
+  transition: background 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;\r
+  cursor: default;\r
+}\r
+.live-pill:hover {\r
+  background: rgba(255, 179, 71, 0.16);\r
+  border-color: rgba(255, 179, 71, 0.32);\r
+}\r
+.live-pill:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }\r
+.live-pill[data-state="hidden"] { display: none; }\r
+.live-pill[data-state="loading"] { opacity: 0.45; }\r
+.live-pill-dot {\r
+  width: 6px;\r
+  height: 6px;\r
+  border-radius: 50%;\r
+  background: #FFB347;\r
+  flex: 0 0 auto;\r
+  animation: live-pulse 2.4s ease-in-out infinite;\r
+}\r
+.live-pill-num { white-space: nowrap; }\r
+.live-pill-label { opacity: 0.78; font-weight: 500; }\r
+@keyframes live-pulse {\r
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 179, 71, 0.55); opacity: 1; }\r
+  50%      { box-shadow: 0 0 0 4px rgba(255, 179, 71, 0); opacity: 0.55; }\r
+}\r
+@media (max-width: 640px) {\r
+  .live-pill { padding: 0 7px; height: 20px; font-size: 10.5px; gap: 4px; }\r
+  .live-pill-label { display: none; }\r
+  .live-pill-dot { width: 5px; height: 5px; }\r
+}\r
+@media (prefers-reduced-motion: reduce) {\r
+  .live-pill-dot { animation: none; }\r
+}\r
 \r
 /* Tooltip \u2014 the hover tagline */\r
 .tip {\r
@@ -617,18 +725,27 @@
 }</style>
       <div class="bar">
         <button class="mobile-launch" type="button" aria-label="Open the cosmos menu" aria-expanded="${this.sheetOpen}">${u()}</button>
-        <div class="bodies" role="navigation" aria-label="Cosmos">${p}${f}${a}</div>
+        <div class="bodies" role="navigation" aria-label="Cosmos">${p}${v}${i}</div>
         <div class="spacer" aria-hidden="true"></div>
         <div class="tail">
-          ${t?`<a class="relay" href="${this.escapeUrl(t.url)}" aria-label="${this.escape(t.name+" \u2014 "+(t.tagline||""))}" title="${this.escape(t.name)}">${r("mcp","relay")}</a>`:""}
+          <a class="live-pill"
+              href="${c}/"
+              data-state="loading"
+              aria-label="Live: people currently in the cosmos"
+              title="Live count across the cosmos">
+            <span class="live-pill-dot" aria-hidden="true"></span>
+            <span class="live-pill-num">\xB7</span>
+            <span class="live-pill-label">in cosmos</span>
+          </a>
+          ${t?`<a class="relay" href="${this.escapeUrl(t.url)}" aria-label="${this.escape(t.name+" \u2014 "+(t.tagline||""))}" title="${this.escape(t.name)}">${o("mcp","relay")}</a>`:""}
         </div>
       </div>
       <div class="sheet" data-open="${this.sheetOpen?"1":"0"}" role="dialog" aria-label="Cosmos planets" aria-hidden="${!this.sheetOpen}">
-        <a class="sheet-row sheet-row--cosmos" href="${d}/" ${c?'aria-current="true"':""}><span class="icon-slot">${r("cosmos","sheet-cosmos")}</span><span class="text"><span class="label">Open the cosmos portal</span><span class="tagline">cosmos.aguidetocloud.com</span></span></a>
+        <a class="sheet-row sheet-row--cosmos" href="${c}/" ${h?'aria-current="true"':""}><span class="icon-slot">${o("cosmos","sheet-cosmos")}</span><span class="text"><span class="label">Open the cosmos portal</span><span class="tagline">cosmos.aguidetocloud.com</span></span></a>
         <div class="sheet-divider" aria-hidden="true"></div>
-        ${o}
-        ${t?`<div class="sheet-divider" aria-hidden="true"></div><a class="sheet-row" href="${this.escapeUrl(t.url)}"><span class="icon-slot">${r("mcp","sheet-relay")}</span><span class="text"><span class="label">${this.escape(t.name)}</span>${t.tagline?`<span class="tagline">${this.escape(t.tagline)}</span>`:""}</span></a>`:""}
-      </div>`,this.wire()}renderFallback(){this.root.innerHTML=`<style>:host {\r
+        ${r}
+        ${t?`<div class="sheet-divider" aria-hidden="true"></div><a class="sheet-row" href="${this.escapeUrl(t.url)}"><span class="icon-slot">${o("mcp","sheet-relay")}</span><span class="text"><span class="label">${this.escape(t.name)}</span>${t.tagline?`<span class="tagline">${this.escape(t.tagline)}</span>`:""}</span></a>`:""}
+      </div>`,this.wire(),this.liveStarted||(this.liveStarted=!0,this.startLiveCounter())}startLiveCounter(){this.fetchLiveCount(),this.liveTimer&&clearInterval(this.liveTimer),this.liveTimer=setInterval(()=>{this.fetchLiveCount()},L)}async fetchLiveCount(){if(this.liveAbort)try{this.liveAbort.abort()}catch{}let e=new AbortController;this.liveAbort=e;try{let t=await fetch(w,{credentials:"omit",cache:"no-store",signal:e.signal});if(!t.ok)throw new Error(`HTTP ${t.status}`);let i=await t.json(),r=typeof i?.totalUnique=="number"?i.totalUnique:0;this.liveFailures=0,this.updateLivePill(r)}catch(t){t?.name==="AbortError"||(this.liveFailures++,this.liveFailures>=E&&this.hideLivePill())}}updateLivePill(e){let t=this.root.querySelector(".live-pill");if(!t)return;if(e<S){t.setAttribute("data-state","hidden");return}t.setAttribute("data-state","live"),t.setAttribute("aria-label",`${e} people currently in the cosmos`);let i=t.querySelector(".live-pill-num");i&&(i.textContent=String(e))}hideLivePill(){let e=this.root.querySelector(".live-pill");e&&e.setAttribute("data-state","hidden")}stopLiveCounter(){if(this.liveTimer&&(clearInterval(this.liveTimer),this.liveTimer=null),this.liveAbort){try{this.liveAbort.abort()}catch{}this.liveAbort=null}}renderFallback(){this.root.innerHTML=`<style>:host {\r
   all: initial;\r
   display: block;\r
   position: sticky;\r
@@ -765,6 +882,60 @@
 .relay:hover { opacity: 1; }\r
 .relay:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }\r
 \r
+/* Live cosmos counter pill \u2014 public vitality signal.\r
+   Added 12 May 2026 (cosmos-wide intelligence v1). Shows the cosmos-wide\r
+   total of active users in real time. No per-planet breakdown here \u2014\r
+   that's gated and lives in the Command Centre Cosmos tab. */\r
+.live-pill {\r
+  display: inline-flex;\r
+  align-items: center;\r
+  gap: 5px;\r
+  padding: 0 9px;\r
+  height: 22px;\r
+  border-radius: 999px;\r
+  background: rgba(255, 179, 71, 0.10);\r
+  border: 1px solid rgba(255, 179, 71, 0.20);\r
+  color: #F2EDE3;\r
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;\r
+  font-size: 11px;\r
+  font-weight: 600;\r
+  font-variant-numeric: tabular-nums;\r
+  letter-spacing: 0.01em;\r
+  line-height: 1;\r
+  text-decoration: none;\r
+  transition: background 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;\r
+  cursor: default;\r
+}\r
+.live-pill:hover {\r
+  background: rgba(255, 179, 71, 0.16);\r
+  border-color: rgba(255, 179, 71, 0.32);\r
+}\r
+.live-pill:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }\r
+.live-pill[data-state="hidden"] { display: none; }\r
+.live-pill[data-state="loading"] { opacity: 0.45; }\r
+.live-pill-dot {\r
+  width: 6px;\r
+  height: 6px;\r
+  border-radius: 50%;\r
+  background: #FFB347;\r
+  flex: 0 0 auto;\r
+  animation: live-pulse 2.4s ease-in-out infinite;\r
+}\r
+.live-pill-num { white-space: nowrap; }\r
+.live-pill-label { opacity: 0.78; font-weight: 500; }\r
+@keyframes live-pulse {\r
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 179, 71, 0.55); opacity: 1; }\r
+  50%      { box-shadow: 0 0 0 4px rgba(255, 179, 71, 0); opacity: 0.55; }\r
+}\r
+@media (max-width: 640px) {\r
+  .live-pill { padding: 0 7px; height: 20px; font-size: 10.5px; gap: 4px; }\r
+  .live-pill-label { display: none; }\r
+  .live-pill-dot { width: 5px; height: 5px; }\r
+}\r
+@media (prefers-reduced-motion: reduce) {\r
+  .live-pill-dot { animation: none; }\r
+}\r
+\r
 /* Tooltip \u2014 the hover tagline */\r
 .tip {\r
   position: absolute;\r
@@ -892,6 +1063,6 @@
   :host ::part(svg-animate) { display: none; }\r
 }</style>
       <div class="bar">
-        <a class="body body--cosmos" href="${d}/" aria-label="Open the cosmos portal">${r("cosmos","home")}<span class="tip">open the cosmos portal</span></a>
+        <a class="body body--cosmos" href="${c}/" aria-label="Open the cosmos portal">${o("cosmos","home")}<span class="tip">open the cosmos portal</span></a>
         <div class="spacer" aria-hidden="true"></div>
-      </div>`}wire(){let e=this.root.querySelector(".mobile-launch"),t=this.root.querySelector(".sheet");e&&t&&(e.addEventListener("click",a=>{a.stopPropagation(),this.toggleSheet()}),t.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>this.setSheet(!1)))),document.addEventListener("click",this.onDocClick),document.addEventListener("keydown",this.onKey)}toggleSheet(){this.setSheet(!this.sheetOpen)}setSheet(e){this.sheetOpen=e;let t=this.root.querySelector(".sheet"),a=this.root.querySelector(".mobile-launch");t&&(t.setAttribute("data-open",e?"1":"0"),t.setAttribute("aria-hidden",e?"false":"true")),a&&a.setAttribute("aria-expanded",String(e))}disconnectedCallback(){document.removeEventListener("click",this.onDocClick),document.removeEventListener("keydown",this.onKey)}escape(e){return String(e).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}escapeUrl(e){let t=String(e||"").trim();return/^(https?:|mailto:|\/[^/])/.test(t)||t==="/"||t===""?this.escape(t):""}};customElements.get("cosmos-bar")||customElements.define("cosmos-bar",h);})();
+      </div>`}wire(){let e=this.root.querySelector(".mobile-launch"),t=this.root.querySelector(".sheet");e&&t&&(e.addEventListener("click",i=>{i.stopPropagation(),this.toggleSheet()}),t.querySelectorAll("a").forEach(i=>i.addEventListener("click",()=>this.setSheet(!1)))),document.addEventListener("click",this.onDocClick),document.addEventListener("keydown",this.onKey)}toggleSheet(){this.setSheet(!this.sheetOpen)}setSheet(e){this.sheetOpen=e;let t=this.root.querySelector(".sheet"),i=this.root.querySelector(".mobile-launch");t&&(t.setAttribute("data-open",e?"1":"0"),t.setAttribute("aria-hidden",e?"false":"true")),i&&i.setAttribute("aria-expanded",String(e))}disconnectedCallback(){document.removeEventListener("click",this.onDocClick),document.removeEventListener("keydown",this.onKey),this.stopLiveCounter()}escape(e){return String(e).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}escapeUrl(e){let t=String(e||"").trim();return/^(https?:|mailto:|\/[^/])/.test(t)||t==="/"||t===""?this.escape(t):""}};customElements.get("cosmos-bar")||customElements.define("cosmos-bar",d);})();

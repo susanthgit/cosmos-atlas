@@ -209,6 +209,60 @@ cosmos-bar:not(:defined)::after,
 .relay:hover { opacity: 1; }
 .relay:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }
 
+/* Live cosmos counter pill — public vitality signal.
+   Added 12 May 2026 (cosmos-wide intelligence v1). Shows the cosmos-wide
+   total of active users in real time. No per-planet breakdown here —
+   that's gated and lives in the Command Centre Cosmos tab. */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 179, 71, 0.10);
+  border: 1px solid rgba(255, 179, 71, 0.20);
+  color: #F2EDE3;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;
+  cursor: default;
+}
+.live-pill:hover {
+  background: rgba(255, 179, 71, 0.16);
+  border-color: rgba(255, 179, 71, 0.32);
+}
+.live-pill:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }
+.live-pill[data-state="hidden"] { display: none; }
+.live-pill[data-state="loading"] { opacity: 0.45; }
+.live-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FFB347;
+  flex: 0 0 auto;
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+.live-pill-num { white-space: nowrap; }
+.live-pill-label { opacity: 0.78; font-weight: 500; }
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 179, 71, 0.55); opacity: 1; }
+  50%      { box-shadow: 0 0 0 4px rgba(255, 179, 71, 0); opacity: 0.55; }
+}
+@media (max-width: 640px) {
+  .live-pill { padding: 0 7px; height: 20px; font-size: 10.5px; gap: 4px; }
+  .live-pill-label { display: none; }
+  .live-pill-dot { width: 5px; height: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-pill-dot { animation: none; }
+}
+
 /* Tooltip — the hover tagline */
 .tip {
   position: absolute;
