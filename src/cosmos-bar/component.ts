@@ -202,10 +202,11 @@ class CosmosBar extends HTMLElement {
     this.wire();
     // Start live-counter polling once on first successful render. Re-renders
     // (e.g. on active-attribute change) must NOT restart it — that would leak
-    // intervals + listeners.
+    // intervals + listeners. Flag set AFTER startLiveCounter so a throw still
+    // allows retry on a subsequent render.
     if (!this.liveStarted) {
-      this.liveStarted = true;
       this.startLiveCounter();
+      this.liveStarted = true;
     }
   }
 
@@ -232,7 +233,9 @@ class CosmosBar extends HTMLElement {
     try {
       const res = await fetch(LIVE_COUNTER_URL, {
         credentials: 'omit',
-        cache: 'no-store',
+        // Default cache mode — respects server's Cache-Control: public, max-age=45
+        // so CF edge cache reduces direct worker hits (was 'no-store' which
+        // defeated all caching → 10-100x worker traffic).
         signal: ctl.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
