@@ -62,6 +62,18 @@ const {
        The token below is a public site identifier, not a secret. CF dashboard
        didn't auto-install for this subdomain so the snippet lives here. -->
   <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "7c11668cc9e544f2baf2c3d9d7eb2750"}'></script>
+
+  <!-- Cosmos GA4 — aggregate analytics for cosmos-wide intelligence.
+       Single shared property G-2HWWZGWCD0 + event-scoped dim cosmos_planet.
+       Ad signals denied; purely analytics_storage. Added 12 May 2026. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2HWWZGWCD0" is:inline></script>
+  <script is:inline>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'granted'});
+    gtag('js', new Date());
+    gtag('config', 'G-2HWWZGWCD0', { cosmos_planet: 'cosmos', anonymize_ip: true });
+  </script>
 </head>
 <body>
   <a href="#static-shell" class="skip-link">Skip to planet list</a>
