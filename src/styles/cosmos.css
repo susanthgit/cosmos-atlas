@@ -1355,15 +1355,38 @@ body[data-tour="active"] #start-tour {
 }
 
 /* Screensaver-mode global affordance (renamed from "drift" — May 2026 polish).
-   When active, fade EVERYTHING except the canvas (nebulae, starfield, orbits,
-   sun glow) so the cosmos drifts cleanly. Any input event on window exits
-   screensaver (handled by resetIdle in cosmos.ts). pointer-events:none on
-   faded chrome means hover/clicks pass through to the underlying canvas/main
-   and the window listener fires regardless. */
-body[data-screensaver="active"] .cosmos > :not(.canvas-stage),
+   When active, fade EVERYTHING except the canvas — but keep the screensaver
+   toggle button itself visible + clickable so the user can toggle off.
+   12 May 2026 — Sush PM polish: button-only toggle (no auto-exit, no auto-engage).
+   Sibling-list approach (instead of `.cosmos > :not(.canvas-stage)`) because
+   parent opacity:0 propagates multiplicatively to children — we cannot make a
+   child clickable inside an opacity:0 ancestor. So we keep `.hud` and
+   `.hud-orientation` visible at full opacity, and fade their specific siblings
+   one-by-one. Only `#screensaver-toggle` stays interactive. */
+body[data-screensaver="active"] .hud-orientation > :not(#screensaver-toggle),
+body[data-screensaver="active"] .hud-tools,
+body[data-screensaver="active"] .hud-attribution,
+body[data-screensaver="active"] .left-stack,
+body[data-screensaver="active"] .lens-legend,
+body[data-screensaver="active"] .lens-audience-cols,
+body[data-screensaver="active"] .cosmos-coach,
+body[data-screensaver="active"] .cosmos-shortcuts,
+body[data-screensaver="active"] .cosmos-search,
+body[data-screensaver="active"] .cosmos-lede,
+body[data-screensaver="active"] .bodies-count,
+body[data-screensaver="active"] .planet-label,
+body[data-screensaver="active"] .gesture-hint,
+body[data-screensaver="active"] .sun-reveal,
+body[data-screensaver="active"] .bodies,
+body[data-screensaver="active"] .card-panel,
 body[data-screensaver="active"] cosmos-bar {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 600ms var(--ease-out);
+}
+body[data-screensaver="active"] #screensaver-toggle {
+  opacity: 1;
+  pointer-events: auto;
   transition: opacity 600ms var(--ease-out);
 }
 body[data-screensaver="active"] .canvas-stage {
@@ -1495,75 +1518,12 @@ body[data-screensaver="active"] .canvas-stage {
   height: 4px;
 }
 
-/* Pomodoro panel — minimalist clock + start/stop. NO celebration UI. */
-.pomodoro-display {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--rule);
-}
-.pomodoro-time {
-  font-family: var(--mono);
-  font-size: 36px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--hud);
-  font-variant-numeric: tabular-nums;
-}
-.pomodoro-phase {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.10em;
-  color: var(--accent);
-  text-transform: uppercase;
-}
-.pomodoro-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-.pomodoro-btn {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--display);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform var(--duration-base) var(--ease-out),
-              background-color var(--duration-base) var(--ease-out),
-              box-shadow var(--duration-base) var(--ease-out);
-}
-.pomodoro-btn:hover, .pomodoro-btn:focus-visible {
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  box-shadow: none;
-}
-.pomodoro-btn--ghost {
-  background: transparent;
-  color: var(--hud);
-  border-color: var(--rule-strong);
-}
-.pomodoro-btn--ghost:hover, .pomodoro-btn--ghost:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: none;
-}
-.pomodoro-counter {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--hud-faint);
-}
+/* Pomodoro CSS removed 12 May 2026 (focus mode removed). */
 
 /* Hide the popovers / toggles in list view (consistent with other HUD elements) */
 body.list-view .cosmos-popover,
 body.list-view #screensaver-toggle,
 body.list-view #ambient-toggle,
-body.list-view #pomodoro-toggle,
 body.list-view .hud-aux__divider {
   display: none;
 }
@@ -2016,128 +1976,24 @@ body.list-view .ambient-player { display: none; }
 }
 body.list-view .lens-grid { display: none; }
 
-/* Reposition ambient + pomodoro back to the top of the left column now that
-   the lens grid no longer occupies that space. */
+/* Reposition ambient back to the top of the left column now that the lens
+   grid no longer occupies that space. */
 .ambient-player { top: 80px !important; }
-.pomodoro-card { top: 140px !important; }
 
-/* Pomodoro inline card — sits below the ambient player. Same collapsible
-   pattern. State label shows "idle" / "25:00" / "05:00" etc. */
-.pomodoro-card {
-  position: absolute;
-  top: 320px;
-  left: var(--space-5);
-  width: 240px;
-  display: flex;
-  flex-direction: column;
-  font-family: var(--mono);
-  color: var(--hud);
-  background: color-mix(in srgb, var(--bg-edge) 86%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: 12px;
-  z-index: 215;
-  pointer-events: auto;
-  overflow: hidden;
-  transition: border-color var(--duration-base) var(--ease-out);
-}
-.pomodoro-card[data-state="expanded"] {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-}
-.pomodoro-card[data-active="true"] {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
-              0 6px 24px rgba(2, 3, 14, 0.4);
-}
-.pomodoro-card__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: transparent;
-  border: 0;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--hud);
-  transition: background-color var(--duration-base) var(--ease-out);
-}
-.pomodoro-card__head:hover,
-.pomodoro-card__head:focus-visible {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.pomodoro-card__icon { font-size: 14px; line-height: 1; }
-.pomodoro-card__title {
-  flex: 1;
-  text-transform: lowercase;
-  letter-spacing: 0.06em;
-}
-.pomodoro-card__state {
-  font-size: 10px;
-  color: var(--hud-faint);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.pomodoro-card[data-active="true"] .pomodoro-card__state {
-  color: var(--accent);
-}
-.pomodoro-card__chevron {
-  display: inline-block;
-  transition: transform var(--duration-base) var(--ease-out);
-  font-size: 11px;
-  color: var(--hud-faint);
-}
-.pomodoro-card[data-state="expanded"] .pomodoro-card__chevron {
-  transform: rotate(180deg);
-}
-.pomodoro-card__body {
-  border-top: 1px solid var(--rule);
-  padding: 10px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.pomodoro-card .pomodoro-display {
-  margin: 0;
-  padding: 4px 0 6px;
-  border-bottom: 1px solid var(--rule);
-}
-.pomodoro-card .pomodoro-time {
-  font-size: 28px;
-  font-family: var(--mono);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
-.pomodoro-card .pomodoro-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-.pomodoro-card .pomodoro-btn {
-  flex: 1;
-}
-.pomodoro-hint {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--hud-faint);
-}
+/* Pomodoro inline card removed 12 May 2026. */
 body.list-view .pomodoro-card { display: none; }
 
 /* ─── Mobile (≤ 720px) — minimal interface ─────────────────────────
    Per Sush's V5 directive: on mobile we keep things simple. Only the
    canvas + top tools row (lens picker + list view) + screensaver toggle.
-   Everything else (ambient, pomodoro, bodies-count, orientation buttons,
-   lede) is hidden. Mobile users get the cosmos to look at + the basics.
+   Everything else (ambient, bodies-count, orientation buttons, lede) is
+   hidden. Mobile users get the cosmos to look at + the basics.
    May 2026 polish — .lens-grid moved into .hud-tools top row and is now
    visible on mobile (was hidden in the 2x2 left-column era). */
 @media (max-width: 720px) {
   .bodies-count,
   .hud-orientation,
   .ambient-player,
-  .pomodoro-card,
   .cosmos-lede {
     display: none !important;
   }
@@ -2145,14 +2001,14 @@ body.list-view .pomodoro-card { display: none; }
 /* Wave 5 fix — make sure [hidden] body stays hidden. The user-agent rule
    [hidden] { display: none } is overridden by my class-level display:flex
    without this :not() guard. */
-.ambient-player__body[hidden],
-.pomodoro-card__body[hidden] {
+.ambient-player__body[hidden] {
   display: none !important;
 }
-/* ═══════════════ Wave 5 polish — flex left-stack + drift relocated ═══════════════ */
+/* ═══════════════ Wave 5 polish — flex left-stack ═══════════════ */
 
-/* Wrap ambient + pomodoro in a flex column so when one expands, the other
-   naturally pushes down. Replaces the previous absolute-positioned conflict. */
+/* Wrap ambient (and previously pomodoro) in a flex column.
+   Pomodoro removed 12 May 2026; left-stack now wraps the ambient player only.
+   Kept the wrapper so the layout + mute behaviour below still applies. */
 .left-stack {
   position: absolute;
   top: 230px;
@@ -2168,8 +2024,7 @@ body.list-view .pomodoro-card { display: none; }
 body.list-view .left-stack { display: none; }
 
 /* Within the stack, cards no longer need absolute positioning. Reset. */
-.left-stack .ambient-player,
-.left-stack .pomodoro-card {
+.left-stack .ambient-player {
   position: relative !important;
   top: auto !important;
   left: auto !important;
@@ -2182,14 +2037,12 @@ body.list-view .left-stack { display: none; }
    Solution: cards step back into ghost mode by default. They wake up when:
      1. user hovers / focuses inside (intent to use)
      2. data-playing="true"  — music is actually playing
-     3. data-active="true"   — pomodoro is actually running
    Only chrome (border, head text, chevron, idle status) is muted.
-   Content (volume slider, pomodoro time, transport buttons) stays readable.
+   Content (volume slider, transport buttons) stays readable.
    Keeps the cherry-blossom rule: the planets are the content; everything
    else is scenery until you ask for it.
 */
-.left-stack > .ambient-player,
-.left-stack > .pomodoro-card {
+.left-stack > .ambient-player {
   opacity: 0.55;
   border-color: var(--rule) !important;
   transition: opacity var(--duration-base) var(--ease-out),
@@ -2197,23 +2050,17 @@ body.list-view .left-stack { display: none; }
 }
 
 /* Mute the head row hooks more aggressively when idle */
-.left-stack > .ambient-player .ambient-player__head,
-.left-stack > .pomodoro-card .pomodoro-card__head { color: var(--hud-faint); }
+.left-stack > .ambient-player .ambient-player__head { color: var(--hud-faint); }
 
 .left-stack > .ambient-player .ambient-player__chevron,
-.left-stack > .pomodoro-card .pomodoro-card__chevron,
-.left-stack > .ambient-player[data-playing="false"] .ambient-player__state,
-.left-stack > .pomodoro-card:not([data-active="true"]) .pomodoro-card__state {
+.left-stack > .ambient-player[data-playing="false"] .ambient-player__state {
   color: var(--hud-muted);
 }
 
 /* Wake-up: hover, keyboard focus inside, or genuine activity */
 .left-stack > .ambient-player:hover,
 .left-stack > .ambient-player:focus-within,
-.left-stack > .ambient-player[data-playing="true"],
-.left-stack > .pomodoro-card:hover,
-.left-stack > .pomodoro-card:focus-within,
-.left-stack > .pomodoro-card[data-active="true"] {
+.left-stack > .ambient-player[data-playing="true"] {
   opacity: 1;
   border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
 }
@@ -2221,17 +2068,13 @@ body.list-view .left-stack { display: none; }
 /* When awake, restore head text contrast */
 .left-stack > .ambient-player:hover .ambient-player__head,
 .left-stack > .ambient-player:focus-within .ambient-player__head,
-.left-stack > .ambient-player[data-playing="true"] .ambient-player__head,
-.left-stack > .pomodoro-card:hover .pomodoro-card__head,
-.left-stack > .pomodoro-card:focus-within .pomodoro-card__head,
-.left-stack > .pomodoro-card[data-active="true"] .pomodoro-card__head {
+.left-stack > .ambient-player[data-playing="true"] .ambient-player__head {
   color: var(--hud);
 }
 
 /* prefers-reduced-motion: instant wake-up, no opacity fade */
 @media (prefers-reduced-motion: reduce) {
-  .left-stack > .ambient-player,
-  .left-stack > .pomodoro-card { transition: none; }
+  .left-stack > .ambient-player { transition: none; }
 }
 
 /* Mobile: hide the left stack too (already hidden via individual cards but

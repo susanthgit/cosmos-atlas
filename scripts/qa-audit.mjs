@@ -695,6 +695,36 @@ for (const vp of VIEWPORTS) {
         console.log(`  lens "${lens}": 🔴 not applied (got="${lensApplied}")`);
         totalFails++;
       }
+      // Growing guardrail (12 May 2026 PM): in alt-lenses (constellation /
+      // timeline / audience), every planet + moon body must be visible
+      // (opacity >= 0.5) AND have non-zero geometry AND its centre within
+      // the viewport. Catches the "Earth invisible in constellation" bug:
+      // sun-occlusion fade was hiding bodies placed deliberately at canvas
+      // centre. Should be skipped for cosmos lens because the orbital
+      // motion legitimately puts bodies behind the sun.
+      if (lens !== 'cosmos') {
+        const visibility = await page.evaluate(({ vw, vh }) => {
+          const out = [];
+          const els = Array.from(document.querySelectorAll('.planet-body[data-kind="planet"], .planet-body[data-kind="moon"]'));
+          for (const el of els) {
+            const slug = el.getAttribute('data-slug');
+            const rect = el.getBoundingClientRect();
+            const opacity = parseFloat(getComputedStyle(el).opacity) || 0;
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const onScreen = cx >= 0 && cx <= vw && cy >= 0 && cy <= vh;
+            const visible = opacity >= 0.5 && rect.width > 0 && rect.height > 0 && onScreen;
+            if (!visible) out.push({ slug, opacity: opacity.toFixed(2), cx: cx.toFixed(0), cy: cy.toFixed(0), onScreen });
+          }
+          return out;
+        }, { vw: vp.width, vh: vp.height });
+        if (visibility.length === 0) {
+          console.log(`    body visibility in "${lens}": ✓ all planets + moons opacity ≥ 0.5, on-screen, non-zero size`);
+        } else {
+          console.log(`    body visibility in "${lens}": 🔴 ${visibility.length} body/bodies hidden — ${JSON.stringify(visibility)}`);
+          totalFails++;
+        }
+      }
       // Verify earth body is still clickable after the lens change
       const clickWorks = await page.evaluate(() => {
         const earth = document.querySelector('.planet-body[data-slug="earth"]');
@@ -893,6 +923,8 @@ for (const vp of VIEWPORTS) {
     console.log(`\n=== ${vp.name} / Wave 2 (V5) ===`);
 
     // 1) Screensaver toggle — click 🌙 → body.dataset.screensaver="active"; click again → cleared.
+    //    12 May 2026 — Sush PM polish: button-only toggle. No auto-engage,
+    //    no auto-exit on input. Toggling the button is the only way in/out.
     const screensaverBtn = await page.$('#screensaver-toggle');
     if (!screensaverBtn) {
       console.log(`  screensaver toggle: 🔴 #screensaver-toggle not found`);
@@ -908,24 +940,47 @@ for (const vp of VIEWPORTS) {
         totalFails++;
       }
       // Growing guardrail (12 May 2026): assert fade landed. After 700ms (> 600ms
-      // CSS transition), the .hud overlay must be invisible (opacity ≤ 0.05) and
-      // the canvas-stage must remain visible (opacity ≥ 0.95). Catches regressions
-      // where the screensaver CSS rule selector breaks (e.g. renaming data-attr).
+      // CSS transition), faded chrome (e.g. .hud-tools, .left-stack) must be
+      // invisible (opacity ≤ 0.05) and the canvas-stage must remain visible
+      // (opacity ≥ 0.95). Catches regressions where the screensaver CSS rule
+      // selector breaks (e.g. renaming data-attr or restructuring HUD).
       await page.waitForTimeout(700);
       const fadeProbe = await page.evaluate(() => ({
-        hud: parseFloat(getComputedStyle(document.querySelector('.hud')).opacity),
+        hudTools: parseFloat(getComputedStyle(document.querySelector('.hud-tools')).opacity),
+        leftStack: parseFloat(getComputedStyle(document.querySelector('.left-stack')).opacity),
         canvas: parseFloat(getComputedStyle(document.querySelector('.canvas-stage')).opacity),
+        toggle: parseFloat(getComputedStyle(document.getElementById('screensaver-toggle')).opacity),
       }));
-      if (fadeProbe.hud <= 0.05 && fadeProbe.canvas >= 0.95) {
-        console.log(`  screensaver fade: ✓ hud=${fadeProbe.hud.toFixed(2)} canvas=${fadeProbe.canvas.toFixed(2)}`);
+      if (fadeProbe.hudTools <= 0.05 && fadeProbe.leftStack <= 0.05 && fadeProbe.canvas >= 0.95) {
+        console.log(`  screensaver fade: ✓ hudTools=${fadeProbe.hudTools.toFixed(2)} leftStack=${fadeProbe.leftStack.toFixed(2)} canvas=${fadeProbe.canvas.toFixed(2)}`);
       } else {
-        console.log(`  screensaver fade: 🔴 hud=${fadeProbe.hud.toFixed(2)} (≤0.05) canvas=${fadeProbe.canvas.toFixed(2)} (≥0.95)`);
+        console.log(`  screensaver fade: 🔴 hudTools=${fadeProbe.hudTools.toFixed(2)} (≤0.05) leftStack=${fadeProbe.leftStack.toFixed(2)} (≤0.05) canvas=${fadeProbe.canvas.toFixed(2)} (≥0.95)`);
         totalFails++;
       }
-      // Click toggle a second time — must clear. Tests the resetIdle race fix
-      // (pointerdown on toggle was clearing the flag before click re-set it).
-      // Use DOM click() so the synthetic event has target=button (no mouse-move
-      // race) — this is the same pattern as the legacy drift toggle test.
+      // Growing guardrail (12 May 2026 PM): screensaver toggle button must
+      // stay visible + clickable while everything else fades. Otherwise the
+      // user can't exit screensaver.
+      if (fadeProbe.toggle >= 0.95) {
+        console.log(`  screensaver toggle visible during fade: ✓ opacity=${fadeProbe.toggle.toFixed(2)}`);
+      } else {
+        console.log(`  screensaver toggle visible during fade: 🔴 opacity=${fadeProbe.toggle.toFixed(2)} — must be ≥ 0.95 so user can toggle off`);
+        totalFails++;
+      }
+      // Growing guardrail (12 May 2026 PM): pointermove must NOT exit
+      // screensaver. Sush asked for button-only control — users walking
+      // away from their keyboard should not have screensaver dismissed by
+      // a stray cursor move. Dispatch a synthetic pointermove on window
+      // and verify the flag is still set 200ms later.
+      await page.mouse.move(vp.width / 2, vp.height / 2);
+      await page.waitForTimeout(200);
+      const stillOn = await page.evaluate(() => document.body.getAttribute('data-screensaver'));
+      if (stillOn === 'active') {
+        console.log(`  screensaver survives input: ✓ pointermove did NOT exit (button-only)`);
+      } else {
+        console.log(`  screensaver survives input: 🔴 pointermove cleared it (data-screensaver="${stillOn}") — should be button-only now`);
+        totalFails++;
+      }
+      // Click toggle a second time — must clear. Tests the off-via-click path.
       await page.evaluate(() => document.getElementById('screensaver-toggle')?.click());
       await page.waitForTimeout(300);
       const screensaverOff = await page.evaluate(() => document.body.getAttribute('data-screensaver'));
@@ -1012,50 +1067,16 @@ for (const vp of VIEWPORTS) {
       await page.waitForTimeout(200);
     }
 
-    // 3) Pomodoro inline card (Wave 5) — click head → expand → start → time ticks.
-    const pomoHead = await page.$('#pomodoro-toggle-panel');
-    if (!pomoHead) {
-      console.log(`  pomodoro card: 🔴 #pomodoro-toggle-panel not found`);
-      totalFails++;
-    } else {
-      await page.evaluate(() => (document.getElementById('pomodoro-toggle-panel'))?.click());
-      await page.waitForTimeout(300);
-      const cardState = await page.evaluate(() => {
-        const card = document.getElementById('pomodoro-card');
-        return {
-          state: card?.getAttribute('data-state'),
-          startVisible: !document.getElementById('pomodoro-start')?.hasAttribute('hidden'),
-        };
-      });
-      const initialTime = await page.evaluate(() => document.getElementById('pomodoro-time')?.textContent || '');
-      // Direct click via DOM to avoid Playwright's actionability checks racing CSS animation.
-      await page.evaluate(() => (document.getElementById('pomodoro-start'))?.click());
-      await page.waitForTimeout(150);
-      const phaseImmediate = await page.evaluate(() => document.body.getAttribute('data-pomodoro'));
-      await page.waitForTimeout(1300);
-      const tickedTime = await page.evaluate(() => document.getElementById('pomodoro-time')?.textContent || '');
-      const phaseFocus = await page.evaluate(() => document.body.getAttribute('data-pomodoro'));
-      const ok = initialTime === '25:00' && phaseFocus === 'focus' && tickedTime !== initialTime;
-      if (ok) {
-        console.log(`  pomodoro: ✓ started focus phase (${initialTime} → ${tickedTime}, body.pomodoro="${phaseFocus}")`);
-      } else {
-        console.log(`  pomodoro: 🔴 cardState=${cardState.state}, startVisible=${cardState.startVisible}, initial="${initialTime}", phase-immediate="${phaseImmediate}", phase-after="${phaseFocus}", time-after="${tickedTime}"`);
-        totalFails++;
-      }
-      // Stop + collapse to leave clean state for downstream tests.
-      const stopVisible = await page.evaluate(() => !document.getElementById('pomodoro-stop')?.hasAttribute('hidden'));
-      if (stopVisible) await page.evaluate(() => (document.getElementById('pomodoro-stop'))?.click());
-      await page.waitForTimeout(200);
-      await page.evaluate(() => (document.getElementById('pomodoro-toggle-panel'))?.click());
-      await page.waitForTimeout(200);
-    }
+    // Pomodoro removed 12 May 2026 (Sush PM polish: "remove focus mode we don't
+    // need it"). The previous pomodoro inline-card test (start → focus phase →
+    // time ticks → stop) and the body.dataset.pomodoro check are deleted.
 
-    // ─── 10 May 2026 — left-stack "muted by default" guardrail ───
-    // Sush asked for the cards to step back so the planets stay the focus.
-    // Lock the design intent: cards must be ≤ 0.60 opacity when fully idle
-    // (mouse away, not playing, not active) and must wake up to ≥ 0.95 on
-    // hover. Future sessions that accidentally raise idle opacity will trip
-    // this check. (Cosmos growing-guardrail rule.)
+    // ─── 10 May 2026 — left-stack "muted by default" guardrail (ambient only) ───
+    // Sush asked for the card to step back so the planets stay the focus.
+    // Lock the design intent: ambient card must be ≤ 0.60 opacity when fully idle
+    // (mouse away, not playing) and must wake up to ≥ 0.95 on hover. Future
+    // sessions that accidentally raise idle opacity will trip this check.
+    // Pomodoro half of this guardrail removed 12 May with pomodoro itself.
     {
       // First, force a clean idle state. Earlier ambient-transport tests may
       // have left data-playing="true" or audio mid-load — mute that explicitly
@@ -1065,28 +1086,22 @@ for (const vp of VIEWPORTS) {
         if (audio) { try { audio.pause(); } catch {} audio.currentTime = 0; }
         const ap = document.getElementById('ambient-player');
         if (ap) ap.setAttribute('data-playing', 'false');
-        const pc = document.getElementById('pomodoro-card');
-        if (pc) pc.setAttribute('data-active', 'false');
       });
-      // Move mouse far away so neither card is being hovered.
+      // Move mouse far away so the card is not being hovered.
       await page.mouse.move(vp.width / 2, vp.height / 2);
       await page.waitForTimeout(300);
       const idle = await page.evaluate(() => {
         const ap = document.getElementById('ambient-player');
-        const pc = document.getElementById('pomodoro-card');
         return {
           ambient: parseFloat(ap ? getComputedStyle(ap).opacity : '1'),
-          pomodoro: parseFloat(pc ? getComputedStyle(pc).opacity : '1'),
           ambientPlaying: ap?.dataset.playing,
-          pomodoroActive: pc?.dataset.active,
         };
       });
-      const idleOk = idle.ambient <= 0.6 && idle.pomodoro <= 0.6
-        && idle.ambientPlaying !== 'true' && idle.pomodoroActive !== 'true';
+      const idleOk = idle.ambient <= 0.6 && idle.ambientPlaying !== 'true';
       if (idleOk) {
-        console.log(`  left-stack mute (idle): ✓ ambient=${idle.ambient.toFixed(2)} pomodoro=${idle.pomodoro.toFixed(2)} (both ≤ 0.60, cards stepped back)`);
+        console.log(`  left-stack mute (idle): ✓ ambient=${idle.ambient.toFixed(2)} (≤ 0.60, card stepped back)`);
       } else {
-        console.log(`  left-stack mute (idle): 🔴 ${JSON.stringify(idle)} — cards must be ≤ 0.60 opacity at rest`);
+        console.log(`  left-stack mute (idle): 🔴 ${JSON.stringify(idle)} — ambient must be ≤ 0.60 opacity at rest`);
         totalFails++;
       }
       // Hover the ambient player — it should wake up to full opacity.

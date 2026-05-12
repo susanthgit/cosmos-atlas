@@ -360,27 +360,6 @@ const clientData = {
           </div>
           <audio id="ambient-audio" preload="none" aria-hidden="true"></audio>
         </aside>
-
-        <aside class="pomodoro-card" id="pomodoro-card" data-state="expanded" aria-label="Focus timer">
-          <button type="button" class="pomodoro-card__head" id="pomodoro-toggle-panel" aria-expanded="true" aria-controls="pomodoro-card-body">
-            <span class="pomodoro-card__icon" aria-hidden="true">⏱</span>
-            <span class="pomodoro-card__title">focus timer</span>
-            <span class="pomodoro-card__state" id="pomodoro-card-state">idle</span>
-            <span class="pomodoro-card__chevron" aria-hidden="true">▾</span>
-          </button>
-          <div class="pomodoro-card__body" id="pomodoro-card-body">
-            <div class="pomodoro-display" id="pomodoro-display">
-              <span class="pomodoro-time" id="pomodoro-time">25:00</span>
-              <span class="pomodoro-phase" id="pomodoro-phase">focus</span>
-            </div>
-            <div class="pomodoro-actions">
-              <button type="button" class="pomodoro-btn" id="pomodoro-start">Start 25 min</button>
-              <button type="button" class="pomodoro-btn pomodoro-btn--ghost" id="pomodoro-stop" hidden>Stop</button>
-            </div>
-            <p class="pomodoro-hint">auto-engages screensaver while focusing.</p>
-            <p class="pomodoro-counter" id="pomodoro-counter" hidden></p>
-          </div>
-        </aside>
       </div>
 
       <div class="planet-label" id="planet-label" data-visible="false" role="status" aria-live="polite"></div>

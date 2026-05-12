@@ -116,6 +116,11 @@ interface BodyState {
   intrinsicSize: number;
   glowCore: string;
   glowOuter: string;
+  // 12 May 2026 — Sush PM polish for smooth card open. Lerped each frame
+  // toward `targetScale` / `targetOpacity` so hover/focus/dim transitions
+  // don't pop. Initialised lazily on first frame.
+  currentScale?: number;
+  currentOpacity?: number;
 }
 
 interface Ping { slug: string; x: number; y: number; startMs: number; size: number }
@@ -1890,22 +1895,31 @@ export function mountCosmos(data: CosmosData): void {
     }
   }
 
-  function applyBodyTransforms(introBodies: number): void {
+  function applyBodyTransforms(introBodies: number, deltaSec: number): void {
     const vp = bodyVpScale();
     const sorted = [...bodies].sort((a, b) => a.depth - b.depth);
+    // 12 May 2026 — Sush PM polish for smooth card open. Lerp scale + opacity
+    // toward target each frame using an exponential rate. Eliminates the
+    // "pop" when isHovered/isFocused toggles. Rate constant ≈ 8/sec gives a
+    // ~125 ms time constant — fast enough to feel responsive, slow enough to
+    // smooth out the 1× → 1.35× focus jump.
+    const SCALE_RATE = 8;
+    const OPACITY_RATE = 6;
+    const lerpScale = 1 - Math.exp(-SCALE_RATE * Math.max(0.001, deltaSec));
+    const lerpOpacity = 1 - Math.exp(-OPACITY_RATE * Math.max(0.001, deltaSec));
     for (let i = 0; i < sorted.length; i++) {
       const b = sorted[i];
       if (!b) continue;
       const isHovered = hoveredSlug === b.slug;
       const isFocused = focusedSlug === b.slug;
       const dim = (focusedSlug !== null && !isFocused) || (hoveredSlug !== null && !isHovered);
-      let scale = b.scale * cameraZoom * vp;
-      if (isHovered) scale *= 1.12;
-      if (isFocused) scale *= 1.35;
+      let targetScale = b.scale * cameraZoom * vp;
+      if (isHovered) targetScale *= 1.12;
+      if (isFocused) targetScale *= 1.35;
       // P1 #5 — depth-based opacity falloff for stronger 3D feel.
       // Bodies behind the sun (depth > 0) are slightly dimmer + cooler.
       const depthFade = b.kind === 'star' ? 1 : clamp(1 - (b.depth / 1200), 0.55, 1);
-      const opacity = (dim ? 0.4 : 1) * depthFade * introBodies;
+      const targetBaseOpacity = (dim ? 0.4 : 1) * depthFade * introBodies;
       // Cool tint on far bodies via filter — suggests atmospheric perspective.
       const cool = b.kind === 'star' ? 0 : clamp((b.depth + 200) / 1400, 0, 0.4);
       // V3.4 — fade body when its screen position lands inside the sun's
@@ -1913,7 +1927,12 @@ export function mountCosmos(data: CosmosData): void {
       // the sun's disc when their orbit phase puts them behind the sun in
       // side view. Applies to non-star bodies only.
       let sunOcclusionFade = 1;
-      if (b.kind === 'planet' || b.kind === 'moon') {
+      // sunOcclusionFade only applies in the 3D cosmos lens. In constellation /
+      // timeline / audience lenses bodies are placed deliberately (Earth in
+      // constellation lives at canvas centre = where the sun is drawn) so the
+      // 3D occlusion fade would hide them. Skip the fade in those lenses.
+      // (12 May 2026 — Sush PM polish: Earth was missing in constellation.)
+      if ((b.kind === 'planet' || b.kind === 'moon') && currentLens === 'cosmos') {
         const sunDist = Math.hypot(b.screenX - cx, b.screenY - cy);
         // Match drawSun's haloR: data.sun.size * cameraZoom * (0.85 avg) * 3.8
         const sunHaloR = data.sun.size * cameraZoom * 3.2;
@@ -1922,9 +1941,20 @@ export function mountCosmos(data: CosmosData): void {
           sunOcclusionFade = clamp(0.15 + 0.85 * Math.pow(ratio, 1.5), 0.15, 1);
         }
       }
-      const finalOpacity = opacity * sunOcclusionFade;
-      b.el.style.transform = `translate3d(${b.screenX}px, ${b.screenY}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
-      b.el.style.opacity = String(finalOpacity);
+      const targetOpacity = targetBaseOpacity * sunOcclusionFade;
+      // Lazy init on first frame so we don't animate from 0→target on page load.
+      if (b.currentScale === undefined) b.currentScale = targetScale;
+      if (b.currentOpacity === undefined) b.currentOpacity = targetOpacity;
+      // If reduced-motion, snap; otherwise lerp.
+      if (reducedMotion) {
+        b.currentScale = targetScale;
+        b.currentOpacity = targetOpacity;
+      } else {
+        b.currentScale += (targetScale - b.currentScale) * lerpScale;
+        b.currentOpacity += (targetOpacity - b.currentOpacity) * lerpOpacity;
+      }
+      b.el.style.transform = `translate3d(${b.screenX}px, ${b.screenY}px, 0) translate(-50%, -50%) scale(${b.currentScale.toFixed(3)})`;
+      b.el.style.opacity = String(b.currentOpacity);
       b.el.style.zIndex = String(100 + i);
       b.el.style.filter = cool > 0 ? `saturate(${(1 - cool * 0.4).toFixed(2)}) brightness(${(1 - cool * 0.25).toFixed(2)})` : '';
       // V3.4 — expose body's identity hue as a CSS custom property so the
@@ -1995,7 +2025,11 @@ export function mountCosmos(data: CosmosData): void {
           cameraTargetX = userPanX;
           cameraTargetY = userPanY;
         }
-        cameraTargetZoom = (mobileMode ? 1.5 : 1.85) * userZoomMul;
+        // 12 May 2026 — Sush PM polish: don't zoom in on focus. The previous
+        // cinematic 1.85× zoom was a major source of "jerk" felt on click.
+        // The cosmos stays the same scale; only the body itself grows via
+        // the per-body scale lerp + the card slides in from the right.
+        cameraTargetZoom = userZoomMul;
       }
     } else {
       // V2.1 #3 — idle camera drift. After IDLE_THRESHOLD_MS of no input, gently drift.
@@ -2016,27 +2050,14 @@ export function mountCosmos(data: CosmosData): void {
       cameraTargetY = userPanY + driftY;
       cameraTargetZoom = userZoomMul + driftZoom;
     }
-    const baseLerp = reducedMotion ? 1 : Math.min(1, deltaSec * 4.5);
-    // V3 #2 — Camera lerp boost during warp window. Pulls the camera toward target faster
-    // for the first WARP_DURATION_MS, then eases back to normal.
-    let lerp = baseLerp;
-    // May 2026 polish — softened camera boost from 1+2.5*sin (peak 3.5×) to
-    // 1+0.8*sin (peak 1.8×). The original peak felt like a jerk when opening
-    // a card; the gentler boost still glides toward the focused body without
-    // the sudden rush.
-    if (!reducedMotion && warpStartMs > 0) {
-      const wt = performance.now() - warpStartMs;
-      if (wt < WARP_DURATION_MS) {
-        const wp = wt / WARP_DURATION_MS; // 0 → 1
-        const boost = 1 + 0.8 * Math.sin(wp * Math.PI);
-        lerp = Math.min(1, baseLerp * boost);
-      } else {
-        warpStartMs = 0;
-      }
-    }
-    cameraX += (cameraTargetX - cameraX) * lerp;
-    cameraY += (cameraTargetY - cameraY) * lerp;
-    cameraZoom += (cameraTargetZoom - cameraZoom) * lerp;
+    // 12 May 2026 — Sush PM polish. Slower lerp when focused (gentle glide
+    // to keep the body visible alongside the card) vs faster lerp when free
+    // (normal pan/drift response). Also dropped the warp boost entirely.
+    const lerpRate = focusedSlug ? 1.5 : 4.5;
+    const baseLerp = reducedMotion ? 1 : Math.min(1, deltaSec * lerpRate);
+    cameraX += (cameraTargetX - cameraX) * baseLerp;
+    cameraY += (cameraTargetY - cameraY) * baseLerp;
+    cameraZoom += (cameraTargetZoom - cameraZoom) * baseLerp;
   }
 
   function frame(now: number): void {
@@ -2058,7 +2079,7 @@ export function mountCosmos(data: CosmosData): void {
     applyLensProjection(deltaSec * 1000);
     const intro = introProgress(now);
     if (intro.done) introActive = false;
-    applyBodyTransforms(intro.bodies);
+    applyBodyTransforms(intro.bodies, deltaSec);
     clear();
     // Phase C — non-cosmos lenses suppress the orbital chrome (orbit
     // ellipses, MCP rays, sun god-rays). Bodies + halos + freshness
@@ -2379,7 +2400,13 @@ export function mountCosmos(data: CosmosData): void {
     cardPanel.dataset.open = 'true';
     cardPanel.removeAttribute('aria-hidden');
     const heading = cardBody.querySelector<HTMLElement>('#card-name');
-    heading?.focus();
+    // 12 May 2026 (Sush PM polish): preventScroll on focus. The card-panel's
+    // resting transform (translateX(100%)) extends 480px past .cosmos's right
+    // edge — when the heading gets focus, the browser auto-scrolls .cosmos to
+    // bring it into view, leaving .cosmos.scrollLeft at 480. Absolute-positioned
+    // children (incl. .bodies) then appear shifted left by 480px. Caught by the
+    // alt-lens body-visibility guardrail.
+    heading?.focus({ preventScroll: true });
   }
 
   // V3.5 — MCP live data streams. Dots flow PLANET → MCP relay (data being
@@ -2646,7 +2673,7 @@ export function mountCosmos(data: CosmosData): void {
       }, WARP_DURATION_MS);
     }
     if (lastFocusBeforeOpen && document.body.contains(lastFocusBeforeOpen)) {
-      lastFocusBeforeOpen.focus();
+      lastFocusBeforeOpen.focus({ preventScroll: true });
     }
     lastFocusBeforeOpen = null;
     scheduleUrlWrite();
@@ -2848,7 +2875,7 @@ export function mountCosmos(data: CosmosData): void {
     // empty canvas area (not the card panel, not a planet body, not HUD chrome,
     // not the first-visit coach), close the card. Sush asked for this — the
     // close button alone meant dismissing felt fiddly, especially on mobile.
-    if (focusedSlug && !target.closest('cosmos-bar, .card-panel, .planet-body, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) {
+    if (focusedSlug && !target.closest('cosmos-bar, .card-panel, .planet-body, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .cosmos-coach, .cosmos-shortcuts')) {
       markInteraction();
       closeCard();
       return;
@@ -2861,7 +2888,7 @@ export function mountCosmos(data: CosmosData): void {
     // and .cosmos-shortcuts modal. Without this, root pointer-capture stole
     // their clicks the same way it stole coach clicks. Caught by qa-audit
     // Phase A checks.
-    if (target.closest('cosmos-bar, .planet-body, .card-panel, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .pomodoro-card, .cosmos-coach, .cosmos-shortcuts')) return;
+    if (target.closest('cosmos-bar, .planet-body, .card-panel, .hud-tools, .hud-attribution, .hud-aux, .hud-orientation, .lens-grid, .ambient-player, .cosmos-coach, .cosmos-shortcuts')) return;
     markInteraction();
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -3380,22 +3407,24 @@ export function mountCosmos(data: CosmosData): void {
   // no celebration animations.
 
   // ─── Screensaver mode ─────────────────────────────────────────────
+  // 12 May 2026 — Sush PM polish: make it a pure button-only toggle. No more
+  // "any input exits" auto-dismiss; no more 5-min idle auto-engage. Users
+  // toggle it on, walk away, and it stays on until they toggle it off.
   (function screensaverMode(): void {
     const screensaverBtn = document.getElementById('screensaver-toggle') as HTMLButtonElement | null;
     if (!screensaverBtn) return;
-    const IDLE_MS = 5 * 60 * 1000;  // 5 minutes
     const url = new URL(window.location.href);
     // Accept both ?screensaver=1 (new) and ?drift=1 (legacy) for backward compat.
     const startInScreensaver = url.searchParams.get('screensaver') === '1' || url.searchParams.get('drift') === '1';
 
-    function setScreensaver(active: boolean, suppressIdleReset?: boolean): void {
+    function setScreensaver(active: boolean): void {
       screensaverActive = active;
       document.body.dataset.screensaver = active ? 'active' : '';
       if (!document.body.dataset.screensaver) delete document.body.dataset.screensaver;
       screensaverBtn!.setAttribute('aria-pressed', active ? 'true' : 'false');
       try { window.localStorage.setItem('cosmosScreensaverPref', active ? 'on' : 'off'); }
       catch { /* private mode silent */ }
-      if (active && !suppressIdleReset) {
+      if (active) {
         // Clear card so the cosmos itself drifts cleanly.
         const cardCloseEl = document.getElementById('card-close') as HTMLButtonElement | null;
         cardCloseEl?.click();
@@ -3406,30 +3435,9 @@ export function mountCosmos(data: CosmosData): void {
       setScreensaver(!screensaverActive);
     });
 
-    // Auto-engage after IDLE_MS of no input (mouse, touch, keyboard).
-    let idleTimer = window.setTimeout(() => setScreensaver(true, true), IDLE_MS);
-    function resetIdle(e?: Event): void {
-      // Don't auto-exit screensaver when the click is on the screensaver toggle itself.
-      // pointerdown on the toggle fires BEFORE the click handler — without this
-      // narrow exclusion, the second click of the toggle would race:
-      //   pointerdown -> clears screensaver; then click -> setScreensaver(!false) -> re-enables.
-      // Net effect: stuck on. Other UI clicks (ambient, pomodoro, lens, etc.)
-      // count as "user is back" and should exit screensaver normally.
-      const target = e?.target as HTMLElement | null;
-      if (target?.closest && target.closest('#screensaver-toggle')) return;
-      window.clearTimeout(idleTimer);
-      // Any input in screensaver exits it (except clicks on the toggle itself —
-      // the click handler on screensaverBtn fires first via stopPropagation above).
-      if (screensaverActive) setScreensaver(false, true);
-      idleTimer = window.setTimeout(() => setScreensaver(true, true), IDLE_MS);
-    }
-    ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) => {
-      window.addEventListener(ev, resetIdle, { passive: true });
-    });
-
     if (startInScreensaver) {
       // Defer slightly so initial intro animation lands first.
-      window.setTimeout(() => setScreensaver(true, true), 1200);
+      window.setTimeout(() => setScreensaver(true), 1200);
     }
   })();
 
@@ -3479,7 +3487,6 @@ export function mountCosmos(data: CosmosData): void {
     let shuffle = false;
     let repeatMode: RepeatMode = 'all';
     let savedVol = 0.6;
-    let pomoFactor = 1;           // pomodoro multiplier (1 = full, 0.55 during focus)
 
     if (trackCountEl) trackCountEl.textContent = String(TRACKS.length);
 
@@ -3669,7 +3676,7 @@ export function mountCosmos(data: CosmosData): void {
     volSlider.addEventListener('input', () => {
       const v = Math.max(0, Math.min(1, parseInt(volSlider.value, 10) / 100));
       savedVol = v;
-      audio.volume = v * pomoFactor;
+      audio.volume = v;
       try { window.localStorage.setItem('cosmosAmbientVolume', String(v)); } catch { /* silent */ }
     });
 
@@ -3710,176 +3717,6 @@ export function mountCosmos(data: CosmosData): void {
     // Render the list. Highlight last-played track if any.
     renderList();
     updateNowDisplay();
-
-    // Expose to Pomodoro for volume dimming.
-    (window as unknown as { __cosmosAmbient?: { adjustVolume: (f: number) => void; restoreVolume: () => void; getMode: () => string } }).__cosmosAmbient = {
-      adjustVolume(factor: number) {
-        pomoFactor = factor;
-        audio!.volume = savedVol * pomoFactor;
-      },
-      restoreVolume() {
-        pomoFactor = 1;
-        audio!.volume = savedVol;
-      },
-      getMode() {
-        return audio!.paused ? 'off' : (TRACKS[currentIndex]?.slug ?? 'off');
-      },
-    };
-  })();
-
-  // ─── Pomodoro mode ─────────────────────────────────────────────────
-  // 25-min focus → 5-min break, repeats. Auto-engages screensaver mode for
-  // immersion. Quietly dims ambient sound during focus. Counter shown
-  // (no streaks, no celebration animations — Plain AI commons philosophy).
-  (function pomodoroMode(): void {
-    // Wave 5 — pomodoro is now an inline card in the left column. The toggle
-    // button is the card's head (clickable, expands/collapses); start/stop/
-    // counter live in the body. No popover overlay anymore.
-    const headBtn = document.getElementById('pomodoro-toggle-panel') as HTMLButtonElement | null;
-    const card = document.getElementById('pomodoro-card') as HTMLElement | null;
-    const body = document.getElementById('pomodoro-card-body') as HTMLElement | null;
-    const stateLabel = document.getElementById('pomodoro-card-state') as HTMLElement | null;
-    const startBtn = document.getElementById('pomodoro-start') as HTMLButtonElement | null;
-    const stopBtn = document.getElementById('pomodoro-stop') as HTMLButtonElement | null;
-    const timeEl = document.getElementById('pomodoro-time') as HTMLElement | null;
-    const phaseEl = document.getElementById('pomodoro-phase') as HTMLElement | null;
-    const counterEl = document.getElementById('pomodoro-counter') as HTMLElement | null;
-    if (!headBtn || !card || !body || !startBtn || !stopBtn || !timeEl || !phaseEl) return;
-
-    const FOCUS_MIN = 25;
-    const BREAK_MIN = 5;
-    let phase: 'idle' | 'focus' | 'break' = 'idle';
-    let endsAt = 0;
-    let tickInterval = 0;
-    let completed = 0;
-    try {
-      const c = window.localStorage.getItem('cosmosPomodoroCount');
-      if (c) completed = parseInt(c, 10) || 0;
-    } catch { /* silent */ }
-
-    function updateCounter(): void {
-      if (!counterEl) return;
-      if (completed > 0) {
-        counterEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} this session.`;
-        counterEl.removeAttribute('hidden');
-      } else {
-        counterEl.setAttribute('hidden', '');
-      }
-    }
-    updateCounter();
-
-    function fmt(ms: number): string {
-      const total = Math.max(0, Math.ceil(ms / 1000));
-      const m = Math.floor(total / 60);
-      const s = total % 60;
-      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-
-    function ringBell(): void {
-      // One-shot bell using a fresh AudioContext (no dependency on ambient state).
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const o1 = ctx.createOscillator();
-      const o2 = ctx.createOscillator();
-      const g = ctx.createGain();
-      o1.type = 'sine'; o1.frequency.value = 880;
-      o2.type = 'sine'; o2.frequency.value = 1320;
-      g.gain.setValueAtTime(0.001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.6);
-      o1.connect(g); o2.connect(g); g.connect(ctx.destination);
-      o1.start();
-      o2.start();
-      o1.stop(ctx.currentTime + 1.7);
-      o2.stop(ctx.currentTime + 1.7);
-    }
-
-    function setScreensaverFromPomo(active: boolean): void {
-      const screensaverBtn = document.getElementById('screensaver-toggle') as HTMLButtonElement | null;
-      if (!screensaverBtn) return;
-      const isOn = screensaverBtn.getAttribute('aria-pressed') === 'true';
-      if (active && !isOn) screensaverBtn.click();
-      else if (!active && isOn) screensaverBtn.click();
-    }
-
-    function setPhase(next: 'idle' | 'focus' | 'break'): void {
-      phase = next;
-      const amb = (window as unknown as { __cosmosAmbient?: { adjustVolume: (f: number) => void; restoreVolume: () => void } }).__cosmosAmbient;
-      if (next === 'focus') {
-        endsAt = Date.now() + FOCUS_MIN * 60 * 1000;
-        phaseEl!.textContent = 'focus';
-        startBtn!.setAttribute('hidden', '');
-        stopBtn!.removeAttribute('hidden');
-        headBtn!.setAttribute('aria-pressed', 'true');
-        if (stateLabel) stateLabel.textContent = '25:00';
-        card!.dataset.active = 'true';
-        document.body.dataset.pomodoro = 'focus';
-        setScreensaverFromPomo(true);
-        amb?.adjustVolume(0.55);
-      } else if (next === 'break') {
-        endsAt = Date.now() + BREAK_MIN * 60 * 1000;
-        phaseEl!.textContent = 'break';
-        if (stateLabel) stateLabel.textContent = '05:00';
-        card!.dataset.active = 'true';
-        document.body.dataset.pomodoro = 'break';
-        amb?.restoreVolume();
-        setScreensaverFromPomo(false);
-      } else {
-        endsAt = 0;
-        phaseEl!.textContent = 'focus';
-        startBtn!.removeAttribute('hidden');
-        stopBtn!.setAttribute('hidden', '');
-        headBtn!.setAttribute('aria-pressed', 'false');
-        delete card!.dataset.active;
-        if (stateLabel) stateLabel.textContent = 'idle';
-        delete document.body.dataset.pomodoro;
-        timeEl!.textContent = `${String(FOCUS_MIN).padStart(2, '0')}:00`;
-        amb?.restoreVolume();
-        setScreensaverFromPomo(false);
-      }
-    }
-
-    function tick(): void {
-      if (phase === 'idle') return;
-      const left = endsAt - Date.now();
-      const formatted = fmt(left);
-      timeEl!.textContent = formatted;
-      if (stateLabel) stateLabel.textContent = formatted;
-      if (left <= 0) {
-        ringBell();
-        if (phase === 'focus') {
-          completed += 1;
-          try { window.localStorage.setItem('cosmosPomodoroCount', String(completed)); }
-          catch { /* silent */ }
-          updateCounter();
-          setPhase('break');
-        } else {
-          // Break ended — auto-start the next focus block.
-          setPhase('focus');
-        }
-      }
-    }
-
-    headBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const expanded = headBtn.getAttribute('aria-expanded') === 'true';
-      const next = !expanded;
-      headBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
-      card.dataset.state = next ? 'expanded' : 'collapsed';
-      if (next) body.removeAttribute('hidden');
-      else body.setAttribute('hidden', '');
-    });
-    startBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (phase === 'idle') {
-        setPhase('focus');
-        if (!tickInterval) tickInterval = window.setInterval(tick, 500);
-      }
-    });
-    stopBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (tickInterval) { window.clearInterval(tickInterval); tickInterval = 0; }
-      setPhase('idle');
-    });
   })();
 
   function bindCoachInteractions(el: HTMLElement): void {
@@ -4048,7 +3885,7 @@ export function mountCosmos(data: CosmosData): void {
   requestAnimationFrame((now) => {
     lastFrame = now;
     updateBodyPositions();
-    applyBodyTransforms(introActive ? 0 : 1);
+    applyBodyTransforms(introActive ? 0 : 1, 0);
     bodiesRoot.style.transition = 'opacity 480ms ease-out';
     bodiesRoot.style.opacity = '1';
     if (introActive) {
