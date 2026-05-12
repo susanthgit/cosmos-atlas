@@ -725,6 +725,43 @@ for (const vp of VIEWPORTS) {
           totalFails++;
         }
       }
+      // Growing guardrail (12 May 2026 evening): in audience lens at desktop
+      // viewport, no planet/moon body should overlap the ambient player rect.
+      // Catches the "audience col 0 bodies sit on top of the .left-stack
+      // ambient player" bug. Ambient player is hidden on mobile (≤720px CSS
+      // breakpoint), so skip the check there.
+      if (lens === 'audience' && vp.width > 720) {
+        const overlap = await page.evaluate(() => {
+          const ap = document.querySelector('.ambient-player');
+          if (!ap) return { skipped: 'no-ambient-player' };
+          const apStyle = getComputedStyle(ap);
+          if (apStyle.display === 'none' || parseFloat(apStyle.opacity || '1') < 0.1) {
+            return { skipped: 'ambient-player-hidden' };
+          }
+          const apr = ap.getBoundingClientRect();
+          if (apr.width === 0 || apr.height === 0) return { skipped: 'ambient-player-zero-rect' };
+          const bad = [];
+          const els = Array.from(document.querySelectorAll('.planet-body[data-kind="planet"], .planet-body[data-kind="moon"]'));
+          for (const el of els) {
+            const slug = el.getAttribute('data-slug');
+            const r = el.getBoundingClientRect();
+            // axis-aligned bounding-box intersection
+            const intersects = r.left < apr.right && r.right > apr.left && r.top < apr.bottom && r.bottom > apr.top;
+            if (intersects) {
+              bad.push({ slug, bodyLeft: r.left.toFixed(0), bodyRight: r.right.toFixed(0), apLeft: apr.left.toFixed(0), apRight: apr.right.toFixed(0) });
+            }
+          }
+          return { bad };
+        });
+        if (overlap.skipped) {
+          console.log(`    audience no-overlap with ambient player: ⏭ skipped (${overlap.skipped})`);
+        } else if (overlap.bad.length === 0) {
+          console.log(`    audience no-overlap with ambient player: ✓ no planet/moon body intersects .ambient-player rect`);
+        } else {
+          console.log(`    audience no-overlap with ambient player: 🔴 ${overlap.bad.length} body/bodies overlap — ${JSON.stringify(overlap.bad)}`);
+          totalFails++;
+        }
+      }
       // Verify earth body is still clickable after the lens change
       const clickWorks = await page.evaluate(() => {
         const earth = document.querySelector('.planet-body[data-slug="earth"]');

@@ -1830,8 +1830,17 @@ export function mountCosmos(data: CosmosData): void {
     const audience = AUDIENCE_MAP[b.slug];
     if (!audience) return null;
     const colIdx = AUDIENCE_COL[audience];
-    const colWidth = cw / 4;
-    const x = colIdx * colWidth + colWidth / 2;
+    // The ambient player (.left-stack) sits at left:~20px, width:240px, so its
+    // right edge is ~260px on desktop. The 720px breakpoint matches the CSS rule
+    // that hides .left-stack on mobile (.left-stack { display:none } @ ≤720px).
+    // On desktop we reserve a 280px gutter so col 0 bodies land clear of the
+    // player; on mobile we pad symmetrically since the player is hidden.
+    const ambientVisible = cw > 720;
+    const leftPad = ambientVisible ? 280 : 40;
+    const rightPad = 40;
+    const usable = Math.max(100, cw - leftPad - rightPad);
+    const colWidth = usable / 4;
+    const x = leftPad + colIdx * colWidth + colWidth / 2;
     const sameCol = bodies.filter((bb) => AUDIENCE_MAP[bb.slug] === audience).map((bb) => bb.slug);
     const myIndex = sameCol.indexOf(b.slug);
     const totalInCol = sameCol.length;
