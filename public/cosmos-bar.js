@@ -1,6 +1,6 @@
 /* cosmos-bar.js — single-file web component, served at https://cosmos.aguidetocloud.com/cosmos-bar.js
    Source: cosmos-atlas/src/cosmos-bar/component.ts
-   Generated: 2026-05-11T21:06:20.646Z */
+   Generated: 2026-05-12T00:32:15.925Z */
 "use strict";(()=>{var f=Object.defineProperty;var m=(l,s,e)=>s in l?f(l,s,{enumerable:!0,configurable:!0,writable:!0,value:e}):l[s]=e;var a=(l,s,e)=>m(l,typeof s!="symbol"?s+"":s,e);var g=["earth","guided","brainbar","shift","plainai","curriculum","agentic","claw"],y="https://cosmos.aguidetocloud.com";function o(l,s="bar"){switch(l){case"earth":return`<img src="${y}/planets/earth-lotus.webp" width="24" height="24" alt="" loading="lazy" decoding="async" />`;case"guided":return`<svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false">
         <mask id="cb-${s}-guided-mask">
           <rect width="32" height="32" fill="white"/>
