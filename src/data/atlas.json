@@ -172,15 +172,15 @@
     {
       "slug": "claw",
       "type": "🪐 Planet",
-      "atmosphere": "Study reference",
+      "atmosphere": "Field notebook",
       "status": "live",
-      "lastShippedAt": "2026-04-12",
+      "lastShippedAt": "2026-05-14",
       "connectsTo": ["agentic"],
-      "tagline": "OpenClaw, in plain English",
-      "audience": "Anyone trying to understand how OpenClaw actually works without reading 200-page specs.",
-      "content": "A reading reference with sidebar TOC, margin notes, and a long calm column. Light or dark.",
-      "founder": "I had to read OpenClaw three times. So I wrote down the version I wish I'd had.",
-      "stats": ["sidebar TOC", "margin notes", "calm column"],
+      "tagline": "AI tooling field notebook — Claude Code, Codex, Gemini, Copilot Studio, OpenClaw",
+      "audience": "Tech practitioners catching up on the AI dev tooling shipping right now — Claude Code, Codex CLI, Gemini CLI, Copilot Studio, ATK, GitHub Copilot, OpenClaw, the MCP servers.",
+      "content": "Field notes with verification states — every entry says whether Sush actually tried it or just read about it. Sidebar TOC, margin notes, long calm column. Light or dark.",
+      "founder": "I needed a place to learn AI tooling honestly — vendors pitch, blogs gush, docs are exhausting. So I wrote the version I wish I'd had.",
+      "stats": ["5 vendors", "verification states", "sourced → tried"],
       "orbit": { "radius": 1600, "ecc": 0.05, "tilt": -10, "speedSec": 293, "phase": 300 },
       "body": { "size": 28, "glowCore": "#FCA5A5", "glowOuter": "#FF2626" }
     }
