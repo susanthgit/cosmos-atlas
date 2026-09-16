@@ -1,6 +1,6 @@
 {
   "_comment": "ATLAS — atmosphere, sun, planets, moons, MCP star. Atlas-private. Sibling of planets.json (vendored). Per vision §8. Card copy passed through forbidden-words list + 4 voice tests + Sush voice fingerprints + ≤100 word budget. Plain AI + Curriculum carry the 🌱 free forever badge at TOP per constitutional firewall. Last voice pass: 8 May 2026.",
-  "_freshnessNote": "Bump lastShippedAt (ISO date) when something visible ships on a planet. Within 14 days → subtle freshness pulse on its body. Manual today; sitemap.xml automation is V3 backlog.",
+  "_freshnessNote": "lastShippedAt is the MANUAL fallback. scripts/freshness.mjs derives an automatic date per body from that body's own sitemap URL path (earth=/, guided=/guided/, plainai=/, curriculum=/learn/) into src/data/freshness.json; the cosmos and the bar both display whichever of the two dates is newer. Bodies whose host publishes no <lastmod> (brainbar, shift, agentic, claw, mcp) still rely on this manual value — bump it by hand when something visible ships there. Within 14 days → subtle freshness pulse on the body. scripts/test-freshness-contract.mjs enforces the producer/consumer contract at build time.",
   "_relationshipsNote": "connectsTo[] surfaces cross-planet relationships when a body is focused. Use sparingly — Earth as hub; Agentic ↔ Claw as the technical pair; MCP rays already show its endpoint connections.",
 
   "atmosphere": {

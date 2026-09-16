@@ -50,21 +50,22 @@ async function fetchWithTimeout(target, ms) {
   }
 }
 
-function parseLastmodFromSitemap(xml) {
-  const dates = [];
-  const re = /<lastmod[^>]*>([^<]+)<\/lastmod>/gi;
+function parseUrlEntriesFromSitemap(xml) {
+  const entries = [];
+  const re = /<url[\s>]([\s\S]*?)<\/url>/gi;
   let m;
   while ((m = re.exec(xml)) !== null) {
-    const raw = m[1].trim();
+    const block = m[1];
+    const loc = /<loc[^>]*>([^<]+)<\/loc>/i.exec(block)?.[1]?.trim();
+    const raw = /<lastmod[^>]*>([^<]+)<\/lastmod>/i.exec(block)?.[1]?.trim();
+    if (!loc || !raw) continue;
     const d = new Date(raw);
-    if (!isNaN(d.getTime())) dates.push(d);
+    if (!isNaN(d.getTime())) entries.push({ loc, date: d });
   }
-  if (dates.length === 0) return null;
-  dates.sort((a, b) => b.getTime() - a.getTime());
-  return dates[0];
+  return entries;
 }
 
-async function getMaxLastmod(siteUrl) {
+async function getUrlEntries(siteUrl) {
   // Try /sitemap.xml first; some sites (e.g. Astro) ship sitemap-index.xml
   const host = siteUrl.replace(/\/+$/, '');
   const tries = [`${host}/sitemap.xml`, `${host}/sitemap-index.xml`, `${host}/sitemap_index.xml`];
@@ -76,25 +77,45 @@ async function getMaxLastmod(siteUrl) {
       // sitemap-index — recurse into child sitemaps
       if (/<sitemapindex[\s>]/i.test(text)) {
         const childUrls = [...text.matchAll(/<sitemap[^>]*>[\s\S]*?<loc>([^<]+)<\/loc>/gi)].map((m) => m[1].trim());
-        const childDates = [];
+        const all = [];
         for (const child of childUrls.slice(0, 10)) {
           try {
             const cr = await fetchWithTimeout(child, TIMEOUT_MS);
             if (!cr.ok) continue;
-            const ct = await cr.text();
-            const d = parseLastmodFromSitemap(ct);
-            if (d) childDates.push(d);
+            all.push(...parseUrlEntriesFromSitemap(await cr.text()));
           } catch (_) { /* ignore */ }
         }
-        if (childDates.length === 0) continue;
-        childDates.sort((a, b) => b.getTime() - a.getTime());
-        return { date: childDates[0], source: target };
+        if (all.length === 0) continue;
+        return { entries: all, source: target };
       }
-      const d = parseLastmodFromSitemap(text);
-      if (d) return { date: d, source: target };
+      const entries = parseUrlEntriesFromSitemap(text);
+      if (entries.length > 0) return { entries, source: target };
     } catch (_) { /* try next */ }
   }
   return null;
+}
+
+// A body's freshness must come from ITS OWN pages, not from whatever else shares
+// the host. Earth and Guided both live on aguidetocloud.com, so a host-wide max
+// made Guided look as fresh as the blog. Each body is scoped to its own URL path,
+// and a body sitting at the host root excludes paths claimed by a sibling.
+function scopedMaxDate(entries, ownPath, siblingPaths) {
+  let best = null;
+  for (const { loc, date } of entries) {
+    let p;
+    try { p = new URL(loc).pathname; } catch (_) { continue; }
+    if (!p.startsWith(ownPath)) continue;
+    if (siblingPaths.some((sp) => p.startsWith(sp))) continue;
+    if (!best || date.getTime() > best.getTime()) best = date;
+  }
+  return best;
+}
+
+function pathOf(u) {
+  try {
+    const p = new URL(u).pathname;
+    return p.endsWith('/') ? p : `${p}/`;
+  } catch (_) { return '/'; }
 }
 
 function isoDateOnly(d) {
@@ -127,13 +148,13 @@ async function main() {
   if (atlas.mcp?.slug && atlas.mcp?.url) targets.set(atlas.mcp.slug, atlas.mcp.url);
 
   // Group by host so we don't fetch the same sitemap twice (Earth + moon Guided share aguidetocloud.com).
-  const byHost = new Map(); // host → { slugs: [], firstUrl }
+  const byHost = new Map(); // host → { members: [{ slug, path }] }
   for (const [slug, planetUrl] of targets) {
     try {
       const u = new URL(planetUrl);
       const host = `${u.protocol}//${u.host}`;
-      if (!byHost.has(host)) byHost.set(host, { slugs: [], firstUrl: planetUrl });
-      byHost.get(host).slugs.push(slug);
+      if (!byHost.has(host)) byHost.set(host, { members: [] });
+      byHost.get(host).members.push({ slug, path: pathOf(planetUrl) });
     } catch (_) { /* skip malformed */ }
   }
 
@@ -147,18 +168,26 @@ async function main() {
     let failCount = 0;
     for (const [host, info] of byHost) {
       try {
-        const found = await getMaxLastmod(host);
+        const found = await getUrlEntries(host);
         if (!found) {
           console.warn(`⚠️  No lastmod for ${host}: keeping existing data`);
           failCount++;
           continue;
         }
-        const dateStr = isoDateOnly(found.date);
-        for (const slug of info.slugs) {
-          result.planets[slug] = { lastShippedAt: dateStr, source: found.source };
+        for (const { slug, path: ownPath } of info.members) {
+          const siblingPaths = info.members
+            .map((m) => m.path)
+            .filter((p) => p !== ownPath && p.startsWith(ownPath));
+          const best = scopedMaxDate(found.entries, ownPath, siblingPaths);
+          if (!best) {
+            console.warn(`   ⚠️  ${slug}: no lastmod under ${ownPath} — keeping existing/manual date`);
+            continue;
+          }
+          const dateStr = isoDateOnly(best);
+          result.planets[slug] = { lastShippedAt: dateStr, source: found.source, scope: ownPath };
+          const ago = Math.max(0, Math.round((now.getTime() - best.getTime()) / 86400000));
+          console.log(`✓ ${slug} ← ${host}${ownPath} → ${dateStr} (${ago}d ago)`);
         }
-        const ago = Math.max(0, Math.round((now.getTime() - found.date.getTime()) / 86400000));
-        console.log(`✓ ${host} → ${dateStr} (${ago}d ago) — applied to: ${info.slugs.join(', ')}`);
         okCount++;
       } catch (err) {
         console.warn(`⚠️  Failed to fetch ${host}: ${err.message ?? err}`);

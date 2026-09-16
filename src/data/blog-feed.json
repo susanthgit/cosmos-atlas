@@ -1,36 +1,36 @@
 {
-  "_generatedAt": "2026-05-12T00:32:14.338Z",
+  "_generatedAt": "2026-09-16T03:35:02.404Z",
   "_source": "https://www.aguidetocloud.com/index.xml",
   "posts": [
     {
-      "title": "How M365 Copilot Works: LLM, Graph Grounding, Semantic Index",
-      "url": "https://www.aguidetocloud.com/blog/how-microsoft-365-copilot-works-layer-by-layer/",
-      "pubDate": "2026-05-01T00:00:00.000Z"
+      "title": "What's New in Microsoft 365 Copilot: August 2026",
+      "url": "https://www.aguidetocloud.com/blog/microsoft-365-copilot-august-2026-updates/",
+      "pubDate": "2026-08-21T00:00:00.000Z"
     },
     {
-      "title": "Agent 365 Security Guide — Entra, Purview, Defender",
-      "url": "https://www.aguidetocloud.com/blog/agent-365-security-governance-complete-guide/",
-      "pubDate": "2026-04-30T00:00:00.000Z"
+      "title": "Copilot Apps Are Merging: What IT Admins Need to Check",
+      "url": "https://www.aguidetocloud.com/blog/microsoft-copilot-app-unification-what-it-admins-need-to-know/",
+      "pubDate": "2026-08-19T00:00:00.000Z"
     },
     {
-      "title": "Microsoft 365 Copilot April 2026 Updates — 41 New Features",
-      "url": "https://www.aguidetocloud.com/blog/microsoft-365-copilot-april-2026-updates/",
-      "pubDate": "2026-04-29T00:00:00.000Z"
+      "title": "Auditing Microsoft 365 Copilot: What's Logged and Kept",
+      "url": "https://www.aguidetocloud.com/blog/auditing-microsoft-365-copilot/",
+      "pubDate": "2026-08-11T00:00:00.000Z"
     },
     {
-      "title": "Microsoft Copilot Cowork — Plain-English Guide",
-      "url": "https://www.aguidetocloud.com/blog/microsoft-copilot-cowork-complete-guide/",
-      "pubDate": "2026-04-22T00:00:00.000Z"
+      "title": "The GitHub Copilot Harness in Copilot Studio, Explained",
+      "url": "https://www.aguidetocloud.com/blog/copilot-studio-github-copilot-harness-explained/",
+      "pubDate": "2026-08-11T00:00:00.000Z"
     },
     {
-      "title": "22 M365 Copilot Features You're Probably Not Using",
-      "url": "https://www.aguidetocloud.com/blog/20-copilot-features-you-should-be-using/",
-      "pubDate": "2026-04-21T00:00:00.000Z"
+      "title": "Admin Guide to Microsoft 365 Copilot Skills",
+      "url": "https://www.aguidetocloud.com/blog/microsoft-365-copilot-skills-admin-governance/",
+      "pubDate": "2026-07-31T00:00:00.000Z"
     },
     {
-      "title": "Copilot Control System (CCS) — Plain-English Guide",
-      "url": "https://www.aguidetocloud.com/blog/microsoft-365-copilot-control-system-complete-guide/",
-      "pubDate": "2026-04-19T00:00:00.000Z"
+      "title": "Copilot Skills in Word: What Exists Today",
+      "url": "https://www.aguidetocloud.com/blog/microsoft-365-copilot-skills-word/",
+      "pubDate": "2026-07-31T00:00:00.000Z"
     }
   ]
 }

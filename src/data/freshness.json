@@ -1,22 +1,26 @@
 {
-  "_generatedAt": "2026-05-12T00:32:08.995Z",
+  "_generatedAt": "2026-09-16T03:34:59.687Z",
   "_source": "sitemap.xml lastmod",
   "planets": {
     "earth": {
-      "lastShippedAt": "2026-05-12",
-      "source": "https://www.aguidetocloud.com/sitemap.xml"
+      "lastShippedAt": "2026-09-15",
+      "source": "https://www.aguidetocloud.com/sitemap.xml",
+      "scope": "/"
     },
     "guided": {
-      "lastShippedAt": "2026-05-12",
-      "source": "https://www.aguidetocloud.com/sitemap.xml"
+      "lastShippedAt": "2026-04-20",
+      "source": "https://www.aguidetocloud.com/sitemap.xml",
+      "scope": "/guided/"
     },
     "plainai": {
       "lastShippedAt": "2026-05-11",
-      "source": "https://plainai.aguidetocloud.com/sitemap.xml"
+      "source": "https://plainai.aguidetocloud.com/sitemap.xml",
+      "scope": "/"
     },
     "curriculum": {
       "lastShippedAt": "2026-05-11",
-      "source": "https://plainai.aguidetocloud.com/sitemap.xml"
+      "source": "https://plainai.aguidetocloud.com/sitemap.xml",
+      "scope": "/learn/"
     }
   }
 }
