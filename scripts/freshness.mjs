@@ -99,11 +99,16 @@ async function getUrlEntries(siteUrl) {
 // the host. Earth and Guided both live on aguidetocloud.com, so a host-wide max
 // made Guided look as fresh as the blog. Each body is scoped to its own URL path,
 // and a body sitting at the host root excludes paths claimed by a sibling.
-function scopedMaxDate(entries, ownPath, siblingPaths) {
+function scopedMaxDate(entries, ownHost, ownPath, siblingPaths) {
   let best = null;
   for (const { loc, date } of entries) {
-    let p;
-    try { p = new URL(loc).pathname; } catch (_) { continue; }
+    let u;
+    try { u = new URL(loc); } catch (_) { continue; }
+    // getUrlEntries flattens sitemap-index children, which are not guaranteed
+    // to be same-host. Without this the cross-domain case would reintroduce
+    // exactly the misattribution this scoping exists to remove.
+    if (u.host !== ownHost) continue;
+    const p = u.pathname;
     if (!p.startsWith(ownPath)) continue;
     if (siblingPaths.some((sp) => p.startsWith(sp))) continue;
     if (!best || date.getTime() > best.getTime()) best = date;
@@ -174,17 +179,18 @@ async function main() {
           failCount++;
           continue;
         }
+        const bareHost = new URL(host).host;
         for (const { slug, path: ownPath } of info.members) {
           const siblingPaths = info.members
             .map((m) => m.path)
             .filter((p) => p !== ownPath && p.startsWith(ownPath));
-          const best = scopedMaxDate(found.entries, ownPath, siblingPaths);
+          const best = scopedMaxDate(found.entries, bareHost, ownPath, siblingPaths);
           if (!best) {
             console.warn(`   ⚠️  ${slug}: no lastmod under ${ownPath} — keeping existing/manual date`);
             continue;
           }
           const dateStr = isoDateOnly(best);
-          result.planets[slug] = { lastShippedAt: dateStr, source: found.source, scope: ownPath };
+          result.planets[slug] = { lastShippedAt: dateStr, source: found.source, host: bareHost, scope: ownPath };
           const ago = Math.max(0, Math.round((now.getTime() - best.getTime()) / 86400000));
           console.log(`✓ ${slug} ← ${host}${ownPath} → ${dateStr} (${ago}d ago)`);
         }
@@ -202,7 +208,9 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.warn('⚠️  freshness.mjs failed (non-fatal):', err.message ?? err);
-  // Exit 0 so the build doesn't break on transient network issues.
-  process.exit(0);
+  // Per-host network failures are already caught above and fall back to the
+  // previous data. Anything reaching here is a real defect in this script, and
+  // exiting 0 would leave a stale freshness.json looking healthy.
+  console.error('❌ freshness.mjs failed:', err?.stack ?? err?.message ?? err);
+  process.exit(1);
 });

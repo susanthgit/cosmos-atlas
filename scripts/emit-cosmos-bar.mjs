@@ -20,17 +20,16 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { build } from 'esbuild';
+import { resolveLastShipped as resolveShared } from '../src/lib/freshness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const SRC = resolve(root, 'src');
 const PUBLIC = resolve(root, 'public');
 
-// V3 #1 — sitemap-driven freshness. src/pages/index.astro applies
-// `freshnessFor(slug) ?? manual`, but freshness.json deliberately PRESERVES a
-// stale automatic value when a host stops publishing lastmod — which would let
-// it permanently mask a newer hand-bump in atlas.json. So the bar takes
-// whichever of the two dates is actually newer.
+// V3 #1 — sitemap-driven freshness. The precedence rule itself lives in
+// src/lib/freshness.mjs so this emitter and src/pages/index.astro cannot drift
+// apart and show two different dates for the same body.
 let freshnessBySlug = {};
 
 async function loadFreshness() {
@@ -46,13 +45,7 @@ async function loadFreshness() {
   }
 }
 
-const isValidDate = (v) => typeof v === 'string' && !Number.isNaN(Date.parse(v));
-
-function resolveLastShipped(slug, manual) {
-  const candidates = [freshnessBySlug[slug]?.lastShippedAt, manual].filter(isValidDate);
-  if (candidates.length === 0) return null;
-  return candidates.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a));
-}
+const resolveLastShipped = (slug, manual) => resolveShared(freshnessBySlug, slug, manual);
 
 // ─── 1. Slim atlas-bar.json ────────────────────────────────────────────────
 async function emitAtlasBarJson() {

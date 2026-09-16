@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import PlanetIcon from '../components/PlanetIcon.astro';
 import planets from '../data/planets.json';
 import atlas from '../data/atlas.json';
+import { resolveLastShipped } from '../lib/freshness.mjs';
 
 // V3 #1 — sitemap-driven freshness. If freshness.json exists (built by
 // `npm run freshness`), it overrides the manual lastShippedAt in atlas.json.
@@ -16,8 +17,10 @@ try {
 } catch (_) {
   // No freshness file yet — fall back to atlas lastShippedAt.
 }
-function freshnessFor(slug: string): string | undefined {
-  return freshness.planets?.[slug]?.lastShippedAt;
+function freshnessFor(slug: string, manual?: string): string | undefined {
+  // Precedence lives in src/lib/freshness.mjs so the orbital cosmos and the
+  // cosmos-bar feed can never disagree about the same body's date.
+  return resolveLastShipped(freshness.planets, slug, manual) ?? undefined;
 }
 
 // Phase B-2 — blog feed baked at build time by scripts/blog-feed.mjs.
@@ -50,14 +53,14 @@ const composed = (atlas.planets as AtlasPlanet[]).map((p) => {
       ...moon,
       name: moonManifest?.name ?? moon.name ?? moon.slug,
       url: moonManifest?.url ?? moon.url ?? '',
-      lastShippedAt: freshnessFor(moon.slug) ?? (moon as { lastShippedAt?: string }).lastShippedAt,
+      lastShippedAt: freshnessFor(moon.slug, (moon as { lastShippedAt?: string }).lastShippedAt),
     };
   });
   return {
     ...p,
     name: m?.name ?? p.name ?? p.slug,
     url: m?.url ?? p.url ?? '',
-    lastShippedAt: freshnessFor(p.slug) ?? (p as { lastShippedAt?: string }).lastShippedAt,
+    lastShippedAt: freshnessFor(p.slug, (p as { lastShippedAt?: string }).lastShippedAt),
     moons,
   };
 });
@@ -65,7 +68,7 @@ const composed = (atlas.planets as AtlasPlanet[]).map((p) => {
 // MCP star also takes a freshness override.
 const mcpEnriched = {
   ...atlas.mcp,
-  lastShippedAt: freshnessFor(atlas.mcp.slug) ?? (atlas.mcp as { lastShippedAt?: string }).lastShippedAt,
+  lastShippedAt: freshnessFor(atlas.mcp.slug, (atlas.mcp as { lastShippedAt?: string }).lastShippedAt),
 };
 
 // JSON-LD — SiteNavigationElement so search engines understand the planet list
